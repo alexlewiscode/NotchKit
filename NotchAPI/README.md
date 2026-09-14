@@ -10,6 +10,28 @@ build target, and no network code here.
 - extension submission and review workflow,
 - validation status for submitted extensions.
 
+## Expected catalog / download metadata
+
+A future catalog entry is expected to carry at least:
+
+- `id`, `displayName`, `summary`, `iconSystemName`;
+- `extensionVersion`, `apiVersion`;
+- `minimumHostVersion`, `maximumHostVersion` (or an equivalent range);
+- `supportedSDKVersions`;
+- `capabilities`, `artifactKind` (only `compiled-in` runs today);
+- `entryPoints` (see the canonical schema in
+  `NotchExtensions/manifests/manifest.schema.json`);
+- artifact `url`, `sha256`, `size`, `signature`, `notarizationStatus`;
+- `validationStatus` and `submissionState`.
+
+None of these fields exist in the app. They describe the future Tier C boundary
+from ADR 0002. The app must not fetch, cache, or trust any of them until a
+separately-installed (not bundled) artifact has been demonstrated by the
+prototype and explicit approval is given.
+
+See `docs/architecture/adr/0002-extension-distribution-tiers.md` for the tier
+separation and macOS 14 platform constraints.
+
 ## Boundary rules
 
 - Nothing in this directory is compiled into or called by the macOS app. The app

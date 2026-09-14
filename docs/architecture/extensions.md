@@ -9,10 +9,13 @@ NotchKit replaces hard-coded rendering and routing seams with a compile-time,
 first-party extension architecture. Extensions declare UI/content and settings
 destinations. Core keeps ownership of everything privileged or structural.
 
-This document describes the Phase 1 architecture. For the contract-by-contract
-shape of the public API, see [`extension-api.md`](extension-api.md). For the
-reasoning behind compile-time extensions, see
+This document describes the Phase 1 architecture, extended by the runtime
+lifecycle. For the contract-by-contract shape of the public API, see
+[`extension-api.md`](extension-api.md). For the reasoning behind compile-time
+extensions, see
 [`adr/0001-compile-time-extensions-before-runtime-loading.md`](adr/0001-compile-time-extensions-before-runtime-loading.md).
+For the separation of compile-time, out-of-process, and catalog tiers, see
+[`adr/0002-extension-distribution-tiers.md`](adr/0002-extension-distribution-tiers.md).
 
 ## Repository boundaries
 
@@ -32,14 +35,16 @@ catalog, distribution, or installation calls. See [Non-goals](#non-goals).
 
 ### Implementation status
 
-- Implemented and unit-tested: `NotchExtensionSDK` contracts,
-  `NotchExtensionRuntime` registry/manager/router/selection, and the pure
-  identity-migration transforms.
+- Implemented and unit-tested: `NotchExtensionSDK` contracts (metadata, version
+  ranges, entry points, definition/instance, host services, cancellation,
+  compatibility), the `NotchExtensionRuntime` registry/manager/contribution
+  store/lifecycle host/per-display router/closed-notch selection, and the pure
+  identity-migration transforms. 92 package tests pass.
 - Implemented and build-verified: the macOS host, project/product/scheme rename
-  to NotchKit, the `com.notchkit.*` identity namespace, and disabled upstream
-  updater UI.
-- Proposed: the `NotchAPI/` server, `NotchExtensions/` tooling, external
-  extension loading, distribution, and signing.
+  to NotchKit, the `com.notchkit.*` identity namespace, per-display routing, and
+  the disabled upstream updater UI.
+- Proposed: the `NotchAPI/` server, `NotchExtensions/` tooling, out-of-process
+  extension loading, distribution, and signing. See ADR 0002 for the gating.
 
 ## Module boundaries
 
@@ -47,7 +52,7 @@ catalog, distribution, or installation calls. See [Non-goals](#non-goals).
 | --- | --- | --- |
 | `NotchKit` | Application host + core renderer/runtime | Owns geometry, windowing, animation, permissions, persistence, privileged system actions, and the SwiftUI rendering of the notch. Links `NotchExtensionSDK` and `NotchExtensionRuntime`. |
 | `NotchExtensionSDK` | Public library (`NotchKit/Packages/NotchExtensionSDK`) | UI-facing contracts only. Defines descriptors, destinations, closed-notch contributions, regions, and the render snapshot. Must never import app internals such as `BoringViewModel`, singleton managers, or private window types. |
-| `NotchExtensionRuntime` | Library (`NotchKit/Packages/NotchExtensionSDK`) | First-party catalog and registration boundary plus extension runtime infrastructure (`ExtensionRegistry`, `ExtensionManager`, `NotchRouter`, `ClosedNotchSelection`). Depends only on `NotchExtensionSDK`. |
+| `NotchExtensionRuntime` | Library (`NotchKit/Packages/NotchExtensionSDK`) | First-party catalog and registration boundary plus runtime infrastructure (`ExtensionRegistry`, `ExtensionManager`, `ExtensionHost`, `ContributionStore`, `PresentationCoordinator`, `NotchRouter`, `ClosedNotchSelection`, `IdentityMigration`). Depends only on `NotchExtensionSDK`. |
 
 Phase 1 does **not** move all existing features into `NotchExtensionRuntime`. The
 module establishes the boundary; migration is incremental.
@@ -99,8 +104,10 @@ directly. Extensions declare; core acts.
   availability, and a content factory.
 - `ExtensionSettingsDestination`: a settings page reachable from the Extensions
   hub.
-- `ExtensionDescriptor`: identity, display metadata, API version, first-party
-  source, capabilities, default enabled state, and the contributions above.
+- `ExtensionDescriptor` was replaced by `ExtensionMetadata` (metadata-only) plus
+  `ExtensionDefinition` (metadata + instance factory). Content is produced by an
+  activated `NotchExtension` instance, so metadata listing never instantiates a
+  feature service.
 
 There is no unrestricted "run arbitrary code on every event" hook.
 
@@ -155,17 +162,28 @@ Phase 1 explicitly excludes:
 
 ## Future adapter path
 
-A later phase may back the same contracts with an Apple `ExtensionFoundation`
-(or XPC) adapter. That adapter would:
+A later phase may back the same contracts with an out-of-process adapter. ADR
+0002 separates three tiers (compile-time modules, independently distributed
+artifacts, and catalog/installation services) and records what macOS 14
+actually supports. In particular:
 
-- discover externally packaged extensions,
-- marshal descriptors and view/content factories across a process boundary,
-- keep `ExtensionRegistry`/`ExtensionManager`/`NotchRouter` as the core-facing
-  surface.
+- **SwiftUI view factories cannot cross a process boundary.** The previous
+  wording here ("marshal descriptors and view/content factories across a
+  process boundary") was incorrect. View factories are scoped to trusted,
+  compiled-in extensions only.
+- Any process boundary carries **declarative data messages** and explicit
+  rendering ownership. An ExtensionKit adapter would present an opaque remote
+  scene via `EXHostViewController`; an XPC adapter would use a defined
+  `NSXPCConnection`/XPC message contract.
+- `AppExtensionPoint` and programmatic `.appext` generation are macOS 26+, not
+  macOS 14; a macOS 14 ExtensionKit path would need a hand-authored `.appext`.
+- A **bundled helper is not an independently installed extension.** Separate
+  installation is only claimed once a prototype demonstrates discovery and
+  enablement of an artifact outside the host bundle.
 
-The current macOS 14 app must not depend on `ExtensionFoundation` or
-`ExtensionKit`. `NotchExtensionSDK` and `NotchExtensionRuntime` are designed so an adapter is
-additive rather than a rewrite.
+The production app stays on the in-process first-party runtime until that
+prototype provides evidence. `NotchExtensionSDK` and `NotchExtensionRuntime`
+are designed so an adapter is additive rather than a rewrite.
 
 ## Non-negotiable invariants
 

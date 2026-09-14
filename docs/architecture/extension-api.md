@@ -1,25 +1,33 @@
 # NotchKit Extension API
 
-Status: Phase 1. API version `1.0.0`.
+Status: Phase 1 contracts plus the runtime lifecycle. API version `1.0.0`.
 
-This document specifies the public contracts in the `NotchExtensionSDK` module and the
-behaviour guaranteed by the `NotchExtensionRuntime` runtime. See
-[`extensions.md`](extensions.md) for architectural context.
+This document specifies the public contracts in the `NotchExtensionSDK` module
+and the behaviour guaranteed by the `NotchExtensionRuntime` module. See
+[`extensions.md`](extensions.md) for architectural context and
+[`adr/0002-extension-distribution-tiers.md`](adr/0002-extension-distribution-tiers.md)
+for the distribution tiers. Both modules are statically linked into the macOS
+app; they are not downloadable extensions, and this phase has no catalog,
+download, installation, or dynamic loading mechanism.
 
 ## Compatibility rules
 
 - `ExtensionAPIVersion.current` is `1.0.0`.
-- A descriptor is compatible when its major version equals the running core's
-  major version.
-- Incompatible descriptors are rejected at registration; they are never
-  silently dropped at render time.
-- The API is semantic-versioned. Minor releases are additive; major releases may
-  remove or change symbols.
+- Compatibility is **not** major-only. `ExtensionCompatibility.validate` rejects
+  a manifest when:
+  - its `artifactKind` is not supported by this host build (only `.compiledIn`);
+  - the running host version is outside `supportedHostVersions`;
+  - the running SDK version is outside `supportedSDKVersions`;
+  - an entry point's kind lacks a declared capability, or a declared capability
+    has no matching entry point;
+  - two entry points share an id.
+- Incompatible manifests are rejected at registration; they are never silently
+  dropped at render time.
 
 ## Identity
 
 ```swift
-public struct ExtensionIdentity: Hashable, Comparable, Sendable {
+public struct ExtensionIdentity: Hashable, Comparable, Codable, Sendable {
     public let rawValue: String
     public init(_ rawValue: String) throws       // validates reverse-DNS
     public init(validating rawValue: String) throws
@@ -28,167 +36,172 @@ public struct ExtensionIdentity: Hashable, Comparable, Sendable {
 
 Validation rules match [`extensions.md`](extensions.md#extension-identity).
 Invalid identities fail with `ExtensionIdentityError.invalidFormat`.
+`DestinationID` and `ContributionID` are similarly-validated stable strings.
 
-## Descriptor
+## Metadata (the manifest)
+
+`ExtensionMetadata` is the runtime-free, `Codable` manifest. It never contains
+closures, views, or services. It is the canonical shape of
+`NotchExtensions/manifests/manifest.schema.json`.
 
 ```swift
-public struct ExtensionDescriptor: Identifiable, Sendable {
+public struct ExtensionMetadata: Identifiable, Codable, Hashable, Sendable {
     public let id: ExtensionIdentity
     public let displayName: String
     public let summary: String?
     public let iconSystemName: String
+    public let extensionVersion: ExtensionVersion
     public let apiVersion: ExtensionAPIVersion
-    public let source: ExtensionSource
+    public let supportedHostVersions: ExtensionVersionRange
+    public let supportedSDKVersions: ExtensionVersionRange
     public let capabilities: Set<ExtensionCapability>
+    public let artifactKind: ExtensionArtifactKind
+    public let entryPoints: [ExtensionEntryPoint]
     public let defaultEnabled: Bool
-    public let openDestinations: [NotchOpenDestination]
-    public let closedNotchContributions: [ClosedNotchContribution]
-    public let settingsDestinations: [ExtensionSettingsDestination]
+    public let source: ExtensionSource
 }
 ```
 
-- `source` is `.firstParty` in Phase 1.
-- `capabilities` declares the kinds of contributions present; the registry
-  validates that declared capabilities match supplied contributions.
-- `defaultEnabled` seeds `ExtensionManager` reconciliation on first run.
+`ExtensionEntryPoint` declares an attachment (`id`, `kind`, optional reserved
+`sceneName`, free-form `metadata`) without carrying content.
 
-## Open destinations
+## Definition and runtime instance
 
 ```swift
-public struct NotchOpenDestination: Identifiable, Sendable {
-    public let id: DestinationID
-    public let title: String
-    public let iconSystemName: String
-    public let order: Int
-    public let isAvailable: @Sendable (ClosedNotchRenderSnapshot) -> Bool
-    public let makeView: @MainActor @Sendable () -> AnyView
+public struct ExtensionDefinition {
+    public let metadata: ExtensionMetadata
+    public let makeInstance: @MainActor (ExtensionContext) -> any NotchExtension
+}
+
+@MainActor
+public protocol NotchExtension: AnyObject {
+    func activate() async throws
+    func deactivate()
+    func openDestinations() -> [NotchOpenDestination]
+    func closedNotchContributions() -> [ClosedNotchContribution]
+    func settingsDestinations() -> [ExtensionSettingsDestination]
 }
 ```
 
-- `id` is a stable string (reverse-DNS by convention), unique across the
-  registry.
-- `order` determines tab ordering; ties break on `title`, then `id`.
-- `isAvailable` gates visibility. `NotchRouter` falls back to Home when the
-  active destination becomes unavailable or its extension is disabled.
+- **Metadata listing never instantiates an extension.** `makeInstance` is called
+  only on activation.
+- `makeView`-style factories are for **trusted, compiled-in** extensions only;
+  they are never encoded or sent across a process boundary.
 
-## Closed-notch contributions
-
-```swift
-public enum ClosedNotchRegion: String, CaseIterable, Sendable {
-    case leading, exclusion, trailing
-}
-
-public struct ClosedNotchContribution: Identifiable, Sendable {
-    public let id: ContributionID
-    public let extensionID: ExtensionIdentity
-    public let region: ClosedNotchRegion
-    public let priority: Int
-    public let tieBreaker: String
-    public let isAvailable: @Sendable (ClosedNotchRenderSnapshot) -> Bool
-    public let makeView: @MainActor @Sendable () -> AnyView
-    public let preferredChinWidth: (@Sendable (ClosedNotchRenderSnapshot) -> CGFloat)?
-}
-```
-
-Selection order per region is defined in
-[`extensions.md`](extensions.md#deterministic-closed-notch-selection).
-`preferredChinWidth` lets a winning contribution drive the closed chin width
-deterministically; when `nil`, core uses its default geometry.
-
-## Settings destinations
-
-```swift
-public struct ExtensionSettingsDestination: Identifiable, Sendable {
-    public let id: DestinationID
-    public let title: String
-    public let iconSystemName: String
-    public let isAvailable: @Sendable (ClosedNotchRenderSnapshot) -> Bool
-    public let makeView: @MainActor @Sendable () -> AnyView
-}
-```
-
-Phase 1 keeps existing feature settings in place. The Extensions hub only needs
-to route to a declared destination; it does not own those settings.
-
-## Render snapshot
-
-```swift
-public struct ClosedNotchRenderSnapshot: Sendable {
-    public let isNotchOpen: Bool
-    public let isHiddenOnClosed: Bool
-    public let isMediaActive: Bool
-    public let isMediaIdle: Bool
-    public let hasInlineHUD: Bool
-    public let hasExpandingView: Bool
-    public let expandingViewKind: String?
-    public let sneakPeekKind: String?
-    public let isSneakPeekVisible: Bool
-    public let flags: [String: Bool]
-}
-```
-
-The snapshot contains only render-relevant primitives; it never exposes
-`BoringViewModel`, managers, or window types. Core builds it once per render and
-passes the same value to availability predicates and the renderer so selection
-is deterministic within a frame.
-
-## Registry
-
-```swift
-public final class ExtensionRegistry {
-    public func register(_ descriptor: ExtensionDescriptor) throws
-    public var descriptors: [ExtensionDescriptor] { get }
-    public func descriptor(for id: ExtensionIdentity) -> ExtensionDescriptor?
-    public func openDestination(for id: DestinationID) -> NotchOpenDestination?
-    public func settingsDestination(for id: DestinationID) -> ExtensionSettingsDestination?
-    public var openDestinations: [NotchOpenDestination] { get }
-    public var closedNotchContributions: [ClosedNotchContribution] { get }
-}
-```
-
-`register` throws on:
-
-- `duplicateExtensionID`,
-- `duplicateDestinationID`,
-- `incompatibleAPIVersion`,
-- `capabilityMismatch`.
-
-## Manager
-
-```swift
-public final class ExtensionManager {
-    public init(registry: ExtensionRegistry, store: ExtensionStateStore)
-    public func reconcile()                       // apply defaults for new descriptors
-    public func isEnabled(_ id: ExtensionIdentity) -> Bool
-    public func setEnabled(_ enabled: Bool, for id: ExtensionIdentity)
-    public var enabledDescriptors: [ExtensionDescriptor] { get }
-}
-```
-
-- Enabled state is persisted through `ExtensionStateStore`, defaulting to
-  `UserDefaultsExtensionStateStore`.
-- Reconciliation adds newly registered descriptors using `defaultEnabled`,
-  preserves existing choices, and drops state for descriptors that no longer
-  exist.
-- The store records a schema version so the persistence format can migrate.
-
-## Router
+## Host services
 
 ```swift
 @MainActor
-public final class NotchRouter: ObservableObject {
-    public init(registry: ExtensionRegistry, manager: ExtensionManager, homeID: DestinationID)
-    @Published public private(set) var activeDestinationID: DestinationID
-    public func select(_ id: DestinationID)
-    public var availableDestinations: [NotchOpenDestination] { get }
-    public func destinationView(for id: DestinationID) -> AnyView?
+public final class ExtensionContext {
+    public let identity: ExtensionIdentity
+    public let cancellation: ExtensionCancellationBag
+    public let presentation: any NotchPresentationService
+    public let store: any ExtensionScopedStore
+    public let permissions: any NotchPermissionService
+}
+
+@MainActor
+public protocol NotchPresentationService: AnyObject {
+    var availableDisplays: [DisplayID] { get }
+    func request(_ request: PresentationRequest, target: PresentationTarget)
+}
+
+public protocol ExtensionScopedStore: AnyObject {
+    var schemaVersion: Int { get }
+    func data(forKey key: String) -> Data?
+    func set(_ data: Data?, forKey key: String)
+}
+
+@MainActor
+public protocol NotchPermissionService: AnyObject {
+    func status(for permission: NotchPermission) -> NotchPermissionStatus
+    func request(_ permission: NotchPermission) async -> NotchPermissionStatus
 }
 ```
 
-- Selection is by stable id, not an enum.
-- `select` rejects unavailable or disabled destinations and falls back to Home.
-- If the active destination becomes unavailable (for example its extension is
-  disabled), the router falls back to Home.
+Presentation requests are **display-targeted** (`PresentationTarget`: `.active`,
+`.all`, or `.display(DisplayID)`) and geometry-independent. Extensions never
+receive windows, screens, geometry, or singleton managers.
+
+## Cancellation
+
+`ExtensionCancellationBag` registers tasks, timers, notification observers, or
+custom teardown blocks; `cancelAll()` runs each exactly once, in reverse order,
+and registering after cancellation runs immediately. The host cancels the bag
+when an extension deactivates or fails.
+
+## Lifecycle host
+
+```swift
+@MainActor
+public final class ExtensionHost {
+    public init(registry:manager:contributions:makeContext:)
+    public func start()
+    public func setEnabled(_ enabled: Bool, for id: ExtensionIdentity)
+    public func reconcileNow()
+    public func phase(for id: ExtensionIdentity) -> ExtensionRuntimePhase
+    public func remove(_ id: ExtensionIdentity)
+    public func shutdown()
+}
+```
+
+Phases: `inactive → activating → active → deactivating → inactive`, with
+`failed` on activation error. Repeated and rapid enable/disable is coalesced by
+a per-extension generation counter; at most one instance exists and stale
+callbacks are ignored. Activation failure deactivates and tears down the
+instance before recording `failed`.
+
+## Registry, manager, and contributions
+
+```swift
+public final class ExtensionRegistry {
+    public init(hostVersion: ExtensionVersion, sdkVersion: ExtensionAPIVersion = .current)
+    public func register(_ definition: ExtensionDefinition) throws
+    public var definitions: [ExtensionDefinition] { get }
+    public var metadata: [ExtensionMetadata] { get }
+}
+
+public final class ExtensionManager {
+    public init(registry: ExtensionRegistry, store: ExtensionStateStore)
+    public func reconcile()
+    public func isEnabled(_ id: ExtensionIdentity) -> Bool
+    public func setEnabled(_ enabled: Bool, for id: ExtensionIdentity)
+    public var onEnabledChanged: ((ExtensionIdentity, Bool) -> Void)?
+}
+
+@MainActor
+public final class ContributionStore {
+    public func set(open:closed:settings:for:) throws
+    public func removeContributions(for id: ExtensionIdentity)
+    public var openDestinations: [NotchOpenDestination] { get }
+}
+```
+
+Only active extensions contribute content; disabling removes contributions
+before deactivation.
+
+## Per-display routing
+
+```swift
+@MainActor
+public final class PresentationCoordinator: ObservableObject {
+    public func router(for display: DisplayID) -> NotchRouter
+    public func refreshAll()
+    public var displayIDs: [DisplayID] { get }
+}
+
+@MainActor
+public final class NotchRouter: ObservableObject {
+    public init(displayID:homeID:contributions:manager:onChanged:)
+    @Published public private(set) var activeDestinationID: DestinationID
+    public func select(_ id: DestinationID)
+    public var availableDestinations: [NotchOpenDestination] { get }
+}
+```
+
+Each display has its own router, so selecting a destination on one display does
+not change another. Selection falls back to Home when a destination is missing,
+unavailable, or belongs to a disabled extension.
 
 ## Closed-notch selection
 
@@ -202,12 +215,13 @@ public enum ClosedNotchSelection {
 }
 ```
 
-Pure and deterministic. Core supplies available contributions (already filtered
-for disablement) and recency ranks.
+Unchanged: pure and deterministic, per region, by priority, recency,
+tie-breaker, then id. Core supplies available contributions.
 
 ## What the API intentionally omits
 
 - No generic event bus or "run arbitrary code on every event" hook.
-- No direct window, geometry, monitor, or permission APIs.
-- No remote manifest or installer surface.
+- No direct window, geometry, monitor, or permission APIs (only the narrow host
+  service protocols above).
+- No remote manifest, installer, or network surface.
 - No `ExtensionFoundation`/`ExtensionKit` types.
