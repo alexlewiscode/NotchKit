@@ -8,6 +8,8 @@
 import AppKit
 import Combine
 import Defaults
+import NotchAPI
+import NotchExtensions
 import SwiftUI
 
 enum SneakContentType {
@@ -50,7 +52,6 @@ struct ExpandedItem {
 class BoringViewCoordinator: ObservableObject {
     static let shared = BoringViewCoordinator()
 
-    @Published var currentView: NotchViews = .home
     @Published var helloAnimationRunning: Bool = false
     private var sneakPeekDispatch: DispatchWorkItem?
     private var expandingViewDispatch: DispatchWorkItem?
@@ -66,7 +67,7 @@ class BoringViewCoordinator: ObservableObject {
             if !alwaysShowTabs {
                 openLastTabByDefault = false
                 if ShelfStateViewModel.shared.isEmpty || !Defaults[.openShelfByDefault] {
-                    currentView = .home
+                    NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.homeDestination)
                 }
             }
         }
@@ -295,6 +296,6 @@ class BoringViewCoordinator: ObservableObject {
     }
     
     func showEmpty() {
-        currentView = .home
+        NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.homeDestination)
     }
 }

@@ -9,6 +9,8 @@ import AVFoundation
 import Combine
 import Defaults
 import KeyboardShortcuts
+import NotchAPI
+import NotchExtensions
 import Sparkle
 import SwiftUI
 
@@ -224,10 +226,10 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         if Defaults[.showOnAllDisplays], let viewModel = viewModels[uuid] {
             viewModel.open()
-            coordinator.currentView = .shelf
+            NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.shelfDestination)
         } else if !Defaults[.showOnAllDisplays], let windowScreen = window?.screen, screen == windowScreen {
             vm.open()
-            coordinator.currentView = .shelf
+            NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.shelfDestination)
         }
     }
 
@@ -280,6 +282,8 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+
+        NotchKitRuntime.shared.bootstrap()
 
         NotificationCenter.default.addObserver(
             self,

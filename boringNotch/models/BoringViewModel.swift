@@ -7,6 +7,8 @@
 
 import Combine
 import Defaults
+import NotchAPI
+import NotchExtensions
 import SwiftUI
 
 class BoringViewModel: NSObject, ObservableObject {
@@ -212,9 +214,9 @@ class BoringViewModel: NSObject, ObservableObject {
         // Set the current view to shelf if it contains files and the user enables openShelfByDefault
         // Otherwise, if the user has not enabled openLastShelfByDefault, set the view to home
     if !ShelfStateViewModel.shared.isEmpty && Defaults[.openShelfByDefault] {
-            coordinator.currentView = .shelf
+            NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.shelfDestination)
         } else if !coordinator.openLastTabByDefault {
-            coordinator.currentView = .home
+            NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.homeDestination)
         }
     }
 

@@ -423,7 +423,12 @@ struct NotchHomeView: View {
     @ObservedObject var webcamManager = WebcamManager.shared
     @ObservedObject var batteryModel = BatteryStatusViewModel.shared
     @ObservedObject var coordinator = BoringViewCoordinator.shared
-    let albumArtNamespace: Namespace.ID
+    @Environment(\.notchAlbumArtNamespace) private var environmentAlbumArtNamespace: Namespace.ID?
+    @Namespace private var fallbackNamespace
+
+    private var albumArtNamespace: Namespace.ID {
+        environmentAlbumArtNamespace ?? fallbackNamespace
+    }
 
     var body: some View {
         Group {

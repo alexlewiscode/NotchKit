@@ -24,11 +24,6 @@ public enum NotchState {
     case open
 }
 
-public enum NotchViews {
-    case home
-    case shelf
-}
-
 enum SettingsEnum {
     case general
     case about
