@@ -68,9 +68,9 @@ jobs:
       run: |
         xcodebuild \
           -resolvePackageDependencies \
-          -project NotchKit/boringNotch.xcodeproj \
-          -scheme boringNotch \
-          -clonedSourcePackagesDirPath "$RUNNER_TEMP/boringNotch-source-packages" \
+          -project NotchKit/NotchKit.xcodeproj \
+          -scheme NotchKit \
+          -clonedSourcePackagesDirPath "$RUNNER_TEMP/NotchKit-source-packages" \
           -onlyUsePackageVersionsFromResolvedFile
 
     # Add any setup steps before running the `github/codeql-action/init` action.
@@ -98,12 +98,12 @@ jobs:
         set -o pipefail
 
         xcodebuild \
-          -project NotchKit/boringNotch.xcodeproj \
-          -scheme boringNotch \
+          -project NotchKit/NotchKit.xcodeproj \
+          -scheme NotchKit \
           -configuration Release \
           -destination "platform=macOS" \
-          -derivedDataPath "$RUNNER_TEMP/boringNotch-derived-data" \
-          -clonedSourcePackagesDirPath "$RUNNER_TEMP/boringNotch-source-packages" \
+          -derivedDataPath "$RUNNER_TEMP/NotchKit-derived-data" \
+          -clonedSourcePackagesDirPath "$RUNNER_TEMP/NotchKit-source-packages" \
           -onlyUsePackageVersionsFromResolvedFile \
           CODE_SIGNING_ALLOWED=NO \
           CODE_SIGNING_REQUIRED=NO \
