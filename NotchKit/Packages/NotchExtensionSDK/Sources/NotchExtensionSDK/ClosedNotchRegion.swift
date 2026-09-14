@@ -1,6 +1,6 @@
 //
 //  ClosedNotchRegion.swift
-//  NotchAPI
+//  NotchExtensionSDK
 //
 //  The three horizontal regions of the closed notch.
 //

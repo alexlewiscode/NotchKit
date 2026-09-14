@@ -1,10 +1,10 @@
 //
 //  ExtensionManagerTests.swift
-//  NotchExtensionsTests
+//  NotchExtensionRuntimeTests
 //
 
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import XCTest
 
 final class ExtensionManagerTests: XCTestCase {

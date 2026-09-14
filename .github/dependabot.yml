@@ -16,7 +16,7 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "swift"
-    directory: "/NotchKit/Packages/NotchKit"
+    directory: "/NotchKit/Packages/NotchExtensionSDK"
     schedule:
       interval: "weekly"
     target-branch: "dev"

@@ -2,8 +2,8 @@
 
 Status: Phase 1. API version `1.0.0`.
 
-This document specifies the public contracts in the `NotchAPI` module and the
-behaviour guaranteed by the `NotchExtensions` runtime. See
+This document specifies the public contracts in the `NotchExtensionSDK` module and the
+behaviour guaranteed by the `NotchExtensionRuntime` runtime. See
 [`extensions.md`](extensions.md) for architectural context.
 
 ## Compatibility rules

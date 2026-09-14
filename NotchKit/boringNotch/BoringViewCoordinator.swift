@@ -8,8 +8,8 @@
 import AppKit
 import Combine
 import Defaults
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import SwiftUI
 
 enum SneakContentType {

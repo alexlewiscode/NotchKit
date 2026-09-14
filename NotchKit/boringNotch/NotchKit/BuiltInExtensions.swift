@@ -6,8 +6,8 @@
 //
 
 import Defaults
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import SwiftUI
 
 /// Descriptors for the built-in first-party extensions.

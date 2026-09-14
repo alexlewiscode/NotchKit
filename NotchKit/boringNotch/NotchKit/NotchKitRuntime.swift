@@ -6,8 +6,8 @@
 //
 
 import Foundation
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import os
 
 /// Shared composition of the registry, manager, catalog, and router.

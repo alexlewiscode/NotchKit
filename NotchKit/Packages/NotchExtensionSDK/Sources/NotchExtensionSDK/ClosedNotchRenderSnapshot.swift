@@ -1,6 +1,6 @@
 //
 //  ClosedNotchRenderSnapshot.swift
-//  NotchAPI
+//  NotchExtensionSDK
 //
 //  A single, immutable snapshot of render-relevant state.
 //

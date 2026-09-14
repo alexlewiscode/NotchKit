@@ -5,8 +5,8 @@
 //  Minimal Extensions hub listing first-party extensions and their state.
 //
 
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import SwiftUI
 
 /// The Extensions settings hub.

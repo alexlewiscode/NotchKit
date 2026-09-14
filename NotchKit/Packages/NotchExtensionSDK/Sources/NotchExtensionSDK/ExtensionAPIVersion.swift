@@ -1,6 +1,6 @@
 //
 //  ExtensionAPIVersion.swift
-//  NotchAPI
+//  NotchExtensionSDK
 //
 //  Semantic version describing the extension contract a descriptor targets.
 //

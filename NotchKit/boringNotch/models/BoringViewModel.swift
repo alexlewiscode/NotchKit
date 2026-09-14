@@ -7,8 +7,8 @@
 
 import Combine
 import Defaults
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import SwiftUI
 
 class BoringViewModel: NSObject, ObservableObject {

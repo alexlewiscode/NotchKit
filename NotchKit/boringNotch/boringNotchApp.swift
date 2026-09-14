@@ -9,8 +9,8 @@ import AVFoundation
 import Combine
 import Defaults
 import KeyboardShortcuts
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import Sparkle
 import SwiftUI
 

@@ -1,12 +1,12 @@
 //
 //  NotchRouter.swift
-//  NotchExtensions
+//  NotchExtensionRuntime
 //
 //  Selects the active open destination by stable id.
 //
 
 import Combine
-import NotchAPI
+import NotchExtensionSDK
 import SwiftUI
 
 /// Selects the active open-notch destination by stable id.

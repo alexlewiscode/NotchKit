@@ -1,12 +1,12 @@
 //
 //  ExtensionRegistry.swift
-//  NotchExtensions
+//  NotchExtensionRuntime
 //
 //  Validates and stores first-party extension descriptors.
 //
 
 import Foundation
-import NotchAPI
+import NotchExtensionSDK
 
 /// Errors raised while registering descriptors.
 public enum ExtensionRegistryError: Error, Equatable {

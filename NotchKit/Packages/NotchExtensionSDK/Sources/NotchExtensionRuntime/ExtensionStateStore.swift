@@ -1,6 +1,6 @@
 //
 //  ExtensionStateStore.swift
-//  NotchExtensions
+//  NotchExtensionRuntime
 //
 //  Migration-ready persistence for extension enabled state.
 //

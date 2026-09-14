@@ -18,16 +18,16 @@ reasoning behind compile-time extensions, see
 
 | Module | Kind | Responsibility |
 | --- | --- | --- |
-| `NotchKit` | Application host + core renderer/runtime | Owns geometry, windowing, animation, permissions, persistence, privileged system actions, and the SwiftUI rendering of the notch. Links `NotchAPI` and `NotchExtensions`. |
-| `NotchAPI` | Public library (`NotchKit/Packages/NotchKit`) | UI-facing contracts only. Defines descriptors, destinations, closed-notch contributions, regions, and the render snapshot. Must never import app internals such as `BoringViewModel`, singleton managers, or private window types. |
-| `NotchExtensions` | Library (`NotchKit/Packages/NotchKit`) | First-party catalog and registration boundary plus extension runtime infrastructure (`ExtensionRegistry`, `ExtensionManager`, `NotchRouter`, `ClosedNotchSelection`). Depends only on `NotchAPI`. |
+| `NotchKit` | Application host + core renderer/runtime | Owns geometry, windowing, animation, permissions, persistence, privileged system actions, and the SwiftUI rendering of the notch. Links `NotchExtensionSDK` and `NotchExtensionRuntime`. |
+| `NotchExtensionSDK` | Public library (`NotchKit/Packages/NotchExtensionSDK`) | UI-facing contracts only. Defines descriptors, destinations, closed-notch contributions, regions, and the render snapshot. Must never import app internals such as `BoringViewModel`, singleton managers, or private window types. |
+| `NotchExtensionRuntime` | Library (`NotchKit/Packages/NotchExtensionSDK`) | First-party catalog and registration boundary plus extension runtime infrastructure (`ExtensionRegistry`, `ExtensionManager`, `NotchRouter`, `ClosedNotchSelection`). Depends only on `NotchExtensionSDK`. |
 
-Phase 1 does **not** move all existing features into `NotchExtensions`. The
+Phase 1 does **not** move all existing features into `NotchExtensionRuntime`. The
 module establishes the boundary; migration is incremental.
 
 ## Public API policy
 
-`NotchAPI` is semantic-versioned.
+`NotchExtensionSDK` is semantic-versioned.
 
 - The current API version is `1.0.0`.
 - Compatibility is determined by **major** version. A descriptor whose major
@@ -137,7 +137,7 @@ A later phase may back the same contracts with an Apple `ExtensionFoundation`
   surface.
 
 The current macOS 14 app must not depend on `ExtensionFoundation` or
-`ExtensionKit`. `NotchAPI` and `NotchExtensions` are designed so an adapter is
+`ExtensionKit`. `NotchExtensionSDK` and `NotchExtensionRuntime` are designed so an adapter is
 additive rather than a rewrite.
 
 ## Non-negotiable invariants

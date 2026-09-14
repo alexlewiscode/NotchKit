@@ -5,8 +5,8 @@
 //  Deterministic closed-notch selection and rendering.
 //
 
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import SwiftUI
 
 /// The selected contribution per region plus the resulting chin width.

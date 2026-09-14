@@ -1,6 +1,6 @@
 //
 //  ClosedNotchContribution.swift
-//  NotchAPI
+//  NotchExtensionSDK
 //
 //  A declarative piece of closed-notch content.
 //

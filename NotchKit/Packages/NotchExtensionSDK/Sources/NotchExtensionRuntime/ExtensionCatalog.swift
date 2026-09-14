@@ -1,12 +1,12 @@
 //
 //  ExtensionCatalog.swift
-//  NotchExtensions
+//  NotchExtensionRuntime
 //
 //  The first-party catalog/registration boundary.
 //
 
 import Foundation
-import NotchAPI
+import NotchExtensionSDK
 
 /// The first-party catalog of extensions.
 ///

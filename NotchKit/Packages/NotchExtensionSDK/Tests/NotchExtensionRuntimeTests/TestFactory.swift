@@ -1,10 +1,10 @@
 //
 //  TestFactory.swift
-//  NotchExtensionsTests
+//  NotchExtensionRuntimeTests
 //
 
 import Foundation
-import NotchAPI
+import NotchExtensionSDK
 import SwiftUI
 
 enum TestFactory {

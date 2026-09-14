@@ -1,11 +1,11 @@
 //
 //  BuiltInExtensionIDs.swift
-//  NotchExtensions
+//  NotchExtensionRuntime
 //
 //  Stable identities for the built-in first-party extensions.
 //
 
-import NotchAPI
+import NotchExtensionSDK
 
 /// Stable identities used by the built-in first-party extensions.
 ///

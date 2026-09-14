@@ -1,12 +1,12 @@
 //
 //  ExtensionManager.swift
-//  NotchExtensions
+//  NotchExtensionRuntime
 //
 //  Owns enabled/disabled state and reconciles it with the registry.
 //
 
 import Foundation
-import NotchAPI
+import NotchExtensionSDK
 
 /// Owns extension enabled state, reconciles defaults, and persists changes.
 ///

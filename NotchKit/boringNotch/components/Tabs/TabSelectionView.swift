@@ -5,8 +5,8 @@
 //  Created by Hugo Persson on 2024-08-25.
 //
 
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import SwiftUI
 
 struct TabSelectionView: View {

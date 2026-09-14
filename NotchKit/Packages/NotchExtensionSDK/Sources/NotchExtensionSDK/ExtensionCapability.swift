@@ -1,6 +1,6 @@
 //
 //  ExtensionCapability.swift
-//  NotchAPI
+//  NotchExtensionSDK
 //
 //  Declares the kinds of contributions an extension provides.
 //

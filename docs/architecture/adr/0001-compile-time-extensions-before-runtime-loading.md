@@ -23,7 +23,7 @@ the current deployment target and small enough to review.
 Introduce a **compile-time, first-party extension architecture** before any
 runtime loading mechanism:
 
-1. New modules: `NotchAPI` (public contracts) and `NotchExtensions`
+1. New modules: `NotchExtensionSDK` (public contracts) and `NotchExtensionRuntime`
    (catalog/registration and runtime infrastructure).
 2. Built-in features are registered as descriptors through the catalog.
 3. Open-notch routing uses stable destination ids via `NotchRouter`.
@@ -41,7 +41,7 @@ runtime loading mechanism:
   independently reviewable.
 - **Deterministic behaviour.** Priority, recency, and stable tie-breakers replace
   ordering that depends on source position.
-- **Testability.** `NotchAPI`/`NotchExtensions` are a local Swift package with a
+- **Testability.** `NotchExtensionSDK`/`NotchExtensionRuntime` are a local Swift package with a
   unit-test target; selection, registry, manager, and router can be tested
   without launching the app.
 
@@ -50,7 +50,7 @@ runtime loading mechanism:
 - During migration, some behaviour (for example all Shelf drag triggers) is not
   yet fully routed through `ExtensionManager`. Disablement is therefore only
   claimed for declared content until the relevant feature migration lands.
-- `NotchAPI` must stay free of app internals, which requires small adapter types
+- `NotchExtensionSDK` must stay free of app internals, which requires small adapter types
   in the app host.
 - A future runtime adapter is additive: it would populate the same registry from
   an out-of-process source rather than replace the core runtime.

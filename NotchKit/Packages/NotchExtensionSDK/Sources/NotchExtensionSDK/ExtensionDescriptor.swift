@@ -1,6 +1,6 @@
 //
 //  ExtensionDescriptor.swift
-//  NotchAPI
+//  NotchExtensionSDK
 //
 //  The declarative description of a first-party extension.
 //

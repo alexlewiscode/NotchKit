@@ -1,9 +1,9 @@
 //
 //  ExtensionIdentityTests.swift
-//  NotchExtensionsTests
+//  NotchExtensionRuntimeTests
 //
 
-import NotchAPI
+import NotchExtensionSDK
 import XCTest
 
 final class ExtensionIdentityTests: XCTestCase {

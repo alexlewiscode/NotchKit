@@ -1,11 +1,11 @@
 //
 //  ClosedNotchSelection.swift
-//  NotchExtensions
+//  NotchExtensionRuntime
 //
 //  Deterministic per-region selection for closed-notch content.
 //
 
-import NotchAPI
+import NotchExtensionSDK
 
 /// Selects at most one closed-notch contribution per region.
 ///

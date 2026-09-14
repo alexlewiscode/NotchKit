@@ -6,8 +6,8 @@
 //
 
 import Defaults
-import NotchAPI
-import NotchExtensions
+import NotchExtensionSDK
+import NotchExtensionRuntime
 import SwiftUI
 
 /// Factory for the built-in closed-notch contributions.

@@ -1,6 +1,6 @@
 //
 //  Identifiers.swift
-//  NotchAPI
+//  NotchExtensionSDK
 //
 //  Stable identities for destinations and contributions.
 //

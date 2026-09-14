@@ -100,8 +100,8 @@ Use this to evaluate an upstream change without merging the branch.
 - [ ] No network calls or marketplace/backend surface.
 - [ ] Notch geometry, windowing, permissions, and persistence ownership
       unchanged or deliberately reviewed.
-- [ ] Core rendering/routing seams still go through `NotchAPI`/
-      `NotchExtensions`.
+- [ ] Core rendering/routing seams still go through `NotchExtensionSDK`/
+      `NotchExtensionRuntime`.
 
 ## Guardrails
 

@@ -1,6 +1,6 @@
 //
 //  ExtensionIdentity.swift
-//  NotchAPI
+//  NotchExtensionSDK
 //
 //  Stable reverse-DNS identity for a NotchKit extension.
 //
