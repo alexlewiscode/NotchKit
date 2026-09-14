@@ -1,0 +1,19 @@
+== Build extension executable (macOS 14 target) ==
+extension build exit=0
+== Build discovery host executable ==
+host build exit=0
+== Hand-authored extension point file (Contents/ExtensionPoints/) ==
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xcode-bundle/build/NotchKitPrototypeDiscoveryHost.app/Contents/ExtensionPoints/com.notchkit.prototype.point.appexpt
+== Ad-hoc sign (deep) ==
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xcode-bundle/build/NotchKitPrototypeDiscoveryHost.app: replacing existing signature
+codesign exit=0
+== Attempt headless discovery via direct exec ==
+DISCOVERY_FAIL point=com.notchkit.prototype.point error=Error Domain=com.apple.extensionKit.errorDomain Code=13 "(null)"
+direct exec exit=1
+
+== Attempt headless discovery via LaunchServices (open -W) ==
+Unable to block on application (GetProcessPID() returned 18446744073709551016)
+open exit=0
+--- app stdout ---
+DISCOVERY_FAIL point=com.notchkit.prototype.point error=Error Domain=com.apple.extensionKit.errorDomain Code=13 "(null)"
+--- app stderr ---

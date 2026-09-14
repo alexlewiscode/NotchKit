@@ -1,0 +1,25 @@
+snippet	macos14_exit	macos26_exit	macos14_first_error
+13_AppExtension.swift	0	0	
+13_AppExtensionConfiguration.swift	0	0	
+13_AppExtensionIdentity.swift	0	0	
+13_AppExtensionProcess_Configuration_onInterruption.swift	0	0	
+13_AppExtensionProcess_invalidate.swift	0	0	
+13_AppExtensionProcess_makeXPCConnection.swift	0	0	
+13_AppExtensionProcess.swift	0	0	
+13_AppExtensionScene.swift	0	0	
+13_EXAppExtensionBrowserViewController.swift	0	0	
+13_EXHostViewController.swift	0	0	
+13_EXHostViewControllerDelegate.swift	0	0	
+13_PrimitiveAppExtensionScene.swift	0	0	
+14_XPCPeerHandler.swift	0	0	
+14_XPCSession.swift	0	0	
+26_AppExtensionPoint_Bind.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_AppExtensionPoint_Bind.swift:3:29: error: 'AppExtensionPoint' is only available in macOS 26.0 or newer
+26_AppExtensionPoint_Definition.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_AppExtensionPoint_Definition.swift:3:29: error: 'AppExtensionPoint' is only available in macOS 26.0 or newer
+26_AppExtensionPoint_EnhancedSecurity.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_AppExtensionPoint_EnhancedSecurity.swift:3:29: error: 'AppExtensionPoint' is only available in macOS 26.0 or newer
+26_AppExtensionPoint_Monitor.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_AppExtensionPoint_Monitor.swift:3:29: error: 'AppExtensionPoint' is only available in macOS 26.0 or newer
+26_AppExtensionPoint_Name.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_AppExtensionPoint_Name.swift:3:29: error: 'AppExtensionPoint' is only available in macOS 26.0 or newer
+26_AppExtensionPoint_Scope.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_AppExtensionPoint_Scope.swift:3:29: error: 'AppExtensionPoint' is only available in macOS 26.0 or newer
+26_AppExtensionPoint_UserInterface.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_AppExtensionPoint_UserInterface.swift:3:29: error: 'AppExtensionPoint' is only available in macOS 26.0 or newer
+26_AppExtensionPoint.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_AppExtensionPoint.swift:3:29: error: 'AppExtensionPoint' is only available in macOS 26.0 or newer
+26_AppExtensionProcess_makeXPCSession.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_AppExtensionProcess_makeXPCSession.swift:5:15: error: 'makeXPCSession()' is only available in macOS 26.0 or newer
+26_ConnectionHandler.swift	1	0	/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/availability/snippets/26_ConnectionHandler.swift:5:29: error: 'ConnectionHandler' is only available in macOS 26.0 or newer

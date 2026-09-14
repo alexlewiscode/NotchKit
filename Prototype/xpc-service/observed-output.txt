@@ -1,0 +1,46 @@
+== Build service executable ==
+service build exit=0
+== Build host executable ==
+host build exit=0
+== Build lifecycle host executable ==
+lifecycle host build exit=0
+== Ad-hoc sign (deep) ==
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-service/build/NotchKitPrototypeHost.app: replacing existing signature
+codesign exit=0
+Executable=/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-service/build/NotchKitPrototypeHost.app/Contents/XPCServices/com.notchkit.prototype.xpcservice.xpc/Contents/MacOS/NotchKitPrototypeXPC
+Identifier=com.notchkit.prototype.xpcservice
+Format=bundle with Mach-O thin (arm64)
+CodeDirectory v=20400 size=346 flags=0x2(adhoc) hashes=4+3 location=embedded
+Signature=adhoc
+Info.plist entries=7
+TeamIdentifier=not set
+Sealed Resources version=2 rules=13 files=0
+== Bundle layout ==
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-service/build/NotchKitPrototypeHost.app/Contents/_CodeSignature/CodeResources
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-service/build/NotchKitPrototypeHost.app/Contents/MacOS/NotchKitPrototypeLifecycleHost
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-service/build/NotchKitPrototypeHost.app/Contents/MacOS/NotchKitPrototypeHost
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-service/build/NotchKitPrototypeHost.app/Contents/XPCServices/com.notchkit.prototype.xpcservice.xpc/Contents/_CodeSignature/CodeResources
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-service/build/NotchKitPrototypeHost.app/Contents/XPCServices/com.notchkit.prototype.xpcservice.xpc/Contents/MacOS/NotchKitPrototypeXPC
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-service/build/NotchKitPrototypeHost.app/Contents/XPCServices/com.notchkit.prototype.xpcservice.xpc/Contents/Info.plist
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-service/build/NotchKitPrototypeHost.app/Contents/Info.plist
+
+== Attempt headless connection (direct exec of host binary) ==
+HOST_XPC_OK reply=svc:host
+host run exit=0
+
+== Lifecycle observability (launch pid, crash -> interruption, invalidate) ==
+LIFECYCLE_LAUNCH remote_pid=95692
+LIFECYCLE_CRASH_REQUEST triggering remote crash
+LIFECYCLE_INTERRUPTION (remote process crashed or connection interrupted)
+LIFECYCLE_ERROR Error Domain=NSCocoaErrorDomain Code=4097 "connection to service named com.notchkit.prototype.xpcservice" UserInfo={NSDebugDescription=connection to service named com.notchkit.prototype.xpcservice}
+LIFECYCLE_AFTER_CRASH remote_pid=nil
+LIFECYCLE_INVALIDATE_REQUEST calling invalidate()
+LIFECYCLE_DONE
+LIFECYCLE_INVALIDATION (connection invalidated)
+lifecycle run exit=0
+
+== Attempt headless connection via LaunchServices (open -W) ==
+open exit=0
+--- app stdout ---
+HOST_XPC_OK reply=svc:host
+--- app stderr ---

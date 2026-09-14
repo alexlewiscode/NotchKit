@@ -1,0 +1,16 @@
+== 1. Build the round-trip executable ==
+build exit=0
+
+== 2. Run the round trip (anonymous listener, no launchd) ==
+ROUND_TRIP_OK input=Greeting(text: "hello", count: 41) output=Greeting(text: "HELLO", count: 42)
+run exit=0
+
+== 3. Negative: Codable struct as an @objc XPC method argument ==
+exit=1
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-boundary/compile-fail/CodableStructAsXPCArgument.swift:11:10: error: instance method cannot be a member of an '@objc' protocol because the type of the parameter 1 cannot be represented in Objective-C
+   |          |- error: instance method cannot be a member of an '@objc' protocol because the type of the parameter 1 cannot be represented in Objective-C
+
+== 4. Negative: pure Swift protocol passed to NSXPCInterface(with:) ==
+exit=1
+/private/var/folders/_w/b1ql7rrj1jjcjvx97y0t64fc0000gn/T/opencode/NotchKit-extension-prototype/Prototype/xpc-boundary/compile-fail/SwiftProtocolNotObjC.swift:10:38: error: cannot convert value of type '(any SwiftOnlyProtocol).Type' to expected argument type 'Protocol'
+   |                                      `- error: cannot convert value of type '(any SwiftOnlyProtocol).Type' to expected argument type 'Protocol'
