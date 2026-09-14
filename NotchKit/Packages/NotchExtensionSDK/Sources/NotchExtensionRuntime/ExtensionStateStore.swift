@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import NotchExtensionSDK
 
 /// The persisted extension state.
 ///
@@ -40,7 +41,7 @@ public final class UserDefaultsExtensionStateStore: ExtensionStateStore {
 
     public init(
         defaults: UserDefaults = .standard,
-        key: String = "com.notchkit.extensions.state"
+        key: String = NotchKitIdentity.extensionStateDefaultsKey
     ) {
         self.defaults = defaults
         self.key = key

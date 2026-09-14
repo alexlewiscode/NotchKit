@@ -164,15 +164,25 @@ class NotchKitXPCHelper: NSObject, NotchKitXPCHelperProtocol {
             .appendingPathComponent("items.json")
 
         var archive: [String: Any] = [:]
-        if let data = try? Data(contentsOf: defaultsURL) {
-            archive["defaultsPlist"] = data.base64EncodedString()
-        }
-        if let data = try? Data(contentsOf: shelfURL) {
-            archive["shelfItems"] = data.base64EncodedString()
+        archive["legacyContainerExists"] = fm.fileExists(atPath: containerData.path)
+
+        if fm.fileExists(atPath: defaultsURL.path) {
+            if let data = try? Data(contentsOf: defaultsURL) {
+                archive["defaultsPlist"] = data.base64EncodedString()
+            } else {
+                archive["defaultsUnreadable"] = true
+            }
         }
 
-        guard !archive.isEmpty,
-              let json = try? JSONSerialization.data(withJSONObject: archive) else {
+        if fm.fileExists(atPath: shelfURL.path) {
+            if let data = try? Data(contentsOf: shelfURL) {
+                archive["shelfItems"] = data.base64EncodedString()
+            } else {
+                archive["shelfUnreadable"] = true
+            }
+        }
+
+        guard let json = try? JSONSerialization.data(withJSONObject: archive) else {
             reply(nil)
             return
         }

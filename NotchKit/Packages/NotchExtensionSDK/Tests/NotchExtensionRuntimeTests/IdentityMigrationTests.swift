@@ -120,6 +120,29 @@ final class IdentityMigrationTests: XCTestCase {
         XCTAssertFalse(partial.isValidCompletion)
     }
 
+    func testUnreadableDefaultsAreNotRecordedAsComplete() {
+        // A legacy defaults file existed but could not be read or parsed. This
+        // must remain retryable and must never be recorded as complete.
+        let unreadable = IdentityMigration.Summary(
+            defaultsMigrated: 0,
+            defaultsSatisfied: false,
+            extensionStateMigrated: true,
+            shelfItemsCopied: true,
+            invalidBookmarkCount: 0
+        )
+        XCTAssertFalse(unreadable.isValidCompletion)
+    }
+
+    func testSummaryWithoutLegacyDefaultsCountsAsSatisfiedByDefault() {
+        let noLegacyDefaults = IdentityMigration.Summary(
+            defaultsMigrated: 0,
+            extensionStateMigrated: true,
+            shelfItemsCopied: true,
+            invalidBookmarkCount: 0
+        )
+        XCTAssertTrue(noLegacyDefaults.isValidCompletion)
+    }
+
     func testSummaryRoundTripsWithoutUserData() {
         let summary = IdentityMigration.Summary(
             defaultsMigrated: 2, extensionStateMigrated: true,

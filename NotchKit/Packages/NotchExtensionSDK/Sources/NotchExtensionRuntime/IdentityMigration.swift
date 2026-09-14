@@ -60,6 +60,10 @@ public enum IdentityMigration {
     public struct Summary: Codable, Equatable {
         public var schemaVersion: Int
         public var defaultsMigrated: Int
+        /// True when every expected legacy defaults source was either absent or
+        /// migrated successfully. False means a source existed but could not be
+        /// read or parsed, so migration must not be recorded as complete.
+        public var defaultsSatisfied: Bool
         public var extensionStateMigrated: Bool
         public var shelfItemsCopied: Bool
         public var invalidBookmarkCount: Int
@@ -68,6 +72,7 @@ public enum IdentityMigration {
         public init(
             schemaVersion: Int = 1,
             defaultsMigrated: Int,
+            defaultsSatisfied: Bool = true,
             extensionStateMigrated: Bool,
             shelfItemsCopied: Bool,
             invalidBookmarkCount: Int,
@@ -75,16 +80,17 @@ public enum IdentityMigration {
         ) {
             self.schemaVersion = schemaVersion
             self.defaultsMigrated = defaultsMigrated
+            self.defaultsSatisfied = defaultsSatisfied
             self.extensionStateMigrated = extensionStateMigrated
             self.shelfItemsCopied = shelfItemsCopied
             self.invalidBookmarkCount = invalidBookmarkCount
             self.completedAt = completedAt
         }
 
-        /// A migration only counts as complete when nothing was left partially
-        /// applied. Invalid bookmarks require renewed access, not a retry.
+        /// A migration only counts as complete when every expected source was
+        /// handled. Invalid bookmarks require renewed access, not a retry.
         public var isValidCompletion: Bool {
-            defaultsMigrated >= 0 && extensionStateMigrated && shelfItemsCopied
+            defaultsSatisfied && extensionStateMigrated && shelfItemsCopied
         }
     }
 }
