@@ -10,8 +10,15 @@ import NotchExtensionRuntime
 import SwiftUI
 
 struct TabSelectionView: View {
-    @ObservedObject var router = NotchKitRuntime.shared.router
+    @EnvironmentObject var vm: BoringViewModel
+    @ObservedObject var presentation = NotchKitRuntime.shared.presentation
     @Namespace var animation
+
+    private var router: NotchRouter {
+        presentation.router(
+            for: NotchKitRuntime.shared.displayID(for: vm.screenUUID)
+        )
+    }
 
     var body: some View {
         HStack(spacing: 0) {

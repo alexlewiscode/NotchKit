@@ -67,7 +67,7 @@ class BoringViewCoordinator: ObservableObject {
             if !alwaysShowTabs {
                 openLastTabByDefault = false
                 if ShelfStateViewModel.shared.isEmpty || !Defaults[.openShelfByDefault] {
-                    NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.homeDestination)
+                    NotchKitRuntime.shared.selectOnActiveDisplay(BuiltInExtensionIDs.homeDestination)
                 }
             }
         }
@@ -296,6 +296,6 @@ class BoringViewCoordinator: ObservableObject {
     }
     
     func showEmpty() {
-        NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.homeDestination)
+        NotchKitRuntime.shared.selectOnActiveDisplay(BuiltInExtensionIDs.homeDestination)
     }
 }

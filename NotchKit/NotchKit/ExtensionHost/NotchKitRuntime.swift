@@ -10,46 +10,103 @@ import NotchExtensionSDK
 import NotchExtensionRuntime
 import os
 
-/// Shared composition of the registry, manager, catalog, and router.
+/// Small holder so the context factory can read the active display without
+/// capturing the runtime during its own initialization.
+@MainActor
+final class ActiveDisplayBox {
+    var value = DisplayID("display.primary")
+}
+
+/// Shared composition of the registry, manager, contributions, presentation
+/// coordinator, and lifecycle host.
 ///
-/// The app host creates this once at launch. It owns no rendering; it is the
-/// seam through which open destinations are registered and selected.
+/// Extension instances and host services are app-wide; routing and presentation
+/// are per-display through `presentation`.
 @MainActor
 final class NotchKitRuntime {
     static let shared = NotchKitRuntime()
 
-    let registry = ExtensionRegistry()
+    let registry: ExtensionRegistry
     let catalog = ExtensionCatalog()
     let manager: ExtensionManager
-    let router: NotchRouter
+    let contributions = ContributionStore()
+    let presentation: PresentationCoordinator
+    let host: ExtensionHost
 
-    private let logger = Logger(subsystem: "com.notchkit", category: "NotchKit")
+    private let displayBox = ActiveDisplayBox()
+    private let logger = Logger(subsystem: NotchKitIdentity.bundleIdentifier, category: "NotchKit")
+
+    var activeDisplayID: DisplayID { displayBox.value }
 
     private init() {
-        let store = UserDefaultsExtensionStateStore()
-        manager = ExtensionManager(registry: registry, store: store)
-        router = NotchRouter(
-            registry: registry,
+        registry = ExtensionRegistry(hostVersion: Self.hostVersion())
+        manager = ExtensionManager(registry: registry, store: UserDefaultsExtensionStateStore())
+        presentation = PresentationCoordinator(
+            contributions: contributions,
             manager: manager,
             homeID: BuiltInExtensionIDs.homeDestination
         )
+        let displayBox = self.displayBox
+        let presentation = self.presentation
+        host = ExtensionHost(
+            registry: registry,
+            manager: manager,
+            contributions: contributions
+        ) { id, bag in
+            ExtensionContext(
+                identity: id,
+                cancellation: bag,
+                presentation: HostPresentationService(coordinator: presentation) {
+                    displayBox.value
+                },
+                store: UserDefaultsExtensionScopedStore(identity: id),
+                permissions: HostPermissionService()
+            )
+        }
     }
 
-    /// Registers the first-party catalog and reconciles persisted state.
+    /// Registers the first-party catalog and starts enabled extensions.
     func bootstrap() {
         do {
-            try catalog.add(contentsOf: BuiltInExtensions.descriptors())
+            try catalog.add(contentsOf: BuiltInExtensions.definitions())
             try catalog.registerAll(into: registry)
-            manager.reconcile()
-            router.refreshAvailability()
+            host.start()
+            presentation.refreshAll()
         } catch {
             logger.error("NotchKit bootstrap failed: \(String(describing: error), privacy: .public)")
         }
     }
 
-    /// Re-evaluates enabled state after a settings change.
+    /// Re-evaluates enabled state and routing after a settings change.
     func refresh() {
         manager.reconcile()
-        router.refreshAvailability()
+        host.reconcileNow()
+        presentation.refreshAll()
+    }
+
+    func setActiveDisplay(_ id: DisplayID) {
+        displayBox.value = id
+    }
+
+    func displayID(for screenUUID: String?) -> DisplayID {
+        guard let screenUUID, !screenUUID.isEmpty else { return DisplayID("display.primary") }
+        return DisplayID(screenUUID)
+    }
+
+    func router(for display: DisplayID) -> NotchRouter {
+        presentation.router(for: display)
+    }
+
+    func select(_ destination: DestinationID, on display: DisplayID) {
+        router(for: display).select(destination)
+    }
+
+    func selectOnActiveDisplay(_ destination: DestinationID) {
+        select(destination, on: activeDisplayID)
+    }
+
+    private static func hostVersion() -> ExtensionVersion {
+        let raw = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        return raw.flatMap(ExtensionVersion.init) ?? ExtensionVersion(major: 1, minor: 0, patch: 0)
     }
 }

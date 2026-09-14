@@ -225,10 +225,13 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         if Defaults[.showOnAllDisplays], let viewModel = viewModels[uuid] {
             viewModel.open()
-            NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.shelfDestination)
+            NotchKitRuntime.shared.select(BuiltInExtensionIDs.shelfDestination, on: DisplayID(uuid))
         } else if !Defaults[.showOnAllDisplays], let windowScreen = window?.screen, screen == windowScreen {
             vm.open()
-            NotchKitRuntime.shared.router.select(BuiltInExtensionIDs.shelfDestination)
+            NotchKitRuntime.shared.select(
+                BuiltInExtensionIDs.shelfDestination,
+                on: NotchKitRuntime.shared.displayID(for: screen.displayUUID)
+            )
         }
     }
 
@@ -486,6 +489,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     @objc func adjustWindowPosition(changeAlpha: Bool = false) {
         if Defaults[.showOnAllDisplays] {
             let currentScreenUUIDs = Set(NSScreen.screens.compactMap { $0.displayUUID })
+            NotchKitRuntime.shared.setActiveDisplay(
+                NotchKitRuntime.shared.displayID(for: NSScreen.main?.displayUUID)
+            )
 
             // Remove windows for screens that no longer exist
             for uuid in windows.keys where !currentScreenUUIDs.contains(uuid) {
@@ -536,6 +542,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
             vm.screenUUID = selectedScreen.displayUUID
             vm.notchSize = getClosedNotchSize(screenUUID: selectedScreen.displayUUID)
+            NotchKitRuntime.shared.setActiveDisplay(
+                NotchKitRuntime.shared.displayID(for: selectedScreen.displayUUID)
+            )
 
             if window == nil {
                 window = createBoringNotchWindow(for: selectedScreen, with: vm)

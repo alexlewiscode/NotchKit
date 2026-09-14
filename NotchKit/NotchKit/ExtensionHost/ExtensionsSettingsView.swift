@@ -11,11 +11,11 @@ import SwiftUI
 
 /// The Extensions settings hub.
 ///
-/// Deliberately minimal in Phase 1: it lists first-party descriptors, exposes
-/// their enabled state, and provides a route to a declared settings
-/// destination. There is no marketplace, search, install, or delete surface.
+/// Lists first-party definitions, exposes enabled state and lifecycle phase,
+/// and routes to a declared settings destination while the extension is active.
+/// There is no marketplace, search, install, or delete surface.
 struct ExtensionsSettingsView: View {
-    @ObservedObject private var router = NotchKitRuntime.shared.router
+    @ObservedObject private var presentation = NotchKitRuntime.shared.presentation
 
     @State private var revision = UUID()
     @State private var presentedSettings: ExtensionSettingsDestination?
@@ -25,11 +25,12 @@ struct ExtensionsSettingsView: View {
     var body: some View {
         Form {
             Section {
-                ForEach(runtime.registry.descriptors) { descriptor in
+                ForEach(runtime.registry.metadata) { metadata in
                     ExtensionRow(
-                        descriptor: descriptor,
-                        isEnabled: isEnabledBinding(for: descriptor),
-                        settingsDestinations: descriptor.settingsDestinations
+                        metadata: metadata,
+                        phase: runtime.host.phase(for: metadata.id),
+                        isEnabled: isEnabledBinding(for: metadata),
+                        settingsDestinations: settingsDestinations(for: metadata.id)
                     ) { destination in
                         presentedSettings = destination
                     }
@@ -38,8 +39,8 @@ struct ExtensionsSettingsView: View {
                 Text("First-party extensions")
             } footer: {
                 Text(
-                    "Extensions are compiled into NotchKit. Disabling one hides its content, "
-                        + "entry points, and settings."
+                    "Extensions are compiled into NotchKit. Disabling one stops its services "
+                        + "and hides its content, entry points, and settings."
                 )
             }
         }
@@ -62,12 +63,18 @@ struct ExtensionsSettingsView: View {
         }
     }
 
-    private func isEnabledBinding(for descriptor: ExtensionDescriptor) -> Binding<Bool> {
+    private func settingsDestinations(for id: ExtensionIdentity) -> [ExtensionSettingsDestination] {
+        runtime.contributions.settingsDestinations.filter {
+            runtime.contributions.extensionID(forSettingsDestination: $0.id) == id
+        }
+    }
+
+    private func isEnabledBinding(for metadata: ExtensionMetadata) -> Binding<Bool> {
         Binding(
-            get: { runtime.manager.isEnabled(descriptor.id) },
+            get: { runtime.manager.isEnabled(metadata.id) },
             set: { newValue in
-                runtime.manager.setEnabled(newValue, for: descriptor.id)
-                runtime.refresh()
+                runtime.host.setEnabled(newValue, for: metadata.id)
+                presentation.refreshAll()
                 revision = UUID()
             }
         )
@@ -75,21 +82,29 @@ struct ExtensionsSettingsView: View {
 }
 
 private struct ExtensionRow: View {
-    let descriptor: ExtensionDescriptor
+    let metadata: ExtensionMetadata
+    let phase: ExtensionRuntimePhase
     @Binding var isEnabled: Bool
     let settingsDestinations: [ExtensionSettingsDestination]
     let onOpenSettings: (ExtensionSettingsDestination) -> Void
 
     var body: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: descriptor.iconSystemName)
+            Image(systemName: metadata.iconSystemName)
                 .font(.title3)
                 .frame(width: 24)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text(descriptor.displayName)
-                    .font(.headline)
-                if let summary = descriptor.summary {
+                HStack(spacing: 6) {
+                    Text(metadata.displayName)
+                        .font(.headline)
+                    if case .failed = phase {
+                        Text("Failed")
+                            .font(.caption2)
+                            .foregroundStyle(.red)
+                    }
+                }
+                if let summary = metadata.summary {
                     Text(summary)
                         .font(.caption)
                         .foregroundStyle(.secondary)
@@ -110,7 +125,7 @@ private struct ExtensionRow: View {
 
             Spacer(minLength: 0)
 
-            if descriptor.id == BuiltInExtensionIDs.home {
+            if metadata.id == BuiltInExtensionIDs.home {
                 Text("Required")
                     .font(.caption)
                     .foregroundStyle(.secondary)

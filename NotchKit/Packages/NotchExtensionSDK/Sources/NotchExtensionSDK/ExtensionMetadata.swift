@@ -8,6 +8,12 @@
 
 import Foundation
 
+/// The origin of an extension.
+public enum ExtensionSource: String, Hashable, Codable, Sendable {
+    /// An extension compiled into the app.
+    case firstParty
+}
+
 /// The complete, runtime-free description of an extension.
 ///
 /// `ExtensionMetadata` is the canonical manifest contract. It is `Codable`, so

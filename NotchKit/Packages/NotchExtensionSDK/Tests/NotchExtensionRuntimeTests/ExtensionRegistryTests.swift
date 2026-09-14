@@ -8,122 +8,80 @@ import NotchExtensionRuntime
 import XCTest
 
 final class ExtensionRegistryTests: XCTestCase {
-    func testRegistersCompatibleDescriptor() throws {
-        let registry = ExtensionRegistry()
+    func testRegistersCompatibleDefinition() throws {
+        let registry = TestFactory.registry()
         let id = try TestFactory.identity("com.notchkit.alpha")
         let destination = TestFactory.destination("com.notchkit.alpha.open")
-        let descriptor = TestFactory.descriptor(
-            id: id,
-            capabilities: [.openDestination],
-            openDestinations: [destination]
+
+        try registry.register(
+            TestFactory.definition(id: id, openDestinations: [destination])
         )
 
-        try registry.register(descriptor)
-
-        XCTAssertEqual(registry.descriptors.count, 1)
-        XCTAssertEqual(registry.openDestination(for: destination.id)?.id, destination.id)
-        XCTAssertEqual(registry.extensionID(forDestination: destination.id), id)
+        XCTAssertEqual(registry.definitions.count, 1)
+        XCTAssertEqual(registry.metadata(for: id)?.id, id)
+        XCTAssertNotNil(registry.definition(for: id))
     }
 
     func testRejectsDuplicateExtensionID() throws {
-        let registry = ExtensionRegistry()
+        let registry = TestFactory.registry()
         let id = try TestFactory.identity("com.notchkit.alpha")
-        try registry.register(TestFactory.descriptor(id: id))
+        try registry.register(TestFactory.definition(id: id))
 
-        XCTAssertThrowsError(try registry.register(TestFactory.descriptor(id: id))) { error in
+        XCTAssertThrowsError(try registry.register(TestFactory.definition(id: id))) { error in
             XCTAssertEqual(error as? ExtensionRegistryError, .duplicateExtensionID(id))
         }
     }
 
-    func testRejectsDuplicateDestinationID() throws {
-        let registry = ExtensionRegistry()
-        let first = try TestFactory.identity("com.notchkit.alpha")
-        let second = try TestFactory.identity("com.notchkit.beta")
-        let destination = TestFactory.destination("com.notchkit.shared.open")
-
-        try registry.register(
-            TestFactory.descriptor(
-                id: first,
-                capabilities: [.openDestination],
-                openDestinations: [destination]
-            )
-        )
+    func testRejectsIncompatibleSDKRange() throws {
+        let registry = TestFactory.registry()
+        let id = try TestFactory.identity("com.notchkit.alpha")
 
         XCTAssertThrowsError(
-            try registry.register(
-                TestFactory.descriptor(
-                    id: second,
-                    capabilities: [.openDestination],
-                    openDestinations: [destination]
+            try registry.register(TestFactory.definition(id: id, sdkRange: ">=2.0.0"))
+        ) { error in
+            XCTAssertEqual(
+                error as? ExtensionRegistryError,
+                .incompatibleManifest(
+                    .unsupportedSDKVersion(
+                        id,
+                        required: ExtensionVersionRange.parse(">=2.0.0")!,
+                        running: .current
+                    )
                 )
             )
-        ) { error in
-            XCTAssertEqual(error as? ExtensionRegistryError, .duplicateDestinationID(destination.id))
         }
     }
 
-    func testRejectsDuplicateDestinationWithinDescriptor() throws {
-        let registry = ExtensionRegistry()
+    func testRejectsUnsupportedArtifactKind() throws {
+        let registry = TestFactory.registry()
         let id = try TestFactory.identity("com.notchkit.alpha")
-        let destination = TestFactory.destination("com.notchkit.alpha.open")
-        let descriptor = TestFactory.descriptor(
-            id: id,
-            capabilities: [.openDestination],
-            openDestinations: [destination, destination]
-        )
-
-        XCTAssertThrowsError(try registry.register(descriptor)) { error in
-            XCTAssertEqual(error as? ExtensionRegistryError, .duplicateDestinationID(destination.id))
-        }
-    }
-
-    func testRejectsIncompatibleAPIVersion() throws {
-        let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.notchkit.alpha")
-        let incompatible = ExtensionAPIVersion(major: 2, minor: 0, patch: 0)
 
         XCTAssertThrowsError(
-            try registry.register(TestFactory.descriptor(id: id, apiVersion: incompatible))
+            try registry.register(TestFactory.definition(id: id, artifactKind: .appExtension))
         ) { error in
             XCTAssertEqual(
                 error as? ExtensionRegistryError,
-                .incompatibleAPIVersion(id, found: incompatible)
+                .incompatibleManifest(.unsupportedArtifactKind(id, .appExtension))
             )
         }
     }
 
-    func testRejectsCapabilityMismatch() throws {
-        let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.notchkit.alpha")
-        let destination = TestFactory.destination("com.notchkit.alpha.open")
-        let descriptor = TestFactory.descriptor(
-            id: id,
-            capabilities: [],
-            openDestinations: [destination]
-        )
+    func testRegistersMultipleSortedByIdentity() throws {
+        let registry = TestFactory.registry()
+        let beta = try TestFactory.identity("com.notchkit.beta")
+        let alpha = try TestFactory.identity("com.notchkit.alpha")
+        try registry.register(TestFactory.definition(id: beta))
+        try registry.register(TestFactory.definition(id: alpha))
 
-        XCTAssertThrowsError(try registry.register(descriptor)) { error in
-            XCTAssertEqual(
-                error as? ExtensionRegistryError,
-                .capabilityMismatch(id, missing: .openDestination)
-            )
-        }
+        XCTAssertEqual(registry.metadata.map(\.id), [alpha, beta])
     }
 
-    func testOpenDestinationsAreSortedByOrder() throws {
-        let registry = ExtensionRegistry()
+    func testRemoveDropsDefinition() throws {
+        let registry = TestFactory.registry()
         let id = try TestFactory.identity("com.notchkit.alpha")
-        let later = TestFactory.destination("com.notchkit.alpha.b", order: 10)
-        let earlier = TestFactory.destination("com.notchkit.alpha.a", order: 1)
+        try registry.register(TestFactory.definition(id: id))
 
-        try registry.register(
-            TestFactory.descriptor(
-                id: id,
-                capabilities: [.openDestination],
-                openDestinations: [later, earlier]
-            )
-        )
-
-        XCTAssertEqual(registry.openDestinations.map(\.id), [earlier.id, later.id])
+        XCTAssertNotNil(registry.remove(id))
+        XCTAssertNil(registry.definition(for: id))
     }
 }

@@ -21,7 +21,15 @@ struct ContentView: View {
     @ObservedObject var webcamManager = WebcamManager.shared
 
     @ObservedObject var coordinator = BoringViewCoordinator.shared
-    @ObservedObject var router = NotchKitRuntime.shared.router
+    @ObservedObject var presentation = NotchKitRuntime.shared.presentation
+
+    private var displayID: DisplayID {
+        NotchKitRuntime.shared.displayID(for: vm.screenUUID)
+    }
+
+    private var router: NotchRouter {
+        presentation.router(for: displayID)
+    }
     @ObservedObject var musicManager = MusicManager.shared
     @ObservedObject var brightnessManager = BrightnessManager.shared
     @ObservedObject var volumeManager = VolumeManager.shared
@@ -65,11 +73,13 @@ struct ContentView: View {
         }()
 
         let snapshot = BuiltInClosedNotch.snapshot(vm: vm, coordinator: coordinator)
-        let contributions = BuiltInClosedNotch.contributions(
-            vm: vm,
-            hoverAnimation: $isHovering,
-            gestureProgress: $gestureProgress
-        )
+        let contributions = NotchKitRuntime.shared.manager.isEnabled(BuiltInExtensionIDs.home)
+            ? BuiltInClosedNotch.contributions(
+                vm: vm,
+                hoverAnimation: $isHovering,
+                gestureProgress: $gestureProgress
+            )
+            : []
         let closedRender = ClosedNotchRenderer.render(
             snapshot: snapshot,
             contributions: contributions,
@@ -200,6 +210,7 @@ struct ContentView: View {
         )
         .animation(.smooth, value: gestureProgress)
         .background(dragDetector)
+        .onAppear { NotchKitRuntime.shared.setActiveDisplay(displayID) }
         .preferredColorScheme(.dark)
         .environmentObject(vm)
         .environment(\.notchAlbumArtNamespace, albumArtNamespace)

@@ -8,41 +8,41 @@
 import Foundation
 import NotchExtensionSDK
 
-/// The first-party catalog of extensions.
+/// The catalog of extension definitions known to the host.
 ///
-/// The app host builds descriptors (which reference app views) and adds them to
+/// The app host builds definitions (metadata plus a factory) and adds them to
 /// the catalog. The catalog validates ids at add time and registers everything
-/// into an `ExtensionRegistry` at startup. Phase 1 does not move all features
-/// here; it establishes the boundary.
+/// into an `ExtensionRegistry` at startup. Adding a definition never creates a
+/// runtime instance.
 public final class ExtensionCatalog {
-    private var descriptorsByID: [ExtensionIdentity: ExtensionDescriptor] = [:]
+    private var definitionsByID: [ExtensionIdentity: ExtensionDefinition] = [:]
 
     public init() {}
 
-    /// Adds a descriptor to the catalog, rejecting duplicate identities.
-    public func add(_ descriptor: ExtensionDescriptor) throws {
-        guard descriptorsByID[descriptor.id] == nil else {
-            throw ExtensionRegistryError.duplicateExtensionID(descriptor.id)
+    /// Adds a definition, rejecting duplicate identities.
+    public func add(_ definition: ExtensionDefinition) throws {
+        guard definitionsByID[definition.id] == nil else {
+            throw ExtensionRegistryError.duplicateExtensionID(definition.id)
         }
-        descriptorsByID[descriptor.id] = descriptor
+        definitionsByID[definition.id] = definition
     }
 
-    /// Adds several descriptors.
-    public func add(contentsOf descriptors: [ExtensionDescriptor]) throws {
-        for descriptor in descriptors {
-            try add(descriptor)
+    /// Adds several definitions.
+    public func add(contentsOf definitions: [ExtensionDefinition]) throws {
+        for definition in definitions {
+            try add(definition)
         }
     }
 
-    /// The catalogued descriptors, sorted by identity.
-    public var descriptors: [ExtensionDescriptor] {
-        descriptorsByID.values.sorted { $0.id < $1.id }
+    /// The catalogued definitions, sorted by identity.
+    public var definitions: [ExtensionDefinition] {
+        definitionsByID.values.sorted { $0.id < $1.id }
     }
 
-    /// Registers every catalogued descriptor into the supplied registry.
+    /// Registers a catalogued definition into the supplied registry.
     public func registerAll(into registry: ExtensionRegistry) throws {
-        for descriptor in descriptors {
-            try registry.register(descriptor)
+        for definition in definitions {
+            try registry.register(definition)
         }
     }
 }

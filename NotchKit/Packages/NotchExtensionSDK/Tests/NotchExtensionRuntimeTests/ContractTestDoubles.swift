@@ -95,3 +95,38 @@ final class TestLifecycleExtension: NotchExtension {
 
     enum TestError: Error { case activationFailed }
 }
+
+/// An extension whose contributions are fixed at construction.
+@MainActor
+final class StaticExtension: NotchExtension {
+    private let open: [NotchOpenDestination]
+    private let closed: [ClosedNotchContribution]
+    private let settings: [ExtensionSettingsDestination]
+    private(set) var activateCount = 0
+    private(set) var deactivateCount = 0
+    private(set) var isActive = false
+
+    init(
+        open: [NotchOpenDestination] = [],
+        closed: [ClosedNotchContribution] = [],
+        settings: [ExtensionSettingsDestination] = []
+    ) {
+        self.open = open
+        self.closed = closed
+        self.settings = settings
+    }
+
+    func activate() async throws {
+        activateCount += 1
+        isActive = true
+    }
+
+    func deactivate() {
+        deactivateCount += 1
+        isActive = false
+    }
+
+    func openDestinations() -> [NotchOpenDestination] { open }
+    func closedNotchContributions() -> [ClosedNotchContribution] { closed }
+    func settingsDestinations() -> [ExtensionSettingsDestination] { settings }
+}
