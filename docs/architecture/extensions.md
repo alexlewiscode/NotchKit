@@ -14,6 +14,33 @@ shape of the public API, see [`extension-api.md`](extension-api.md). For the
 reasoning behind compile-time extensions, see
 [`adr/0001-compile-time-extensions-before-runtime-loading.md`](adr/0001-compile-time-extensions-before-runtime-loading.md).
 
+## Repository boundaries
+
+The repository is organised into three top-level areas. Only the first is built
+and shipped today; the other two are scaffolding for declared future work.
+
+| Top-level path | Contains | Status |
+| --- | --- | --- |
+| `NotchKit/` | macOS host application, core runtime, XPC helper, local Swift package (SDK + runtime), Configuration, mediaremote-adapter, updater | Implemented (Phase 1) |
+| `NotchAPI/` | Future server for the extension catalog, distribution, submissions, and validation status | Proposed; no code, no network calls |
+| `NotchExtensions/` | Extension source, examples, manifests, and validation tooling | Proposed; docs and stubs only |
+
+The host application lives under `NotchKit/` and links the local Swift package
+at `NotchKit/Packages/NotchExtensionSDK`. Nothing under `NotchAPI/` or
+`NotchExtensions/` is compiled into the macOS app, and Phase 1 makes no network,
+catalog, distribution, or installation calls. See [Non-goals](#non-goals).
+
+### Implementation status
+
+- Implemented and unit-tested: `NotchExtensionSDK` contracts,
+  `NotchExtensionRuntime` registry/manager/router/selection, and the pure
+  identity-migration transforms.
+- Implemented and build-verified: the macOS host, project/product/scheme rename
+  to NotchKit, the `com.notchkit.*` identity namespace, and disabled upstream
+  updater UI.
+- Proposed: the `NotchAPI/` server, `NotchExtensions/` tooling, external
+  extension loading, distribution, and signing.
+
 ## Module boundaries
 
 | Module | Kind | Responsibility |

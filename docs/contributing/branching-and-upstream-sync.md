@@ -93,6 +93,34 @@ Use this to evaluate an upstream change without merging the branch.
 6. Record divergences. When we intentionally skip or adapt an upstream change,
    note it in the PR description or a follow-up issue.
 
+## Adapting upstream patches after the NotchKit layout move
+
+Upstream keeps the app at the repository root. NotchKit moved it under
+`NotchKit/`, so every ported patch must be path-adjusted before committing:
+
+| Upstream path | NotchKit path |
+| --- | --- |
+| `boringNotch/` | `NotchKit/NotchKit/` |
+| `boringNotch.xcodeproj/` | `NotchKit/NotchKit.xcodeproj/` |
+| `BoringNotchXPCHelper/` | `NotchKit/NotchKitXPCHelper/` |
+| `Packages/NotchKit/` | `NotchKit/Packages/NotchExtensionSDK/` |
+| `Configuration/`, `mediaremote-adapter/`, `updater/` | under `NotchKit/` |
+
+Then re-apply the naming and identity layer:
+
+- Swift modules: `NotchAPI` → `NotchExtensionSDK`, `NotchExtensions` →
+  `NotchExtensionRuntime`.
+- App/project/product/scheme: `boringNotch` → `NotchKit`.
+- Identifiers: bundle id `theboringteam.boringnotch` → `com.notchkit.app`, helper
+  `theboringteam.boringnotch.BoringNotchXPCHelper` → `com.notchkit.app.XPCHelper`,
+  extension ids `com.boringnotch.*` → `com.notchkit.*`.
+- Keep the persisted namespace and its migration in sync; see
+  `docs/architecture/identity-migration.md`. Do not reintroduce the upstream
+  Sparkle feed or signing key.
+
+Prefer cherry-pick with `-x` and hand-adjust paths over merging an upstream
+branch, as described above.
+
 ## Review checklist for upstream ports
 
 - [ ] Builds at the macOS 14 deployment target.
