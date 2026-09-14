@@ -139,6 +139,46 @@ class NotchKitXPCHelper: NSObject, NotchKitXPCHelperProtocol {
         reply(false)
     }
 
+    // MARK: - One-time identity migration
+
+    /// Reads only the known pre-NotchKit app-owned locations and returns them as
+    /// base64 JSON. Contents are never logged. Returns nil when nothing could be
+    /// read (for example when macOS blocks access to the old container).
+    @objc func readLegacyIdentityArchive(withReply reply: @escaping (Data?) -> Void) {
+        let legacyBundleID = "theboringteam.boringnotch"
+        let legacyShelfDirectoryName = "boringNotch"
+
+        let fm = FileManager.default
+        let containerData = fm.homeDirectoryForCurrentUser
+            .appendingPathComponent("Library/Containers", isDirectory: true)
+            .appendingPathComponent(legacyBundleID, isDirectory: true)
+            .appendingPathComponent("Data", isDirectory: true)
+
+        let defaultsURL = containerData
+            .appendingPathComponent("Library/Preferences", isDirectory: true)
+            .appendingPathComponent("\(legacyBundleID).plist")
+        let shelfURL = containerData
+            .appendingPathComponent("Library/Application Support", isDirectory: true)
+            .appendingPathComponent(legacyShelfDirectoryName, isDirectory: true)
+            .appendingPathComponent("Shelf", isDirectory: true)
+            .appendingPathComponent("items.json")
+
+        var archive: [String: Any] = [:]
+        if let data = try? Data(contentsOf: defaultsURL) {
+            archive["defaultsPlist"] = data.base64EncodedString()
+        }
+        if let data = try? Data(contentsOf: shelfURL) {
+            archive["shelfItems"] = data.base64EncodedString()
+        }
+
+        guard !archive.isEmpty,
+              let json = try? JSONSerialization.data(withJSONObject: archive) else {
+            reply(nil)
+            return
+        }
+        reply(json)
+    }
+
     // MARK: - Private helpers for DisplayServices / IOKit access
     private func displayServicesGetBrightness(displayID: CGDirectDisplayID, out: inout Float) -> Bool {
         guard let sym = dlsym(DisplayServicesHandle.handle, "DisplayServicesGetBrightness") else { return false }

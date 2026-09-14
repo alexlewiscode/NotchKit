@@ -8,7 +8,7 @@ import NotchExtensionRuntime
 import XCTest
 
 final class ClosedNotchSelectionTests: XCTestCase {
-    private let owner = try! ExtensionIdentity("com.boringnotch.test")
+    private let owner = try! ExtensionIdentity("com.notchkit.test")
 
     func testHigherPriorityWins() {
         let low = TestFactory.contribution("a", extensionID: owner, priority: 1)
@@ -33,8 +33,8 @@ final class ClosedNotchSelectionTests: XCTestCase {
     }
 
     func testEqualPriorityAndTieBreakerUsesIdentity() {
-        let a = TestFactory.contribution("com.boringnotch.contribution.a", extensionID: owner, priority: 1, tieBreaker: "same")
-        let b = TestFactory.contribution("com.boringnotch.contribution.b", extensionID: owner, priority: 1, tieBreaker: "same")
+        let a = TestFactory.contribution("com.notchkit.contribution.a", extensionID: owner, priority: 1, tieBreaker: "same")
+        let b = TestFactory.contribution("com.notchkit.contribution.b", extensionID: owner, priority: 1, tieBreaker: "same")
 
         let winners = ClosedNotchSelection.select(from: [b, a], snapshot: .empty)
         XCTAssertEqual(winners[.exclusion]?.id, a.id)

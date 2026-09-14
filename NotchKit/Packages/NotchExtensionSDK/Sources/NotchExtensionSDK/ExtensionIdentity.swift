@@ -14,7 +14,7 @@ public enum ExtensionIdentityError: Error, Equatable {
 }
 
 /// A stable reverse-DNS identity for an extension, for example
-/// `com.boringnotch.home`.
+/// `com.notchkit.home`.
 ///
 /// Identities are validated at construction and used as the persistence key for
 /// enabled state. They must remain stable across releases.

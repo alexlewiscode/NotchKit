@@ -5,7 +5,7 @@ import AsyncXPCConnection
 final class XPCHelperClient: NSObject {
     nonisolated static let shared = XPCHelperClient()
     
-    private let serviceName = "theboringteam.boringnotch.NotchKitXPCHelper"
+    private let serviceName = "com.notchkit.app.XPCHelper"
     
     private var remoteService: RemoteXPCService<NotchKitXPCHelperProtocol>?
     private var connection: NSXPCConnection?
@@ -146,6 +146,25 @@ final class XPCHelperClient: NSObject {
         }
     }
     
+    // MARK: - Identity migration
+
+    /// Reads the pre-NotchKit app-owned data via the non-sandboxed helper.
+    /// Returns nil when the helper cannot read the old container.
+    nonisolated func readLegacyIdentityArchive() async -> Data? {
+        do {
+            let service = await MainActor.run {
+                ensureRemoteService()
+            }
+            return try await service.withContinuation { service, continuation in
+                service.readLegacyIdentityArchive { data in
+                    continuation.resume(returning: data)
+                }
+            }
+        } catch {
+            return nil
+        }
+    }
+
     // MARK: - Keyboard Brightness
     
     nonisolated func isKeyboardBrightnessAvailable() async -> Bool {

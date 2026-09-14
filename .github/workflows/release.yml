@@ -251,6 +251,7 @@ jobs:
         run: printf '%s' "$RELEASE_NOTES" > Release/NotchKit.html
 
       - name: Build Sparkle generate_appcast from source
+        if: ${{ vars.NOTCHKIT_ENABLE_APPCAST == 'true' }}
         run: |
           set -euo pipefail
           SPARKLE_METADATA_PATH="NotchKit/NotchKit.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
@@ -335,6 +336,7 @@ jobs:
           install -m 0755 "$APPCAST_BIN" "$RUNNER_TEMP/generate_appcast"
 
       - name: Generate signed appcast
+        if: ${{ vars.NOTCHKIT_ENABLE_APPCAST == 'true' }}
         env:
           SPARKLE_PRIVATE_KEY: ${{ secrets.PRIVATE_SPARKLE_KEY }}
         run: |
@@ -356,6 +358,7 @@ jobs:
             Release/
 
       - name: Commit appcast
+        if: ${{ vars.NOTCHKIT_ENABLE_APPCAST == 'true' }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
@@ -434,11 +437,11 @@ jobs:
               system_command "/usr/bin/xattr", args: ["-dr", "com.apple.quarantine", app_path]
             end
 
-            uninstall quit: "theboringteam.boringnotch"
+            uninstall quit: "com.notchkit.app"
 
             zap trash: [
-              "~/Library/Application Scripts/theboringteam.boringnotch/",
-              "~/Library/Containers/theboringteam.boringnotch/",
+              "~/Library/Application Scripts/com.notchkit.app/",
+              "~/Library/Containers/com.notchkit.app/",
             ]
           end
           CASK

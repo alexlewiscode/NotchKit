@@ -40,7 +40,7 @@ public final class UserDefaultsExtensionStateStore: ExtensionStateStore {
 
     public init(
         defaults: UserDefaults = .standard,
-        key: String = "com.boringnotch.extensions.state"
+        key: String = "com.notchkit.extensions.state"
     ) {
         self.defaults = defaults
         self.key = key

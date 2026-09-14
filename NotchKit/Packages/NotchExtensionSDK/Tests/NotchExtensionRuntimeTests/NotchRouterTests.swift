@@ -15,8 +15,8 @@ final class NotchRouterTests: XCTestCase {
         shelfEnabled: Bool = true
     ) throws -> (router: NotchRouter, home: DestinationID, shelf: DestinationID, manager: ExtensionManager, registry: ExtensionRegistry) {
         let registry = ExtensionRegistry()
-        let home = try TestFactory.identity("com.boringnotch.home")
-        let homeDestination = TestFactory.destination("com.boringnotch.destination.home", title: "Home")
+        let home = try TestFactory.identity("com.notchkit.home")
+        let homeDestination = TestFactory.destination("com.notchkit.destination.home", title: "Home")
         try registry.register(
             TestFactory.descriptor(
                 id: home,
@@ -26,10 +26,10 @@ final class NotchRouterTests: XCTestCase {
         )
 
         let shelfDestination = TestFactory.destination(
-            "com.boringnotch.destination.shelf", title: "Shelf", available: shelfAvailable
+            "com.notchkit.destination.shelf", title: "Shelf", available: shelfAvailable
         )
         if includeShelf {
-            let shelf = try TestFactory.identity("com.boringnotch.shelf")
+            let shelf = try TestFactory.identity("com.notchkit.shelf")
             try registry.register(
                 TestFactory.descriptor(
                     id: shelf,
@@ -63,7 +63,7 @@ final class NotchRouterTests: XCTestCase {
 
     func testFallsBackToHomeWhenDestinationMissing() throws {
         let context = try makeRouter(includeShelf: false)
-        context.router.select(DestinationID("com.boringnotch.destination.missing"))
+        context.router.select(DestinationID("com.notchkit.destination.missing"))
         XCTAssertEqual(context.router.activeDestinationID, context.home)
     }
 
@@ -78,7 +78,7 @@ final class NotchRouterTests: XCTestCase {
         context.router.select(context.shelf)
         XCTAssertEqual(context.router.activeDestinationID, context.shelf)
 
-        let shelfID = try TestFactory.identity("com.boringnotch.shelf")
+        let shelfID = try TestFactory.identity("com.notchkit.shelf")
         context.manager.setEnabled(false, for: shelfID)
         context.router.refreshAvailability()
         XCTAssertEqual(context.router.activeDestinationID, context.home)
@@ -88,7 +88,7 @@ final class NotchRouterTests: XCTestCase {
         let context = try makeRouter()
         XCTAssertEqual(context.router.availableDestinations.map(\.id), [context.home, context.shelf])
 
-        let shelfID = try TestFactory.identity("com.boringnotch.shelf")
+        let shelfID = try TestFactory.identity("com.notchkit.shelf")
         context.manager.setEnabled(false, for: shelfID)
         XCTAssertEqual(context.router.availableDestinations.map(\.id), [context.home])
     }

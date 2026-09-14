@@ -14,7 +14,6 @@ import NotchExtensionRuntime
 import Sparkle
 import SwiftUI
 
-@main
 struct NotchKitApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) var appDelegate
     @Default(.menubarIcon) var showMenuBarIcon
@@ -24,7 +23,7 @@ struct NotchKitApp: App {
 
     init() {
         updaterController = SPUStandardUpdaterController(
-            startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
+            startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
 
         // Initialize the settings window controller with the updater controller
         SettingsWindowController.shared.setUpdaterController(updaterController)
@@ -284,6 +283,12 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
 
         NotchKitRuntime.shared.bootstrap()
+
+        // If automatic migration could not read the previous boringNotch
+        // container, offer an explicit user-authorized import.
+        Task { @MainActor in
+            LegacyImportFlow.presentIfNeeded()
+        }
 
         NotificationCenter.default.addObserver(
             self,

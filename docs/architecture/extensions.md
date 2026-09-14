@@ -40,7 +40,7 @@ module establishes the boundary; migration is incremental.
 ## Extension identity
 
 Extension identity is a stable reverse-DNS string, for example
-`com.boringnotch.home`. Identities are validated at registration time:
+`com.notchkit.home`. Identities are validated at registration time:
 
 - at least three dot-separated components,
 - each component non-empty and restricted to ASCII letters, digits, and hyphens,

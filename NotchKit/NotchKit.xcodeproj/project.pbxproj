@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A11CE0000000000000000002 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000001 /* main.swift */; };
+		A11CE0000000000000000021 /* LegacyIdentityArchiveReader.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000011 /* LegacyIdentityArchiveReader.swift */; };
+		A11CE0000000000000000023 /* IdentityMigrationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000013 /* IdentityMigrationCoordinator.swift */; };
+		A11CE0000000000000000025 /* ShelfBookmarkVerifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000015 /* ShelfBookmarkVerifier.swift */; };
+		A11CE0000000000000000027 /* LegacyImportFlow.swift in Sources */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000017 /* LegacyImportFlow.swift */; };
 		1100290C2E847E2800035A57 /* NSItemProvider+LoadHelpers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1100290B2E847E2800035A57 /* NSItemProvider+LoadHelpers.swift */; };
 		110029272E84FD4C00035A57 /* TemporaryFileStorageService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110029262E84FD4C00035A57 /* TemporaryFileStorageService.swift */; };
 		1100292A2E8691B400035A57 /* FileShareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 110029292E8691B400035A57 /* FileShareView.swift */; };
@@ -183,6 +188,11 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		A11CE0000000000000000001 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "main.swift"; sourceTree = "<group>"; };
+		A11CE0000000000000000011 /* LegacyIdentityArchiveReader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LegacyIdentityArchiveReader.swift"; sourceTree = "<group>"; };
+		A11CE0000000000000000013 /* IdentityMigrationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IdentityMigrationCoordinator.swift"; sourceTree = "<group>"; };
+		A11CE0000000000000000015 /* ShelfBookmarkVerifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ShelfBookmarkVerifier.swift"; sourceTree = "<group>"; };
+		A11CE0000000000000000017 /* LegacyImportFlow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LegacyImportFlow.swift"; sourceTree = "<group>"; };
 		1100290B2E847E2800035A57 /* NSItemProvider+LoadHelpers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "NSItemProvider+LoadHelpers.swift"; sourceTree = "<group>"; };
 		110029262E84FD4C00035A57 /* TemporaryFileStorageService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TemporaryFileStorageService.swift; sourceTree = "<group>"; };
 		110029292E8691B400035A57 /* FileShareView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileShareView.swift; sourceTree = "<group>"; };
@@ -589,9 +599,22 @@
 				14CEF41B2C5CAED400855D72 /* Preview Content */,
 				112FB72F2CCF12CC0015238C /* private */,
 				A1B2C3D42E00000000000006 /* ExtensionHost */,
+				A11CE0000000000000000001 /* main.swift */,
+				A11CE0000000000000000010 /* Migration */,
 				11CC44A12CEE614100C7244B /* BoringViewCoordinator.swift */,
 			);
 			path = NotchKit;
+			sourceTree = "<group>";
+		};
+		A11CE0000000000000000010 /* Migration */ = {
+			isa = PBXGroup;
+			children = (
+				A11CE0000000000000000011 /* LegacyIdentityArchiveReader.swift */,
+				A11CE0000000000000000013 /* IdentityMigrationCoordinator.swift */,
+				A11CE0000000000000000015 /* ShelfBookmarkVerifier.swift */,
+				A11CE0000000000000000017 /* LegacyImportFlow.swift */,
+			);
+			path = Migration;
 			sourceTree = "<group>";
 		};
 		14CEF41B2C5CAED400855D72 /* Preview Content */ = {
@@ -1001,6 +1024,11 @@
 				1132E5122E777B6E0068732D /* YouTubeMusicModels.swift in Sources */,
 				11CFC65F2E097F2F00748C80 /* OnboardingView.swift in Sources */,
 				14CEF4162C5CAED300855D72 /* NotchKitApp.swift in Sources */,
+				A11CE0000000000000000002 /* main.swift in Sources */,
+				A11CE0000000000000000021 /* LegacyIdentityArchiveReader.swift in Sources */,
+				A11CE0000000000000000023 /* IdentityMigrationCoordinator.swift in Sources */,
+				A11CE0000000000000000025 /* ShelfBookmarkVerifier.swift in Sources */,
+				A11CE0000000000000000027 /* LegacyImportFlow.swift in Sources */,
 				B17266DF2C64DFA00031BA0D /* BundleInfos.swift in Sources */,
 				118EBE3B2E9720C500D54B5A /* ShelfStateViewModel.swift in Sources */,
 				11F747CE2EC75CEA00F841DB /* DragPreviewView.swift in Sources */,
@@ -1060,7 +1088,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch.NotchKitXPCHelper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.notchkit.app.XPCHelper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
@@ -1085,7 +1113,7 @@
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch.NotchKitXPCHelper;
+				PRODUCT_BUNDLE_IDENTIFIER = com.notchkit.app.XPCHelper;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				SKIP_INSTALL = YES;
@@ -1259,7 +1287,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch;
+				PRODUCT_BUNDLE_IDENTIFIER = com.notchkit.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;
@@ -1312,7 +1340,7 @@
 				);
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 2.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = theboringteam.boringnotch;
+				PRODUCT_BUNDLE_IDENTIFIER = com.notchkit.app;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				SWIFT_EMIT_LOC_STRINGS = YES;

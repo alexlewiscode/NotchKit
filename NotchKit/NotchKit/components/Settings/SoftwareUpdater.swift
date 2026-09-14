@@ -12,52 +12,49 @@ final class CheckForUpdatesViewModel: ObservableObject {
     @Published var canCheckForUpdates = false
 
     init(updater: SPUUpdater) {
-        updater.publisher(for: \.canCheckForUpdates)
-            .assign(to: &$canCheckForUpdates)
+        // Upstream automatic updates are disabled until a NotchKit update feed
+        // and signing key exist. Do not observe the upstream updater.
+        canCheckForUpdates = false
     }
 }
 
 struct CheckForUpdatesView: View {
-    @ObservedObject private var checkForUpdatesViewModel: CheckForUpdatesViewModel
     private let updater: SPUUpdater
-    
+
     init(updater: SPUUpdater) {
         self.updater = updater
-        
-        // Create our view model for our CheckForUpdatesView
-        self.checkForUpdatesViewModel = CheckForUpdatesViewModel(updater: updater)
     }
-    
+
     var body: some View {
-        Button("Check for Updates…", action: updater.checkForUpdates)
-            .disabled(!checkForUpdatesViewModel.canCheckForUpdates)
+        Button("Check for Updates…") {}
+            .disabled(true)
+            .help("Updates are disabled until a NotchKit update feed and signing key are configured.")
     }
 }
 
 struct UpdaterSettingsView: View {
     private let updater: SPUUpdater
-    
+
     @State private var automaticallyChecksForUpdates: Bool
     @State private var automaticallyDownloadsUpdates: Bool
-    
+
     init(updater: SPUUpdater) {
         self.updater = updater
-        self.automaticallyChecksForUpdates = updater.automaticallyChecksForUpdates
-        self.automaticallyDownloadsUpdates = updater.automaticallyDownloadsUpdates
+        self.automaticallyChecksForUpdates = false
+        self.automaticallyDownloadsUpdates = false
     }
-    
+
     var body: some View {
         Section {
+            Text("Automatic updates are disabled until a NotchKit update feed and signing key are configured.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
             Toggle("Automatically check for updates", isOn: $automaticallyChecksForUpdates)
-                .onChange(of: automaticallyChecksForUpdates) { _, newValue in
-                    updater.automaticallyChecksForUpdates = newValue
-                }
-            
+                .disabled(true)
+
             Toggle("Automatically download updates", isOn: $automaticallyDownloadsUpdates)
-                .disabled(!automaticallyChecksForUpdates)
-                .onChange(of: automaticallyDownloadsUpdates) { _, newValue in
-                    updater.automaticallyDownloadsUpdates = newValue
-                }
+                .disabled(true)
         } header: {
             HStack {
                 Text("Software updates")

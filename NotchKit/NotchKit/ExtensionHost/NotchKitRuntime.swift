@@ -23,7 +23,7 @@ final class NotchKitRuntime {
     let manager: ExtensionManager
     let router: NotchRouter
 
-    private let logger = Logger(subsystem: "com.boringnotch", category: "NotchKit")
+    private let logger = Logger(subsystem: "com.notchkit", category: "NotchKit")
 
     private init() {
         let store = UserDefaultsExtensionStateStore()

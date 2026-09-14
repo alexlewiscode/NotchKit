@@ -10,8 +10,8 @@ import XCTest
 final class ExtensionManagerTests: XCTestCase {
     func testReconcileAppliesDefaultEnabledState() throws {
         let registry = ExtensionRegistry()
-        let enabled = try TestFactory.identity("com.boringnotch.alpha")
-        let disabled = try TestFactory.identity("com.boringnotch.beta")
+        let enabled = try TestFactory.identity("com.notchkit.alpha")
+        let disabled = try TestFactory.identity("com.notchkit.beta")
         try registry.register(TestFactory.descriptor(id: enabled, defaultEnabled: true))
         try registry.register(TestFactory.descriptor(id: disabled, defaultEnabled: false))
 
@@ -26,7 +26,7 @@ final class ExtensionManagerTests: XCTestCase {
 
     func testReconcilePreservesExistingChoice() throws {
         let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.boringnotch.alpha")
+        let id = try TestFactory.identity("com.notchkit.alpha")
         try registry.register(TestFactory.descriptor(id: id, defaultEnabled: true))
 
         let store = InMemoryExtensionStateStore(
@@ -40,7 +40,7 @@ final class ExtensionManagerTests: XCTestCase {
 
     func testSetEnabledPersistsThroughStore() throws {
         let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.boringnotch.alpha")
+        let id = try TestFactory.identity("com.notchkit.alpha")
         try registry.register(TestFactory.descriptor(id: id, defaultEnabled: true))
 
         let store = InMemoryExtensionStateStore()
@@ -54,16 +54,16 @@ final class ExtensionManagerTests: XCTestCase {
 
     func testReconcileDropsStaleEntries() throws {
         let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.boringnotch.alpha")
+        let id = try TestFactory.identity("com.notchkit.alpha")
         try registry.register(TestFactory.descriptor(id: id))
 
         let store = InMemoryExtensionStateStore(
-            snapshot: ExtensionStateSnapshot(enabled: ["com.boringnotch.removed": true])
+            snapshot: ExtensionStateSnapshot(enabled: ["com.notchkit.removed": true])
         )
         let manager = ExtensionManager(registry: registry, store: store)
         manager.reconcile()
 
-        XCTAssertNil(manager.state.enabled["com.boringnotch.removed"])
+        XCTAssertNil(manager.state.enabled["com.notchkit.removed"])
         XCTAssertEqual(manager.state.schemaVersion, ExtensionStateSnapshot.currentSchemaVersion)
     }
 }

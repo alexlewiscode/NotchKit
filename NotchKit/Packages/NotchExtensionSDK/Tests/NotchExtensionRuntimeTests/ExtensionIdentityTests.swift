@@ -8,8 +8,8 @@ import XCTest
 
 final class ExtensionIdentityTests: XCTestCase {
     func testAcceptsReverseDNSIdentity() throws {
-        let id = try ExtensionIdentity("com.boringnotch.home")
-        XCTAssertEqual(id.rawValue, "com.boringnotch.home")
+        let id = try ExtensionIdentity("com.notchkit.home")
+        XCTAssertEqual(id.rawValue, "com.notchkit.home")
     }
 
     func testAcceptsHyphenatedComponents() throws {
@@ -39,8 +39,8 @@ final class ExtensionIdentityTests: XCTestCase {
     }
 
     func testIdentityOrderingIsStable() throws {
-        let a = try ExtensionIdentity("com.boringnotch.home")
-        let b = try ExtensionIdentity("com.boringnotch.shelf")
+        let a = try ExtensionIdentity("com.notchkit.home")
+        let b = try ExtensionIdentity("com.notchkit.shelf")
         XCTAssertLessThan(a, b)
     }
 }

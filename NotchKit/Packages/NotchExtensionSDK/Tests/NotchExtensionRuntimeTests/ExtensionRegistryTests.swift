@@ -10,8 +10,8 @@ import XCTest
 final class ExtensionRegistryTests: XCTestCase {
     func testRegistersCompatibleDescriptor() throws {
         let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.boringnotch.alpha")
-        let destination = TestFactory.destination("com.boringnotch.alpha.open")
+        let id = try TestFactory.identity("com.notchkit.alpha")
+        let destination = TestFactory.destination("com.notchkit.alpha.open")
         let descriptor = TestFactory.descriptor(
             id: id,
             capabilities: [.openDestination],
@@ -27,7 +27,7 @@ final class ExtensionRegistryTests: XCTestCase {
 
     func testRejectsDuplicateExtensionID() throws {
         let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.boringnotch.alpha")
+        let id = try TestFactory.identity("com.notchkit.alpha")
         try registry.register(TestFactory.descriptor(id: id))
 
         XCTAssertThrowsError(try registry.register(TestFactory.descriptor(id: id))) { error in
@@ -37,9 +37,9 @@ final class ExtensionRegistryTests: XCTestCase {
 
     func testRejectsDuplicateDestinationID() throws {
         let registry = ExtensionRegistry()
-        let first = try TestFactory.identity("com.boringnotch.alpha")
-        let second = try TestFactory.identity("com.boringnotch.beta")
-        let destination = TestFactory.destination("com.boringnotch.shared.open")
+        let first = try TestFactory.identity("com.notchkit.alpha")
+        let second = try TestFactory.identity("com.notchkit.beta")
+        let destination = TestFactory.destination("com.notchkit.shared.open")
 
         try registry.register(
             TestFactory.descriptor(
@@ -64,8 +64,8 @@ final class ExtensionRegistryTests: XCTestCase {
 
     func testRejectsDuplicateDestinationWithinDescriptor() throws {
         let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.boringnotch.alpha")
-        let destination = TestFactory.destination("com.boringnotch.alpha.open")
+        let id = try TestFactory.identity("com.notchkit.alpha")
+        let destination = TestFactory.destination("com.notchkit.alpha.open")
         let descriptor = TestFactory.descriptor(
             id: id,
             capabilities: [.openDestination],
@@ -79,7 +79,7 @@ final class ExtensionRegistryTests: XCTestCase {
 
     func testRejectsIncompatibleAPIVersion() throws {
         let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.boringnotch.alpha")
+        let id = try TestFactory.identity("com.notchkit.alpha")
         let incompatible = ExtensionAPIVersion(major: 2, minor: 0, patch: 0)
 
         XCTAssertThrowsError(
@@ -94,8 +94,8 @@ final class ExtensionRegistryTests: XCTestCase {
 
     func testRejectsCapabilityMismatch() throws {
         let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.boringnotch.alpha")
-        let destination = TestFactory.destination("com.boringnotch.alpha.open")
+        let id = try TestFactory.identity("com.notchkit.alpha")
+        let destination = TestFactory.destination("com.notchkit.alpha.open")
         let descriptor = TestFactory.descriptor(
             id: id,
             capabilities: [],
@@ -112,9 +112,9 @@ final class ExtensionRegistryTests: XCTestCase {
 
     func testOpenDestinationsAreSortedByOrder() throws {
         let registry = ExtensionRegistry()
-        let id = try TestFactory.identity("com.boringnotch.alpha")
-        let later = TestFactory.destination("com.boringnotch.alpha.b", order: 10)
-        let earlier = TestFactory.destination("com.boringnotch.alpha.a", order: 1)
+        let id = try TestFactory.identity("com.notchkit.alpha")
+        let later = TestFactory.destination("com.notchkit.alpha.b", order: 10)
+        let earlier = TestFactory.destination("com.notchkit.alpha.a", order: 1)
 
         try registry.register(
             TestFactory.descriptor(
