@@ -12,7 +12,7 @@ import Foundation
 /// The registry validates that declared capabilities match the contributions a
 /// descriptor actually carries. The raw string form keeps the set open for
 /// future, additive capabilities.
-public struct ExtensionCapability: Hashable, RawRepresentable, ExpressibleByStringLiteral {
+public struct ExtensionCapability: Hashable, RawRepresentable, Codable, ExpressibleByStringLiteral, Sendable {
     public let rawValue: String
 
     public init(rawValue: String) {
@@ -21,6 +21,16 @@ public struct ExtensionCapability: Hashable, RawRepresentable, ExpressibleByStri
 
     public init(stringLiteral value: String) {
         self.rawValue = value
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        self.rawValue = try container.decode(String.self)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
     }
 
     /// The extension contributes at least one open-notch destination.

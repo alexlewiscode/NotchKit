@@ -1,0 +1,21 @@
+{
+  "$schema": "./manifest.schema.json",
+  "id": "com.notchkit.example.hello",
+  "displayName": "Hello Extension",
+  "summary": "Reference example: a compiled-in first-party extension with one open destination.",
+  "iconSystemName": "hand.wave",
+  "extensionVersion": "1.0.0",
+  "apiVersion": "1.0.0",
+  "supportedHostVersions": ">=1.0.0",
+  "supportedSDKVersions": ">=1.0.0 <2.0.0",
+  "capabilities": ["open-destination"],
+  "artifactKind": "compiled-in",
+  "entryPoints": [
+    {
+      "id": "com.notchkit.example.hello.page",
+      "kind": "open-destination"
+    }
+  ],
+  "defaultEnabled": false,
+  "source": "firstParty"
+}

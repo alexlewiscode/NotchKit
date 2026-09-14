@@ -18,7 +18,7 @@ public enum ExtensionIdentityError: Error, Equatable {
 ///
 /// Identities are validated at construction and used as the persistence key for
 /// enabled state. They must remain stable across releases.
-public struct ExtensionIdentity: Hashable, Comparable, CustomStringConvertible {
+public struct ExtensionIdentity: Hashable, Comparable, Codable, CustomStringConvertible, Sendable {
     /// The validated reverse-DNS string.
     public let rawValue: String
 
@@ -34,6 +34,24 @@ public struct ExtensionIdentity: Hashable, Comparable, CustomStringConvertible {
     }
 
     public var description: String { rawValue }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        do {
+            try self.init(raw)
+        } catch {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid reverse-DNS identity '\(raw)'"
+            )
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(rawValue)
+    }
 
     public static func < (lhs: ExtensionIdentity, rhs: ExtensionIdentity) -> Bool {
         lhs.rawValue < rhs.rawValue

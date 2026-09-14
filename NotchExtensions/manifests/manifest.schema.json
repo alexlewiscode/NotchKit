@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://notchkit.app/schemas/extension-manifest-1.json",
+  "title": "NotchKit extension manifest",
+  "description": "Canonical manifest for a NotchKit extension. Mirrors the Codable shape of NotchExtensionSDK.ExtensionMetadata. This file describes metadata only; it never describes or carries executable UI.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "displayName",
+    "iconSystemName",
+    "extensionVersion",
+    "apiVersion",
+    "supportedHostVersions",
+    "supportedSDKVersions",
+    "capabilities",
+    "artifactKind",
+    "entryPoints",
+    "defaultEnabled",
+    "source"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Stable reverse-DNS ExtensionIdentity, at least three components.",
+      "pattern": "^[A-Za-z0-9-]+(\\.[A-Za-z0-9-]+){2,}$"
+    },
+    "displayName": { "type": "string", "minLength": 1 },
+    "summary": { "type": "string" },
+    "iconSystemName": { "type": "string", "minLength": 1 },
+    "extensionVersion": {
+      "type": "string",
+      "description": "The extension's own semantic version.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "apiVersion": {
+      "type": "string",
+      "description": "The NotchExtensionSDK API version the extension was built against.",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "supportedHostVersions": {
+      "type": "string",
+      "description": "Inclusive-minimum/exclusive-maximum host version range, e.g. '>=1.0.0' or '>=1.0.0 <3.0.0'.",
+      "pattern": "^>=\\d+\\.\\d+\\.\\d+( <\\d+\\.\\d+\\.\\d+)?$"
+    },
+    "supportedSDKVersions": {
+      "type": "string",
+      "description": "Inclusive-minimum/exclusive-maximum SDK version range.",
+      "pattern": "^>=\\d+\\.\\d+\\.\\d+( <\\d+\\.\\d+\\.\\d+)?$"
+    },
+    "capabilities": {
+      "type": "array",
+      "description": "Declared capabilities. Each must correspond to at least one entry point of the matching kind.",
+      "items": {
+        "type": "string",
+        "enum": ["open-destination", "closed-notch-contribution", "settings-destination"]
+      },
+      "uniqueItems": true
+    },
+    "artifactKind": {
+      "type": "string",
+      "description": "How the artifact is delivered and executed. Only 'compiled-in' is supported by the host today.",
+      "enum": ["compiled-in", "app-extension", "xpc-service"]
+    },
+    "entryPoints": {
+      "type": "array",
+      "description": "Declared attachment points. Ids must be unique across the extension and match contributed destination/contribution ids at runtime.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind"],
+        "properties": {
+          "id": { "type": "string", "minLength": 1 },
+          "kind": {
+            "type": "string",
+            "enum": ["open-destination", "closed-notch-contribution", "settings-destination"]
+          },
+          "sceneName": {
+            "type": "string",
+            "description": "Reserved for future out-of-process UI. Must be absent for compiled-in extensions."
+          },
+          "metadata": {
+            "type": "object",
+            "additionalProperties": { "type": "string" }
+          }
+        }
+      }
+    },
+    "defaultEnabled": { "type": "boolean" },
+    "source": {
+      "type": "string",
+      "enum": ["firstParty"]
+    }
+  }
+}

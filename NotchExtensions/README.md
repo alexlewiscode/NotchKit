@@ -7,9 +7,9 @@ tooling for the extension ecosystem. None of it is compiled into the macOS app.
 
 | Path | Purpose | Status |
 | --- | --- | --- |
-| `manifests/` | Draft manifest schema and examples describing an extension | Proposed, non-functional |
-| `validation/` | Future tooling to validate manifests and API compatibility | Proposed, non-functional |
-| `examples/` | Example extension sources once a runtime adapter exists | Not started |
+| `manifests/manifest.schema.json` | **Canonical** manifest schema for a NotchKit extension | Canonical; mirrors `ExtensionMetadata` |
+| `examples/HelloExtension/` | Reference compiled-in extension (source + manifest) | Example; compiled and tested in the package test target |
+| `validation/` | Rules a future validator must enforce | Rules documented, tooling not implemented |
 
 ## Boundary rules
 

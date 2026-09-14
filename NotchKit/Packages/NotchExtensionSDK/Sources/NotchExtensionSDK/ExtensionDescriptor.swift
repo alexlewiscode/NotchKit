@@ -8,7 +8,7 @@
 import Foundation
 
 /// The origin of an extension.
-public enum ExtensionSource: String, Hashable {
+public enum ExtensionSource: String, Hashable, Codable, Sendable {
     /// An extension compiled into the app.
     case firstParty
 }

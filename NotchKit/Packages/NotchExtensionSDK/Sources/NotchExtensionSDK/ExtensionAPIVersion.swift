@@ -11,7 +11,7 @@ import Foundation
 ///
 /// Compatibility is determined by the major component only: a descriptor is
 /// compatible with the running core when both share the same major version.
-public struct ExtensionAPIVersion: Hashable, Comparable, CustomStringConvertible {
+public struct ExtensionAPIVersion: Hashable, Comparable, Codable, CustomStringConvertible, Sendable {
     /// The major component. Breaking changes bump this value.
     public let major: Int
     /// The minor component. Additive changes bump this value.
@@ -35,6 +35,23 @@ public struct ExtensionAPIVersion: Hashable, Comparable, CustomStringConvertible
 
     public var description: String {
         "\(major).\(minor).\(patch)"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.singleValueContainer()
+        let raw = try container.decode(String.self)
+        guard let version = ExtensionVersion(raw) else {
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Invalid API version '\(raw)'"
+            )
+        }
+        self.init(major: version.major, minor: version.minor, patch: version.patch)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.singleValueContainer()
+        try container.encode(description)
     }
 
     public static func < (lhs: ExtensionAPIVersion, rhs: ExtensionAPIVersion) -> Bool {
