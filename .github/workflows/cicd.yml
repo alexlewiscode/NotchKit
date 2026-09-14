@@ -41,6 +41,7 @@ jobs:
         xcode: ${{ matrix.xcode }}
         platform: ${{ matrix.platform }}
         scheme: ${{ matrix.scheme }}
+        working-directory: NotchKit
         action: build
         verbosity: xcpretty
         upload-logs: always

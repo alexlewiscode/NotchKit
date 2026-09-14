@@ -68,7 +68,7 @@ jobs:
       run: |
         xcodebuild \
           -resolvePackageDependencies \
-          -project boringNotch.xcodeproj \
+          -project NotchKit/boringNotch.xcodeproj \
           -scheme boringNotch \
           -clonedSourcePackagesDirPath "$RUNNER_TEMP/boringNotch-source-packages" \
           -onlyUsePackageVersionsFromResolvedFile
@@ -98,7 +98,7 @@ jobs:
         set -o pipefail
 
         xcodebuild \
-          -project boringNotch.xcodeproj \
+          -project NotchKit/boringNotch.xcodeproj \
           -scheme boringNotch \
           -configuration Release \
           -destination "platform=macOS" \

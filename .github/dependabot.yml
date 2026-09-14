@@ -11,12 +11,12 @@ updates:
       interval: "weekly"
 
   - package-ecosystem: "pip"
-    directory: "/Configuration/dmg"
+    directory: "/NotchKit/Configuration/dmg"
     schedule:
       interval: "weekly"
 
   - package-ecosystem: "swift"
-    directory: "/"
+    directory: "/NotchKit/Packages/NotchKit"
     schedule:
       interval: "weekly"
     target-branch: "dev"

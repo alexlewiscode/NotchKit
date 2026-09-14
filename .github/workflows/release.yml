@@ -253,7 +253,7 @@ jobs:
       - name: Build Sparkle generate_appcast from source
         run: |
           set -euo pipefail
-          SPARKLE_METADATA_PATH="boringNotch.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          SPARKLE_METADATA_PATH="NotchKit/boringNotch.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
           SPARKLE_SRC="$RUNNER_TEMP/Sparkle"
           SPARKLE_DERIVED="$RUNNER_TEMP/sparkle-derived"
           SPARKLE_REPO_URL="https://github.com/sparkle-project/Sparkle"
@@ -352,7 +352,7 @@ jobs:
             --download-url-prefix "https://github.com/TheBoredTeam/boring.notch/releases/download/v${VERSION}/" \
             --embed-release-notes \
             "${CHANNEL_ARGS[@]}" \
-            -o updater/appcast.xml \
+            -o NotchKit/updater/appcast.xml \
             Release/
 
       - name: Commit appcast
@@ -361,16 +361,16 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           if [[ "${IS_BETA}" == "false" ]]; then
-            git add updater/appcast.xml
+            git add NotchKit/updater/appcast.xml
             git commit -m "Update version to v${VERSION} and appcast" || true
             git push origin "HEAD:${HEAD_REF}" || true
           else
             # Save generated appcast, switch to main, apply and push
-            cp updater/appcast.xml "$RUNNER_TEMP/appcast.xml"
+            cp NotchKit/updater/appcast.xml "$RUNNER_TEMP/appcast.xml"
             git fetch origin main
             git checkout main
-            cp "$RUNNER_TEMP/appcast.xml" updater/appcast.xml
-            git add updater/appcast.xml
+            cp "$RUNNER_TEMP/appcast.xml" NotchKit/updater/appcast.xml
+            git add NotchKit/updater/appcast.xml
             git commit -m "Update appcast with beta release for v${VERSION}" || true
             git push origin main
           fi

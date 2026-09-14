@@ -144,7 +144,7 @@ brew install --cask TheBoredTeam/boring-notch/boring-notch
 
 2. **Open the Project in Xcode**:
    ```bash
-   open boringNotch.xcodeproj
+   open NotchKit/boringNotch.xcodeproj
    ```
 
 3. **Build and Run**:

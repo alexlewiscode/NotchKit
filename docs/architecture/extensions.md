@@ -19,8 +19,8 @@ reasoning behind compile-time extensions, see
 | Module | Kind | Responsibility |
 | --- | --- | --- |
 | `NotchKit` | Application host + core renderer/runtime | Owns geometry, windowing, animation, permissions, persistence, privileged system actions, and the SwiftUI rendering of the notch. Links `NotchAPI` and `NotchExtensions`. |
-| `NotchAPI` | Public library (`Packages/NotchKit`) | UI-facing contracts only. Defines descriptors, destinations, closed-notch contributions, regions, and the render snapshot. Must never import app internals such as `BoringViewModel`, singleton managers, or private window types. |
-| `NotchExtensions` | Library (`Packages/NotchKit`) | First-party catalog and registration boundary plus extension runtime infrastructure (`ExtensionRegistry`, `ExtensionManager`, `NotchRouter`, `ClosedNotchSelection`). Depends only on `NotchAPI`. |
+| `NotchAPI` | Public library (`NotchKit/Packages/NotchKit`) | UI-facing contracts only. Defines descriptors, destinations, closed-notch contributions, regions, and the render snapshot. Must never import app internals such as `BoringViewModel`, singleton managers, or private window types. |
+| `NotchExtensions` | Library (`NotchKit/Packages/NotchKit`) | First-party catalog and registration boundary plus extension runtime infrastructure (`ExtensionRegistry`, `ExtensionManager`, `NotchRouter`, `ClosedNotchSelection`). Depends only on `NotchAPI`. |
 
 Phase 1 does **not** move all existing features into `NotchExtensions`. The
 module establishes the boundary; migration is incremental.
