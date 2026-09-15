@@ -264,13 +264,14 @@ public final class ExtensionHost {
     /// Undoes a late activation that a newer lifecycle superseded.
     ///
     /// A superseded `activate()` can resume after the host already moved on and
-    /// start a shared service. If a newer instance now owns that service
-    /// (the extension is still enabled), touching it would risk stopping the
-    /// current owner, so the host leaves it alone. If the extension is disabled
-    /// or removed, nothing else owns the service and the late side effects must
-    /// be cleaned up.
+    /// start a shared service. If a newer instance currently owns that service
+    /// (the extension is still enabled and has a live instance), touching it
+    /// would risk stopping the current owner, so the host leaves it alone.
+    /// Otherwise — the extension was disabled or removed, the superseding
+    /// activation failed, or the host shut down — nothing owns the service and
+    /// the late side effects must be cleaned up.
     private func tearDownSupersededActivation(_ instance: any NotchExtension, id: ExtensionIdentity) {
-        guard !manager.isEnabled(id) else { return }
+        if manager.isEnabled(id), instances[id] != nil { return }
         instance.deactivate()
     }
 

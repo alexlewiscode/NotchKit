@@ -15,14 +15,24 @@ import XCTest
 final class ExtensionHostServiceOwnershipTests: XCTestCase {
 
     /// A shared, app-wide service (the role `BatteryMonitor` plays in the host).
-    /// Counts every start/stop so overlapping ownership is observable.
+    /// Idempotent start/stop, and counts only real transitions so overlapping
+    /// ownership is observable.
     final class SharedService {
         private(set) var startCount = 0
         private(set) var stopCount = 0
-        var isRunning: Bool { startCount > stopCount }
+        private(set) var isRunning = false
 
-        func start() { startCount += 1 }
-        func stop() { stopCount += 1 }
+        func start() {
+            guard !isRunning else { return }
+            isRunning = true
+            startCount += 1
+        }
+
+        func stop() {
+            guard isRunning else { return }
+            isRunning = false
+            stopCount += 1
+        }
     }
 
     /// An extension instance that starts/stops the shared service. A fresh
@@ -32,7 +42,11 @@ final class ExtensionHostServiceOwnershipTests: XCTestCase {
         let service: SharedService
         var activateDelay: Duration = .zero
         var failOnActivate = false
+        /// When true, `activate()` suspends on a continuation the test controls,
+        /// so a superseded activation can be resumed after a newer one settles.
+        var suspendActivation = false
         var contributedDestination: NotchOpenDestination?
+        private var activationContinuation: CheckedContinuation<Void, Never>?
         private(set) var activateCount = 0
         private(set) var deactivateCount = 0
         private(set) var isActive = false
@@ -44,8 +58,19 @@ final class ExtensionHostServiceOwnershipTests: XCTestCase {
             return [contributedDestination]
         }
 
+        /// Resumes a suspended activation.
+        func resumeActivation() {
+            activationContinuation?.resume()
+            activationContinuation = nil
+        }
+
         func activate() async throws {
             activateCount += 1
+            if suspendActivation {
+                await withCheckedContinuation { continuation in
+                    activationContinuation = continuation
+                }
+            }
             if activateDelay > .zero {
                 try? await Task.sleep(for: activateDelay)
             }
@@ -85,7 +110,7 @@ final class ExtensionHostServiceOwnershipTests: XCTestCase {
         service: SharedService,
         defaultEnabled: Bool = true,
         entryPoints: [ExtensionEntryPoint],
-        configure: @escaping @MainActor (ServiceOwningExtension) -> Void = { _ in }
+        configure: @escaping @MainActor (ServiceOwningExtension, Int) -> Void = { _, _ in }
     ) -> Harness {
         let registry = TestFactory.registry()
         let metadata = TestFactory.metadata(
@@ -96,7 +121,7 @@ final class ExtensionHostServiceOwnershipTests: XCTestCase {
         let box = InstanceBox()
         let definition = ExtensionDefinition(metadata: metadata) { _ in
             let instance = ServiceOwningExtension(service: service)
-            configure(instance)
+            configure(instance, box.values.count)
             box.values.append(instance)
             return instance
         }
@@ -201,7 +226,7 @@ final class ExtensionHostServiceOwnershipTests: XCTestCase {
             id: id,
             service: service,
             entryPoints: [ExtensionEntryPoint(id: destination.id.rawValue, kind: .openDestination)]
-        ) { instance in
+        ) { instance, _ in
             instance.contributedDestination = destination
         }
 
@@ -232,7 +257,7 @@ final class ExtensionHostServiceOwnershipTests: XCTestCase {
             id: id,
             service: service,
             entryPoints: [ExtensionEntryPoint(id: "com.notchkit.battery.open", kind: .openDestination)]
-        ) { instance in
+        ) { instance, _ in
             instance.activateDelay = .milliseconds(50)
         }
 
@@ -275,5 +300,48 @@ final class ExtensionHostServiceOwnershipTests: XCTestCase {
         for instance in harness.instances.values {
             XCTAssertFalse(instance.isActive)
         }
+    }
+
+    /// The independent-review regression: when a superseding activation fails,
+    /// no instance owns the service, yet a late superseded activation can still
+    /// resume and start it. The host must clean that up even though the
+    /// extension is still enabled.
+    func testSupersededActivationDoesNotLeakServiceWhenNewerActivationFails() async throws {
+        let id = try TestFactory.identity("com.notchkit.battery")
+        let service = SharedService()
+        let harness = makeHarness(
+            id: id,
+            service: service,
+            entryPoints: [ExtensionEntryPoint(id: "com.notchkit.battery.open", kind: .openDestination)]
+        ) { instance, index in
+            // First activation suspends; the replacement fails.
+            if index == 0 {
+                instance.suspendActivation = true
+            } else {
+                instance.failOnActivate = true
+            }
+        }
+
+        harness.host.start()          // G1: instance 0 suspends inside activate()
+        await drain()                 // let it reach the continuation
+        XCTAssertEqual(harness.instances.values.count, 1)
+
+        harness.host.setEnabled(false, for: id)  // G2: begins deactivation
+        harness.host.setEnabled(true, for: id)   // G3: replacement (fails)
+        await harness.host.waitForQuiescence()
+        await drain()
+        guard case .failed = harness.host.phase(for: id) else {
+            return XCTFail("expected failed phase, got \(harness.host.phase(for: id))")
+        }
+
+        // Resume the superseded activation: it starts the shared service, but
+        // no instance owns it any more, so the host must stop it.
+        harness.instances.values[0].resumeActivation()
+        await drain(32)
+
+        XCTAssertFalse(
+            service.isRunning,
+            "a late superseded activation must not leak the shared service when the replacement failed"
+        )
     }
 }
