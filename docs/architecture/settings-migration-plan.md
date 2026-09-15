@@ -775,3 +775,61 @@ not performed. No visual correctness is inferred from compilation.
   non-localizable `String`s (documented, not redesigned).
 - `autoScrollToNextEvent` inert and `useMusicVisualizer` disabled remain as
   documented limitations.
+
+## Appendix D: focused review fixes (test host, calendar, scheme)
+
+Reviewed head: `07e131cfcc25b263b9b76593eb1aaab2747570f5`. Follow-up commits:
+
+| Commit | Scope |
+| --- | --- |
+| `3e03f99` | App-hosted test startup isolation |
+| `f8facf4` | Committed shared `NotchKitTests` scheme |
+| `5e77a5e` | Calendar list/event refresh ordering |
+| `1d70acf` | Feature-id diagnostic wording + route-pruning test |
+| `8e5b200` | Isolation hardening (stored-property startup, meaningful marker) |
+| `c563d1a` | Condition-based calendar tests + reminder coverage |
+
+### Test-host isolation
+
+`TestHostPolicy` decides the launch mode once, from `main.swift`, and every
+production launch side effect consults it: identity migration, legacy import
+UI, extension bootstrap, Battery observation, Shelf storage, the eager settings
+window, service singletons, global event monitors, onboarding, and notch windows.
+Under a test host, `BoringViewCoordinator` (constructed by other singletons'
+stored properties) is inert and `ShelfPersistenceService` writes under a
+per-process temporary root. The production-startup marker is recorded at the
+guard boundary, so removing a guard fails the isolation test rather than passing
+silently.
+
+Evidence: before the fix a host-test run rewrote the real
+`~/Library/Application Support/NotchKit/Shelf/items.json`; after the fix the
+Shelf and preferences modification times are unchanged across a run, and
+`TestHostIsolationTests` asserts the policy is active, production startup did not
+run, and Shelf storage does not resolve to real Application Support.
+
+### Calendar ordering
+
+List loading and event refreshing use separate generations, so a selection
+change during the initial list load cannot discard the load and a slow, older
+date load cannot overwrite newer events. Authorization reads go through
+`CalendarServiceProviding`. Tests cover selection changes, date changes,
+reminder-completion refreshes, authorization changes, initial list loading, and
+that settings never instantiate a `CalendarManager`.
+
+### Shared scheme
+
+`NotchKit/NotchKit.xcodeproj/xcshareddata/xcschemes/NotchKitTests.xcscheme` is
+tracked via a narrow `.gitignore` exception. It pins the app as test host,
+enables `NOTCHKIT_TEST_HOST=1`, and intentionally omits a run item so Xcode still
+autocreates the `NotchKit`/`NotchKitCoreOnly` schemes the CI matrix uses. From a
+fresh checkout, `-list` exposes the scheme, build settings and the macOS
+destination resolve, and `xcodebuild test` succeeds.
+
+### Final verification (feature head)
+
+- SDK/runtime: 112 pass; Battery: 18 pass; Validation: 14 pass.
+- `xcodebuild test -scheme NotchKitTests` (fresh checkout): 25 pass.
+- NotchKit and NotchKitCoreOnly Debug builds succeed.
+- CoreOnly linkage: 0 `BatteryExtension` symbols (NotchKit: 332), no
+  `BatterySettingsView` string.
+- GUI checks were not performed (no interactive session).
