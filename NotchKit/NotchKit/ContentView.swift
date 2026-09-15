@@ -219,7 +219,9 @@ struct ContentView: View {
             anyDropDebounceTask?.cancel()
 
             if isTargeted {
-                if vm.notchState == .closed {
+                if vm.notchState == .closed && NotchKitRuntime.shared.isFeatureEnabled(
+                    BuiltInExtensionIDs.shelf)
+                {
                     router.select(BuiltInExtensionIDs.shelfDestination)
                     doOpen()
                 }
@@ -305,7 +307,9 @@ struct ContentView: View {
                               .padding(.trailing, 8)
                           }
                           // Old sneak peek music
-                          else if coordinator.sneakPeek.type == .music {
+                          else if coordinator.sneakPeek.type == .music
+                              && NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.media)
+                          {
                               if vm.notchState == .closed && !vm.hideOnClosed && Defaults[.sneakPeekStyles] == .standard {
                                   HStack(alignment: .center) {
                                       Image(systemName: "music.note")
@@ -348,7 +352,9 @@ struct ContentView: View {
 
     @ViewBuilder
     var dragDetector: some View {
-        if Defaults[.boringShelf] && vm.notchState == .closed {
+        if NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.shelf)
+            && vm.notchState == .closed
+        {
             Color.clear
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .contentShape(Rectangle())

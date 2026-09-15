@@ -50,6 +50,8 @@ enum BuiltInClosedNotch {
                 "inlineHUD": Defaults[.inlineHUD],
                 "musicLiveActivityEnabled": coordinator.musicLiveActivityEnabled,
                 "showNotHumanFace": Defaults[.showNotHumanFace],
+                "mediaEnabled": NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.media),
+                "hudEnabled": NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.hud),
             ]
         )
     }
@@ -71,6 +73,7 @@ enum BuiltInClosedNotch {
                 !snapshot.isNotchOpen
                     && snapshot.isSneakPeekVisible
                     && snapshot.flag("inlineHUD")
+                    && snapshot.flag("hudEnabled")
                     && snapshot.sneakPeekKind != "music"
                     && snapshot.sneakPeekKind != "battery"
             },
@@ -100,6 +103,7 @@ enum BuiltInClosedNotch {
                 !snapshot.isNotchOpen
                     && (!snapshot.isExpandingViewShown || snapshot.expandingViewKind == "music")
                     && snapshot.isMediaActive
+                    && snapshot.flag("mediaEnabled")
                     && snapshot.flag("musicLiveActivityEnabled")
                     && !snapshot.isHiddenOnClosed
             },

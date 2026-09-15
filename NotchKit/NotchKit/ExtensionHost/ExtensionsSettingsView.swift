@@ -4,11 +4,12 @@
 //
 //  The Extensions settings hub.
 //
-//  Lists first-party definitions and host-owned legacy feature adapters from the
-//  authoritative `SettingsCatalog`. It reads no contribution store settings and
-//  constructs no extension instance. Only runtime-managed features (Battery in
-//  this milestone) expose an enable/disable toggle; Home is required and every
-//  other feature is configuration-only.
+//  Lists first-party definitions from the authoritative `SettingsCatalog`. It
+//  reads no contribution store settings and constructs no extension instance.
+//  Every feature row exposes an authoritative enable/disable toggle on the
+//  right; the row itself is a separate navigation target, so enabling a feature
+//  never opens its configuration and opening configuration never changes
+//  enablement.
 //
 
 import NotchExtensionSDK
@@ -38,22 +39,23 @@ struct ExtensionsSettingsView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(catalog.entries) { entry in
-                            CatalogEntryRow(
+                            FeatureSettingsRow(
                                 entry: entry,
-                                metadata: metadata(for: entry),
+                                summary: metadata(for: entry)?.summary,
                                 phase: phase(for: entry),
                                 isEnabled: isEnabledBinding(for: entry),
-                                onConfigure: { destination in open(destination, in: entry) },
-                                onRetry: { retry(entry) }
+                                onOpen: { destination in open(destination, in: entry) },
+                                onRetry: { retry(entry) },
+                                onGrantPermission: { grantPermission(entry) }
                             )
                         }
                     }
                 } header: {
-                    Text("Built-in feature settings")
+                    Text("Built-in features")
                 } footer: {
                     Text(
-                        "Extensions are compiled into NotchKit. Only Battery can be enabled or disabled; "
-                            + "the other features remain available and are configured here."
+                        "Turn a feature on or off with its switch, or open the row to configure it. "
+                            + "Configuration stays available while a feature is off."
                     )
                 }
             }
@@ -155,102 +157,105 @@ struct ExtensionsSettingsView: View {
     }
 
     private func retry(_ entry: SettingsCatalogEntry) {
-        guard entry.owner != nil else { return }
-        // `reconcileNow()` re-runs activation for an enabled, failed extension.
-        // It does not call `setEnabled(true)`, which would be a no-op.
-        runtime.host.reconcileNow()
+        guard let owner = entry.owner else { return }
+        runtime.host.retry(owner)
+        presentation.refreshAll()
+    }
+
+    /// Explicit, user-initiated permission request for a blocked feature.
+    /// Toggling a feature never prompts on its own.
+    private func grantPermission(_ entry: SettingsCatalogEntry) {
+        guard let owner = entry.owner else { return }
+        XPCHelperClient.shared.requestAccessibilityAuthorization()
+        runtime.host.retry(owner)
         presentation.refreshAll()
     }
 }
 
-private struct CatalogEntryRow: View {
+/// A reusable feature row.
+///
+/// The navigation region is a plain `Button` that fills the row except for the
+/// trailing toggle, status actions, and optional disclosure indicator. The
+/// toggle is a sibling, never nested inside the button, so the two actions can
+/// never fire together.
+private struct FeatureSettingsRow: View {
     let entry: SettingsCatalogEntry
-    let metadata: ExtensionMetadata?
+    let summary: String?
     let phase: ExtensionRuntimePhase
     @Binding var isEnabled: Bool
-    let onConfigure: (ExtensionSettingsDestination) -> Void
+    let onOpen: (ExtensionSettingsDestination) -> Void
     let onRetry: () -> Void
+    let onGrantPermission: () -> Void
 
     var body: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Image(systemName: entry.iconSystemName)
-                .font(.title3)
-                .frame(width: 24)
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 6) {
-                    Text(entry.displayName)
-                        .font(.headline)
-                    statusBadge
-                }
-                if let summary = metadata?.summary {
-                    Text(summary)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-
-                if case .failed(let message) = phase {
-                    Text(message)
-                        .font(.caption2)
-                        .foregroundStyle(.red)
-                    Button("Retry") { onRetry() }
-                        .buttonStyle(.link)
-                        .font(.caption)
-                        .accessibilityLabel("Retry \(entry.displayName) activation")
-                }
-
-                if !entry.destinations.isEmpty {
-                    HStack(spacing: 8) {
-                        ForEach(entry.destinations) { destination in
-                            Button(destination.title) {
-                                onConfigure(destination)
-                            }
-                            .buttonStyle(.link)
-                            .font(.caption)
-                        }
-                    }
-                    .padding(.top, 2)
-                }
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .center, spacing: 12) {
+                navigationRegion
+                trailingControl
             }
-
-            Spacer(minLength: 0)
-
-            trailingControl
+            statusActions
         }
         .padding(.vertical, 4)
     }
 
+    /// Fills the row except for the trailing controls. Opens the first (and, for
+    /// first-party features, only) configuration destination.
     @ViewBuilder
-    private var statusBadge: some View {
-        switch phase {
-        case .failed:
-            Text("Failed")
-                .font(.caption2)
-                .foregroundStyle(.red)
-        case .activating:
-            Text("Starting")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        case .deactivating:
-            Text("Stopping")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-        default:
-            if entry.management == .configurationOnly {
-                Text("Configuration only")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            } else if !isEnabled {
-                Text("Disabled")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+    private var navigationRegion: some View {
+        if let destination = entry.destinations.first {
+            Button {
+                onOpen(destination)
+            } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: entry.iconSystemName)
+                        .font(.title3)
+                        .frame(width: 24)
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(entry.displayName)
+                            .font(.headline)
+                        if let summary {
+                            Text(summary)
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(.tertiary)
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Open \(entry.displayName) settings")
+            .accessibilityHint(summary ?? "")
+            .accessibilityAddTraits(.isButton)
+        } else {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: entry.iconSystemName)
+                    .font(.title3)
+                    .frame(width: 24)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(entry.displayName)
+                        .font(.headline)
+                    if let summary {
+                        Text(summary)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Spacer(minLength: 0)
             }
         }
     }
 
     @ViewBuilder
     private var trailingControl: some View {
-        if entry.management == .runtimeManaged {
+        if entry.management == .runtimeManaged, entry.owner != nil {
             Toggle("", isOn: $isEnabled)
                 .labelsHidden()
                 .toggleStyle(.switch)
@@ -260,6 +265,48 @@ private struct CatalogEntryRow: View {
                 .disabled(isTransitioning)
                 .accessibilityLabel("Enable \(entry.displayName)")
         }
+    }
+
+    @ViewBuilder
+    private var statusActions: some View {
+        switch phase {
+        case .activating:
+            statusLabel("Starting…")
+        case .deactivating:
+            statusLabel("Stopping…")
+        case .failed(let message):
+            HStack(spacing: 8) {
+                Text(message)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                Button("Retry", action: onRetry)
+                    .buttonStyle(.link)
+                    .font(.caption)
+                    .accessibilityLabel("Retry \(entry.displayName) activation")
+            }
+        case .requiresPermission(let message):
+            HStack(spacing: 8) {
+                Text("\(message).")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                Button("Grant Access", action: onGrantPermission)
+                    .buttonStyle(.link)
+                    .font(.caption)
+                    .accessibilityLabel("Grant access for \(entry.displayName)")
+            }
+        case .inactive:
+            if entry.management == .runtimeManaged, !isEnabled {
+                statusLabel("Off")
+            }
+        case .active:
+            EmptyView()
+        }
+    }
+
+    private func statusLabel(_ text: String) -> some View {
+        Text(text)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
     }
 
     private var isTransitioning: Bool {

@@ -21,7 +21,6 @@ import SwiftUI
 struct CalendarSettingsPage: View {
     @StateObject private var data = CalendarSettingsDataProvider()
 
-    @Default(.showCalendar) var showCalendar: Bool
     @Default(.hideCompletedReminders) var hideCompletedReminders
     @Default(.hideAllDayEvents) var hideAllDayEvents
     @Default(.autoScrollToNextEvent) var autoScrollToNextEvent
@@ -29,9 +28,6 @@ struct CalendarSettingsPage: View {
 
     var body: some View {
         Form {
-            Defaults.Toggle(key: .showCalendar) {
-                Text("Show calendar")
-            }
             Defaults.Toggle(key: .hideCompletedReminders) {
                 Text("Hide completed reminders")
             }
@@ -139,7 +135,6 @@ struct CalendarSettingsPage: View {
                     Text(calendar.title)
                 }
                 .accentColor(lighterColor(from: calendar.color))
-                .disabled(!showCalendar)
             }
         }
     }
@@ -151,9 +146,6 @@ struct ShelfSettingsPage: View {
     @Default(.quickShareProvider) private var quickShareProvider
     @Default(.expandedDragDetection) private var expandedDragDetection: Bool
     @StateObject private var shareData = ShelfShareProviderDataSource()
-    @ObservedObject private var presentation = NotchKitRuntime.shared.presentation
-
-    private var runtime: NotchKitRuntime { .shared }
 
     private var selectedProvider: QuickShareProvider? {
         shareData.selectedProvider(id: quickShareProvider)
@@ -161,36 +153,9 @@ struct ShelfSettingsPage: View {
                 .first { $0.id == quickShareProvider }
     }
 
-    /// `boringShelf` gates the UI and the extension-state enabled flag gates
-    /// contributions; they are intentionally not synchronized. If a legacy
-    /// install disabled the Shelf extension, configuration stays reachable here
-    /// and an explicit, accurately labelled recovery action is offered rather
-    /// than silently rewriting saved state.
-    private var isShelfExtensionDisabled: Bool {
-        !runtime.manager.isEnabled(BuiltInExtensionIDs.shelf)
-    }
-
     var body: some View {
         Form {
-            if isShelfExtensionDisabled {
-                Section {
-                    Text("The Shelf extension is disabled, so its content and entry points are hidden until it is re-enabled.")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    Button("Restore Shelf") {
-                        runtime.host.setEnabled(true, for: BuiltInExtensionIDs.shelf)
-                        presentation.refreshAll()
-                    }
-                    .accessibilityLabel("Restore the Shelf extension")
-                } header: {
-                    Text("Recovery")
-                }
-            }
-
             Section {
-                Defaults.Toggle(key: .boringShelf) {
-                    Text("Show Shelf")
-                }
                 Defaults.Toggle(key: .openShelfByDefault) {
                     Text("Open shelf by default if items are present")
                 }
@@ -211,6 +176,10 @@ struct ShelfSettingsPage: View {
                 }
             } header: {
                 Text("General")
+            } footer: {
+                Text("Use the switch on the Extensions page to turn the Shelf on or off. Items already on the Shelf are kept while it is off.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
             }
 
             Section {
@@ -610,48 +579,38 @@ struct HUDSettingsPage: View {
     @Default(.inlineHUD) var inlineHUD
     @Default(.enableGradient) var enableGradient
     @Default(.optionKeyAction) var optionKeyAction
-    @Default(.hudReplacement) var hudReplacement
     @StateObject private var status = HUDStatusProvider()
 
     var body: some View {
         Form {
             Section {
-                HStack {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text("Replace system HUD")
-                            .font(.headline)
-                        Text("Replaces the standard macOS volume, display brightness, and keyboard brightness HUDs with a custom design.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    Spacer(minLength: 40)
-                    Defaults.Toggle("", key: .hudReplacement)
-                        .labelsHidden()
-                        .toggleStyle(.switch)
-                        .controlSize(.large)
-                        .disabled(!status.isAccessibilityAuthorized)
-                        .accessibilityLabel("Replace system HUD")
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Replace system HUD")
+                        .font(.headline)
+                    Text("Replaces the standard macOS volume, display brightness, and keyboard brightness HUDs with a custom design. Use the switch on the Extensions page to turn the HUD on or off.")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                if !status.isAccessibilityAuthorized {
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text("Accessibility access is required to replace the system HUD.")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                        HStack(spacing: 12) {
-                            Button("Request Accessibility") {
-                                XPCHelperClient.shared.requestAccessibilityAuthorization()
-                            }
-                            .buttonStyle(.borderedProminent)
-                            Button("Refresh Status") {
-                                Task { await status.refresh() }
-                            }
-                        }
+                HStack(spacing: 12) {
+                    Text(
+                        status.isAccessibilityAuthorized
+                            ? "Accessibility access is granted."
+                            : "Accessibility access is required to replace the system HUD."
+                    )
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    Spacer(minLength: 0)
+                    Button("Request Accessibility") {
+                        XPCHelperClient.shared.requestAccessibilityAuthorization()
                     }
-                    .padding(.top, 6)
+                    .buttonStyle(.borderedProminent)
+                    Button("Refresh Status") {
+                        Task { await status.refresh() }
+                    }
                 }
+                .padding(.top, 6)
             }
 
             Section {
@@ -673,7 +632,6 @@ struct HUDSettingsPage: View {
             } header: {
                 Text("General")
             }
-            .disabled(!hudReplacement)
 
             Section {
                 Defaults.Toggle(key: .showOpenNotchHUD) {
@@ -689,7 +647,6 @@ struct HUDSettingsPage: View {
                     customBadge(text: "Beta")
                 }
             }
-            .disabled(!hudReplacement)
 
             Section {
                 Picker("HUD style", selection: $inlineHUD) {
@@ -710,7 +667,6 @@ struct HUDSettingsPage: View {
             } header: {
                 Text("Closed Notch")
             }
-            .disabled(!Defaults[.hudReplacement])
         }
         .accentColor(.effectiveAccent)
         .navigationTitle("HUD")
@@ -738,10 +694,6 @@ struct CameraMirrorSettingsPage: View {
     var body: some View {
         Form {
             Section {
-                Defaults.Toggle(key: .showMirror) {
-                    Text("Enable camera mirror")
-                }
-                .disabled(!isCameraInputAvailable())
                 Picker("Mirror shape", selection: $mirrorShape) {
                     Text("Circle").tag(MirrorShapeEnum.circle)
                     Text("Square").tag(MirrorShapeEnum.rectangle)
@@ -754,7 +706,7 @@ struct CameraMirrorSettingsPage: View {
             } header: {
                 Text("Camera Mirror")
             } footer: {
-                Text("Camera access is requested the first time the mirror is opened, not while configuring it here.")
+                Text("Use the switch on the Extensions page to turn the Camera Mirror on or off. Camera access is requested the first time the mirror is opened, not while configuring it here.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }

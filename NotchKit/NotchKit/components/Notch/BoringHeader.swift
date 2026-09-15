@@ -6,6 +6,7 @@
 //
 
 import Defaults
+import NotchExtensionRuntime
 import SwiftUI
 
 #if !NOTCHKIT_CORE_ONLY
@@ -22,7 +23,7 @@ struct BoringHeader: View {
     var body: some View {
         HStack(spacing: 0) {
             HStack {
-                if (!tvm.isEmpty || coordinator.alwaysShowTabs) && Defaults[.boringShelf] {
+                if (!tvm.isEmpty || coordinator.alwaysShowTabs) && isShelfEnabled {
                     TabSelectionView()
                 } else if vm.notchState == .open {
                     EmptyView()
@@ -48,7 +49,7 @@ struct BoringHeader: View {
                         OpenNotchHUD(type: $coordinator.sneakPeek.type, value: $coordinator.sneakPeek.value, icon: $coordinator.sneakPeek.icon)
                             .transition(.scale(scale: 0.8).combined(with: .opacity))
                     } else {
-                        if Defaults[.showMirror] {
+                        if isCameraEnabled {
                             Button(action: {
                                 vm.toggleCameraPreview()
                             }) {
@@ -120,6 +121,15 @@ struct BoringHeader: View {
         default:
             return false
         }
+    }
+
+    /// Authoritative feature state; replaces the legacy UI-visibility prefs.
+    private var isShelfEnabled: Bool {
+        NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.shelf)
+    }
+
+    private var isCameraEnabled: Bool {
+        NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.camera)
     }
 }
 

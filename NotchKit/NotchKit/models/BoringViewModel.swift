@@ -195,8 +195,11 @@ class BoringViewModel: NSObject, ObservableObject {
         self.notchSize = openNotchSize
         self.notchState = .open
         
-        // Force music information update when notch is opened
-        MusicManager.shared.forceUpdate()
+        // Force music information update when notch is opened (only while Media
+        // is enabled; this never starts a disabled service).
+        if NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.media) {
+            MusicManager.shared.forceUpdate()
+        }
     }
 
     func close() {
@@ -213,7 +216,9 @@ class BoringViewModel: NSObject, ObservableObject {
 
         // Set the current view to shelf if it contains files and the user enables openShelfByDefault
         // Otherwise, if the user has not enabled openLastShelfByDefault, set the view to home
-    if !ShelfStateViewModel.shared.isEmpty && Defaults[.openShelfByDefault] {
+        if NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.shelf),
+            !ShelfStateViewModel.shared.isEmpty, Defaults[.openShelfByDefault]
+        {
             NotchKitRuntime.shared.select(
                 BuiltInExtensionIDs.shelfDestination,
                 on: NotchKitRuntime.shared.displayID(for: screenUUID)

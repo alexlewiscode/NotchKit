@@ -8,6 +8,7 @@
 
 import Combine
 import Defaults
+import NotchExtensionRuntime
 import SwiftUI
 
 // MARK: - Music Player Components
@@ -229,7 +230,9 @@ struct MusicControlsView: View {
         let padded = slotConfig.padded(to: sanitizedLimit, filler: .none)
         let result = Array(padded.prefix(sanitizedLimit))
         // If calendar and camera are both visible alongside music, hide the edge slots
-        let shouldHideEdges = Defaults[.showCalendar] && Defaults[.showMirror] && webcamManager.cameraAvailable && vm.isCameraExpanded
+        let shouldHideEdges = NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.calendar)
+            && NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.camera)
+            && webcamManager.cameraAvailable && vm.isCameraExpanded
         if shouldHideEdges && result.count >= 5 {
             return Array(result.dropFirst().dropLast())
         }
@@ -440,14 +443,16 @@ struct NotchHomeView: View {
     }
 
     private var shouldShowCamera: Bool {
-        Defaults[.showMirror] && webcamManager.cameraAvailable && vm.isCameraExpanded
+        isCameraEnabled && webcamManager.cameraAvailable && vm.isCameraExpanded
     }
 
     private var mainContent: some View {
-        HStack(alignment: .top, spacing: (shouldShowCamera && Defaults[.showCalendar]) ? 10 : 15) {
-            MusicPlayerView(albumArtNamespace: albumArtNamespace)
+        HStack(alignment: .top, spacing: (shouldShowCamera && isCalendarEnabled) ? 10 : 15) {
+            if isMediaEnabled {
+                MusicPlayerView(albumArtNamespace: albumArtNamespace)
+            }
 
-            if Defaults[.showCalendar] {
+            if isCalendarEnabled {
                 CalendarView()
                     .frame(width: shouldShowCamera ? 170 : 215)
                     .onHover { isHovering in
@@ -467,6 +472,18 @@ struct NotchHomeView: View {
         }
         .transition(.asymmetric(insertion: .opacity.combined(with: .move(edge: .top)), removal: .opacity))
         .blur(radius: vm.notchState == .closed ? 30 : 0)
+    }
+
+    private var isMediaEnabled: Bool {
+        NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.media)
+    }
+
+    private var isCalendarEnabled: Bool {
+        NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.calendar)
+    }
+
+    private var isCameraEnabled: Bool {
+        NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.camera)
     }
 }
 
