@@ -52,6 +52,8 @@ final class TestPermissionService: NotchPermissionService {
 final class TestLifecycleExtension: NotchExtension {
     var failOnActivate = false
     var activateDelay: Duration = .zero
+    /// When set, `activate()` throws this instead of the generic failure.
+    var activationError: Error?
 
     private(set) var activateCount = 0
     private(set) var deactivateCount = 0
@@ -63,6 +65,9 @@ final class TestLifecycleExtension: NotchExtension {
         activateCount += 1
         if activateDelay > .zero {
             try? await Task.sleep(for: activateDelay)
+        }
+        if let activationError {
+            throw activationError
         }
         if failOnActivate {
             throw TestError.activationFailed

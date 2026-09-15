@@ -70,6 +70,20 @@ public enum ExtensionRuntimePhase: Equatable, Sendable {
     case deactivating
     /// Activation threw; the instance was torn down.
     case failed(String)
+    /// The user's desired state is enabled, but activation is blocked on a
+    /// permission the user must grant. Unlike `.failed`, this is not an error
+    /// state: the toggle stays on and the host waits for an explicit retry.
+    case requiresPermission(String)
+}
+
+/// A typed activation failure an extension can throw to let the host present
+/// an accurate, actionable state instead of a generic error.
+public enum ExtensionActivationError: Error, Equatable {
+    /// Activation needs a permission the user has not granted. The host records
+    /// `.requiresPermission` and does not report the extension as active.
+    case permissionRequired(NotchPermission)
+    /// Activation needs a device that is currently unavailable.
+    case deviceUnavailable(String)
 }
 
 /// A point-in-time runtime state for one extension.

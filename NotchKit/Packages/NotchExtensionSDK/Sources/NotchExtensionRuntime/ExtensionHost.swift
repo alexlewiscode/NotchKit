@@ -94,6 +94,20 @@ public final class ExtensionHost {
         manager.setEnabled(enabled, for: id)
     }
 
+    /// Retries a failed or permission-blocked activation for an extension whose
+    /// desired state is still enabled. This is the explicit, user-initiated
+    /// path; `reconcileNow()` deliberately does not auto-retry permission gates.
+    public func retry(_ id: ExtensionIdentity) {
+        switch phase(for: id) {
+        case .failed, .requiresPermission:
+            clearInstance(id)
+            setPhase(.inactive, id)
+        case .inactive, .activating, .active, .deactivating:
+            break
+        }
+        reconcileNow()
+    }
+
     /// Reconciles desired enabled state against live instances.
     public func reconcileNow() {
         for definition in registry.definitions {
@@ -107,12 +121,17 @@ public final class ExtensionHost {
                     beginActivation(definition)
                 case .activating, .active:
                     break
+                case .requiresPermission:
+                    // The desired state is enabled but a permission gate is
+                    // unmet. Retrying automatically would re-prompt on every
+                    // reconcile; the user retries explicitly (`retry(_:)`).
+                    break
                 }
             } else {
                 switch phase {
                 case .active, .activating, .deactivating:
                     beginDeactivation(id)
-                case .failed:
+                case .failed, .requiresPermission:
                     clearInstance(id)
                     setPhase(.inactive, id)
                 case .inactive:
@@ -262,7 +281,21 @@ public final class ExtensionHost {
         clearInstance(id)
         contributions.removeContributions(for: id)
         tasks[id] = nil
-        setPhase(.failed(String(describing: error)), id)
+        setPhase(Self.phase(for: error), id)
+    }
+
+    /// Maps an activation error to an honest runtime phase. A permission gate is
+    /// not a failure: the desired state stays enabled and the user can grant the
+    /// permission and retry.
+    private static func phase(for error: Error) -> ExtensionRuntimePhase {
+        switch error {
+        case ExtensionActivationError.permissionRequired(let permission):
+            return .requiresPermission("\(permission.rawValue) permission required")
+        case ExtensionActivationError.deviceUnavailable(let reason):
+            return .failed(reason)
+        default:
+            return .failed(String(describing: error))
+        }
     }
 
     /// Undoes a late activation that a newer lifecycle superseded.
