@@ -36,6 +36,17 @@ public protocol NotchExtension: AnyObject {
     func closedNotchContributions() -> [ClosedNotchContribution]
 
     /// Settings destinations this instance contributes while active.
+    ///
+    /// - Deprecated: Settings are declared lifecycle-independently on
+    ///   `ExtensionDefinition.settings`, so a disabled or failed extension keeps
+    ///   a reachable configuration page. The host no longer publishes instance
+    ///   settings destinations into the contribution store. This requirement is
+    ///   kept as a compatibility surface and ignores its return value.
+    @available(
+        *,
+        deprecated,
+        message: "Declare settings on ExtensionDefinition.settings; the host no longer reads instance settings destinations."
+    )
     func settingsDestinations() -> [ExtensionSettingsDestination]
 }
 

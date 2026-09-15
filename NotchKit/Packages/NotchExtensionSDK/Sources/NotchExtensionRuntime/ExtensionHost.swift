@@ -228,10 +228,14 @@ public final class ExtensionHost {
         }
 
         do {
+            // Settings are declared on `ExtensionDefinition.settings` and served
+            // by the host settings catalog, so the lifecycle no longer publishes
+            // instance settings destinations. The empty array keeps the
+            // `ContributionStore` API (and its duplicate-id checks) unchanged.
             try contributions.set(
                 open: instance.openDestinations(),
                 closed: instance.closedNotchContributions(),
-                settings: instance.settingsDestinations(),
+                settings: [],
                 for: id
             )
         } catch {

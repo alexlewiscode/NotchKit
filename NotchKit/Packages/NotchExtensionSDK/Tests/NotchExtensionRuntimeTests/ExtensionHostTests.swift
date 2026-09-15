@@ -200,6 +200,36 @@ final class ExtensionHostTests: XCTestCase {
         XCTAssertEqual(harness.host.contributions.openDestinations.count, 1)
     }
 
+    func testReconcileNowRetriesFailedEnabledExtension() async throws {
+        let id = try TestFactory.identity("com.notchkit.alpha")
+        let instance = TestLifecycleExtension()
+        instance.failOnActivate = true
+        let harness = makeHost(
+            definitions: [
+                lifecycleDefinition(id: id, defaultEnabled: true) { context in
+                    instance.lastContext = context
+                    return instance
+                }
+            ]
+        )
+
+        harness.host.start()
+        await harness.host.waitForQuiescence()
+        guard case .failed = harness.host.phase(for: id) else {
+            return XCTFail("expected failed phase, got \(harness.host.phase(for: id))")
+        }
+
+        // Persisted enabled state is already true, so a Retry must not rely on
+        // setEnabled(true) (a no-op). It must actually re-run activation.
+        XCTAssertTrue(harness.manager.isEnabled(id))
+        instance.failOnActivate = false
+        harness.host.reconcileNow()
+        await harness.host.waitForQuiescence()
+
+        XCTAssertEqual(harness.host.phase(for: id), .active)
+        XCTAssertEqual(instance.activateCount, 2)
+    }
+
     func testReAddAfterRemoveActivatesCleanlyDespiteStaleTask() async throws {
         let id = try TestFactory.identity("com.notchkit.alpha")
         let failing = TestLifecycleExtension()

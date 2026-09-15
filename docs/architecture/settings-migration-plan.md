@@ -12,11 +12,17 @@ first-party extension. It changes **no persisted preference keys**.
 
 ## References and reconciliation status
 
-- Agent A settings inventory: `settings-inventory.md` (external; not present in
-  this checkout at drafting time). Agent A's key-audit artifacts
-  (`defined_keys.txt`, `used_keys.txt`) were used for the preference-key
-  reconciliation in [Appendix A](#appendix-a-key-audit-reconciliation). The
-  inventory commit reference is to be filled in at final handoff.
+- Agent A settings inventory: **available**. Committed at
+  `46afd93910f20ec8e7a9e245ed301b87846f565f` on `docs/settings-inventory` as
+  [`settings-inventory.md`](settings-inventory.md), based on development
+  `00a57505696225d42bbd66a051d4a93e0c6d9f56` (the same base as this plan).
+  Agent A's key-audit artifacts (`defined_keys.txt`, `used_keys.txt`) were also
+  used for the preference-key reconciliation in
+  [Appendix A](#appendix-a-key-audit-reconciliation). The earlier "not present
+  in this checkout at drafting time" note is resolved: the inventory is now in
+  this branch (Agent C incorporated both documentation commits).
+  See [Reconciliation record](#reconciliation-record) for the resolved
+  differences between the two documents.
 - Integration report: external chat content. Its reported defects are used only
   as review leads (see [Review leads](#review-leads-from-the-integration-report)).
   This plan deliberately does not repair unrelated validator, migration, or CI
@@ -537,6 +543,40 @@ Known reported defect categories to check, without broadening into repairs:
   run SDK tests, while `cicd.yml` builds both app schemes. Verify the actual
   files rather than assuming.
 
+## Reconciliation record
+
+Agent C incorporated both documentation commits (Agent A's inventory
+`46afd93` and this plan `d5c10d0`) into `codex/extensions-settings` on top of
+development `00a5750`. The inventory is now in-tree. The resolved differences
+between the two documents are:
+
+1. **Agent A inventory status.** The plan's "pending" note is corrected above;
+   the inventory is available and authoritative for control-level detail.
+2. **`calendarSelectionState`.** The plan's Appendix A listed it among
+   "not user-facing today" keys. Agent A sections 4 and 17 establish that it is
+   surfaced through the per-calendar/per-reminder-list toggles and written by
+   `CalendarManager.setCalendarSelected`. Corrected above; the consolidation
+   surfaces it under Extensions → Calendar & Reminders.
+3. **`autoScrollToNextEvent`.** Surfaced today but inert (read nowhere). It is
+   kept visible at its approved destination and its inert status is recorded;
+   it is not silently implemented or removed.
+4. **`useMusicVisualizer`.** Surfaced today but permanently `.disabled(true)`.
+   Moved to Extensions → Media and kept disabled; not silently enabled.
+5. **`musicControlSlotLimit`.** Unsurfaced (the slot editor hardcodes 5); it is
+   not exposed merely because the persisted key exists.
+6. **Battery duplicate pages.** The host `Charge` page and the package
+   `BatterySettingsView` write the same four keys. The package view is
+   authoritative; `Charge` is removed only after lifecycle-independent access
+   exists.
+7. **Shelf duplicated enablement.** `boringShelf` (UI gate) and the
+   extension-state enabled flag (contributions) are independent and are **not**
+   synchronized. `boringShelf` is relabeled "Show Shelf"; the extension-wide
+   lifecycle toggle is removed from the hub.
+8. **Unused duplicate declarations.** The unused `mirrorShape` declaration in
+   `GeneralSettings` and the unused `enableLyrics` declaration in `Media` are
+   duplicated declarations of settings that are used elsewhere; only the unused
+   declarations are deleted, and the functioning controls are retained.
+
 ## Appendix A: key-audit reconciliation
 
 Comparing the independently-derived inventory with Agent A's key audit:
@@ -550,11 +590,16 @@ Comparing the independently-derived inventory with Agent A's key audit:
   storage.
 - `shelfTapToOpen` is referenced in code but not rendered in the settings UI;
   it stays untouched.
-- `tileShowLabels`, `showShuffleAndRepeat`, `calendarSelectionState`,
-  `enableDownloadListener`, `enableSafariDownloads`,
-  `selectedDownloadIndicatorStyle`, `selectedDownloadIconStyle`, and
-  `didClearLegacyURLCacheV1` are not user-facing settings today; they stay
-  untouched.
+- `tileShowLabels`, `showShuffleAndRepeat`, `enableDownloadListener`,
+  `enableSafariDownloads`, `selectedDownloadIndicatorStyle`,
+  `selectedDownloadIconStyle`, and `didClearLegacyURLCacheV1` are not
+  user-facing settings today; they stay untouched.
+- `calendarSelectionState` is **surfaced and used** through the per-calendar and
+  per-reminder-list toggles (it is read/written by `CalendarManager`), so it is
+  *not* in the unsurfaced-key list above. The one disagreement with Agent A's
+  earlier draft classification is resolved in
+  [Reconciliation record](#reconciliation-record).
 - Omissions/disagreements between this table and Agent A's
-  `settings-inventory.md` are to be resolved here before the final handoff;
-  no key or control is removed as part of that reconciliation.
+  `settings-inventory.md` are resolved in
+  [Reconciliation record](#reconciliation-record); no key or control is removed
+  as part of that reconciliation.

@@ -1,6 +1,6 @@
 # NotchKit Extension API
 
-Status: Phase 1 contracts plus the runtime lifecycle. API version `1.0.0`.
+Status: Phase 1 contracts plus the runtime lifecycle. API version `1.1.0`.
 
 This document specifies the public contracts in the `NotchExtensionSDK` module
 and the behaviour guaranteed by the `NotchExtensionRuntime` module. See
@@ -12,7 +12,7 @@ download, installation, or dynamic loading mechanism.
 
 ## Compatibility rules
 
-- `ExtensionAPIVersion.current` is `1.0.0`.
+- `ExtensionAPIVersion.current` is `1.1.0`.
 - Compatibility is **not** major-only. `ExtensionCompatibility.validate` rejects
   a manifest when:
   - its `artifactKind` is not supported by this host build (only `.compiledIn`);
@@ -23,6 +23,25 @@ download, installation, or dynamic loading mechanism.
   - two entry points share an id.
 - Incompatible manifests are rejected at registration; they are never silently
   dropped at render time.
+
+### Versioning surfaces
+
+Three distinct version surfaces are in play and are not interchangeable:
+
+- **Swift SDK/API version** (`ExtensionAPIVersion.current`): the source-level
+  contract of the `NotchExtensionSDK` module. Additive, source-compatible
+  changes bump the minor component; breaking changes bump the major. The
+  `1.1.0` bump adds `ExtensionDefinition.settings`.
+- **Manifest schema version**: the serialized JSON shape
+  (`manifest.schema.json`). `ExtensionDefinition` is not serialized, so adding
+  `settings` does not change the schema; existing `1.0.0` manifests remain
+  structurally valid.
+- **Runtime compatibility checks**: `ExtensionCompatibility.validate` compares
+  the running host and SDK versions against each manifest's
+  `supportedHostVersions`/`supportedSDKVersions`. A `1.1.0` running SDK is within
+  the existing `1.x` ranges, so no manifest change is required. It deliberately
+  does not compare `metadata.apiVersion` to the running version; do not treat
+  that omission as a reason to skip the minor bump above.
 
 ## Identity
 
@@ -70,6 +89,9 @@ public struct ExtensionMetadata: Identifiable, Codable, Hashable, Sendable {
 ```swift
 public struct ExtensionDefinition {
     public let metadata: ExtensionMetadata
+    /// Lifecycle-independent settings pages. Must not create or capture a live
+    /// NotchExtension, an ExtensionContext, or a long-lived service.
+    public let settings: @MainActor () -> [ExtensionSettingsDestination]
     public let makeInstance: @MainActor (ExtensionContext) -> any NotchExtension
 }
 
@@ -79,14 +101,20 @@ public protocol NotchExtension: AnyObject {
     func deactivate()
     func openDestinations() -> [NotchOpenDestination]
     func closedNotchContributions() -> [ClosedNotchContribution]
+    @available(*, deprecated, message: "Declare settings on ExtensionDefinition.settings")
     func settingsDestinations() -> [ExtensionSettingsDestination]
 }
 ```
 
 - **Metadata listing never instantiates an extension.** `makeInstance` is called
   only on activation.
+- **Settings declaration never instantiates an extension.** `settings` is
+  evaluated when the host builds or renders its settings catalog, so a disabled
+  or failed extension keeps a reachable configuration page.
 - `makeView`-style factories are for **trusted, compiled-in** extensions only;
   they are never encoded or sent across a process boundary.
+- `settingsDestinations()` is retained only as a source-compatibility surface and
+  is ignored by the host.
 
 ## Host services
 

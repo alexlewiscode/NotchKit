@@ -20,7 +20,12 @@ public struct ExtensionAPIVersion: Hashable, Comparable, Codable, CustomStringCo
     public let patch: Int
 
     /// The API version implemented by this build of NotchKit.
-    public static let current = ExtensionAPIVersion(major: 1, minor: 0, patch: 0)
+    ///
+    /// `1.1.0` adds the additive, source-compatible
+    /// `ExtensionDefinition.settings` property. The serialized manifest shape is
+    /// unchanged, so existing `1.0.0` manifests whose `supportedSDKVersions`
+    /// cover `1.x` remain valid; see `docs/architecture/extension-api.md`.
+    public static let current = ExtensionAPIVersion(major: 1, minor: 1, patch: 0)
 
     public init(major: Int, minor: Int, patch: Int) {
         self.major = major
