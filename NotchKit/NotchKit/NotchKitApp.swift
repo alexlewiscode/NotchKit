@@ -185,6 +185,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         cleanupDragDetectors()
 
         guard Defaults[.expandedDragDetection] else { return }
+        // Drag-to-Shelf auto-open belongs to the Shelf feature; core drag
+        // infrastructure is only installed while Shelf is enabled.
+        guard NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.shelf) else { return }
 
         if Defaults[.showOnAllDisplays] {
             for screen in NSScreen.screens {
@@ -354,6 +357,14 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         NotificationCenter.default.addObserver(
             forName: Notification.Name.expandedDragDetectionChanged, object: nil, queue: nil
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.setupDragDetectors()
+            }
+        }
+
+        NotificationCenter.default.addObserver(
+            forName: Notification.Name.shelfEnabledChanged, object: nil, queue: nil
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.setupDragDetectors()

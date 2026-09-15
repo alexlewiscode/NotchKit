@@ -47,13 +47,10 @@ final class MediaKeyInterceptor {
     func start(promptIfNeeded: Bool = false) async {
         guard !TestHostPolicy.isActive else { return }
         guard eventTap == nil else { return }
-        
-        // Ensure HUD replacement is enabled
-        guard Defaults[.hudReplacement] else {
-            stop()
-            return
-        }
-        
+
+        // The HUD feature lifecycle owns whether interception runs; this method
+        // no longer consults `hudReplacement` directly.
+
         // Check accessibility authorization
         let authorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
         if !authorized {

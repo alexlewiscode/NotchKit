@@ -55,7 +55,6 @@ class BoringViewCoordinator: ObservableObject {
     @Published var helloAnimationRunning: Bool = false
     private var sneakPeekDispatch: DispatchWorkItem?
     private var expandingViewDispatch: DispatchWorkItem?
-    private var hudEnableTask: Task<Void, Never>?
 
     @AppStorage("firstLaunch") var firstLaunch: Bool = true
     @AppStorage("showWhatsNew") var showWhatsNew: Bool = true
@@ -99,14 +98,14 @@ class BoringViewCoordinator: ObservableObject {
     @Published var selectedScreenUUID: String = NSScreen.main?.displayUUID ?? ""
 
     @Published var optionKeyPressed: Bool = true
-    private var accessibilityObserver: Any?
-    private var hudReplacementCancellable: AnyCancellable?
 
     private init() {
         // This type is constructed by other service singletons' stored
         // properties, so it must be inert before its own guard. Under a test host
-        // it must not migrate/write preferences, install observers, or start the
-        // media-key interceptor.
+        // it must not migrate/write preferences or install observers.
+        //
+        // Media-key interception is owned by the HUD feature lifecycle
+        // (`HUDFeature`), not by this coordinator.
         guard !TestHostPolicy.isActive else { return }
 
         // Perform migration from name-based to UUID-based storage
@@ -129,56 +128,9 @@ class BoringViewCoordinator: ObservableObject {
         }
         
         selectedScreenUUID = preferredScreenUUID ?? NSScreen.main?.displayUUID ?? ""
-        // Observe changes to accessibility authorization and react accordingly
-        accessibilityObserver = NotificationCenter.default.addObserver(
-            forName: Notification.Name.accessibilityAuthorizationChanged,
-            object: nil,
-            queue: .main
-        ) { _ in
-            Task { @MainActor in
-                if Defaults[.hudReplacement] {
-                    await MediaKeyInterceptor.shared.start(promptIfNeeded: false)
-                }
-            }
-        }
-
-        // Observe changes to hudReplacement
-        hudReplacementCancellable = Defaults.publisher(.hudReplacement)
-            .sink { [weak self] change in
-                Task { @MainActor in
-                    guard let self = self else { return }
-
-                    self.hudEnableTask?.cancel()
-                    self.hudEnableTask = nil
-
-                    if change.newValue {
-                        self.hudEnableTask = Task { @MainActor in
-                            let granted = await XPCHelperClient.shared.ensureAccessibilityAuthorization(promptIfNeeded: true)
-                            if Task.isCancelled { return }
-
-                            if granted {
-                                await MediaKeyInterceptor.shared.start()
-                            } else {
-                                Defaults[.hudReplacement] = false
-                            }
-                        }
-                    } else {
-                        MediaKeyInterceptor.shared.stop()
-                    }
-                }
-            }
 
         Task { @MainActor in
             helloAnimationRunning = firstLaunch
-
-            if Defaults[.hudReplacement] {
-                let authorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
-                if !authorized {
-                    Defaults[.hudReplacement] = false
-                } else {
-                    await MediaKeyInterceptor.shared.start(promptIfNeeded: false)
-                }
-            }
         }
     }
     
@@ -218,8 +170,9 @@ class BoringViewCoordinator: ObservableObject {
     ) {
         sneakPeekDuration = duration
         if type != .music {
-            // close()
-            if !Defaults[.hudReplacement] {
+            // Non-music sneak peeks (volume, brightness, backlight) belong to the
+            // HUD feature; suppress them while it is disabled.
+            guard NotchKitRuntime.shared.isFeatureEnabled(BuiltInExtensionIDs.hud) else {
                 return
             }
         }

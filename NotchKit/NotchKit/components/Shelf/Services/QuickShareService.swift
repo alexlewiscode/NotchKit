@@ -25,12 +25,34 @@ class QuickShareService: ObservableObject {
     // Hold security-scoped URLs during sharing
     private var sharingAccessingURLs: [URL] = []
     private var lifecycleDelegate: SharingLifecycleDelegate?
-   
+    /// Whether the Shelf feature is currently running.
+    private(set) var isActive = false
+    private var discoveryTask: Task<Void, Never>?
+
     init() {
+        // Construction is inert. The feature lifecycle calls `start()` only while
+        // Shelf is enabled.
+    }
+
+    /// Starts share-provider discovery. Does not touch stored Shelf items.
+    func start() {
         guard !TestHostPolicy.isActive else { return }
-        Task {
-            await discoverAvailableProviders()
+        guard !isActive else { return }
+        isActive = true
+        discoveryTask?.cancel()
+        discoveryTask = Task { [weak self] in
+            await self?.discoverAvailableProviders()
         }
+    }
+
+    /// Stops discovery and clears the cached sharing services. Stored Shelf
+    /// items and the persisted provider preference are untouched.
+    func stop() {
+        isActive = false
+        discoveryTask?.cancel()
+        discoveryTask = nil
+        availableProviders = []
+        cachedServices.removeAll()
     }
     
     // MARK: - Provider Discovery

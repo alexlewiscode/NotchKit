@@ -68,6 +68,13 @@ class CalendarManager: ObservableObject {
     private var eventStoreChangedObserver: NSObjectProtocol?
     private var selectionChangedObserver: NSObjectProtocol?
     private var authorizationChangedObserver: NSObjectProtocol?
+    /// Feature-owned work, cancelled on `stop()` so a disabled feature leaves no
+    /// in-flight refresh behind.
+    private var refreshTasks: [Task<Void, Never>] = []
+
+    /// Whether the feature is currently running. `init` is inert; only `start()`
+    /// registers observers and loads data.
+    private(set) var isActive = false
 
     /// List loading and event refreshing are ordered independently. A selection
     /// or date change must never invalidate an in-flight list load (which would
@@ -81,25 +88,72 @@ class CalendarManager: ObservableObject {
         self.calendarService = CalendarService()
         self.selectionStore = DefaultsCalendarSelectionStore()
         self.currentWeekStartDate = CalendarManager.startOfDay(Date())
-        // The production singleton must be inert under a test host; tests build
-        // managers through the injected initializer below.
-        guard !TestHostPolicy.isActive else { return }
-        setupObservers()
-        Task {
-            await reloadCalendarAndReminderLists()
-        }
     }
 
     /// Seam for tests: inject the calendar service and selection persistence.
+    ///
+    /// The injected manager is considered running so its change observers
+    /// propagate, matching production `start()`.
     init(calendarService: CalendarServiceProviding, selectionStore: CalendarSelectionStore) {
         Self.instanceCount += 1
         self.calendarService = calendarService
         self.selectionStore = selectionStore
         self.currentWeekStartDate = CalendarManager.startOfDay(Date())
+        self.isActive = true
         setupObservers()
     }
 
+    /// Starts the feature: registers change observers and loads lists once.
+    ///
+    /// Safe to call more than once; the second call is a no-op. The production
+    /// singleton is inert under a test host.
+    func start() {
+        guard !TestHostPolicy.isActive else { return }
+        guard !isActive else { return }
+        isActive = true
+        setupObservers()
+        let task = Task { [weak self] in
+            guard let self else { return }
+            await self.reloadCalendarAndReminderLists()
+        }
+        refreshTasks.append(task)
+    }
+
+    /// Stops the feature: removes observers, cancels owned work, and clears the
+    /// presented data. Never touches persisted selections or preferences.
+    func stop() {
+        guard isActive else { return }
+        isActive = false
+        teardownObservers()
+        refreshTasks.forEach { $0.cancel() }
+        refreshTasks.removeAll()
+        listGeneration += 1
+        eventGeneration += 1
+        events = []
+        allCalendars = []
+        eventCalendars = []
+        reminderLists = []
+        selectedCalendars = []
+    }
+
+    private func teardownObservers() {
+        if let eventStoreChangedObserver {
+            NotificationCenter.default.removeObserver(eventStoreChangedObserver)
+            self.eventStoreChangedObserver = nil
+        }
+        if let selectionChangedObserver {
+            NotificationCenter.default.removeObserver(selectionChangedObserver)
+            self.selectionChangedObserver = nil
+        }
+        if let authorizationChangedObserver {
+            NotificationCenter.default.removeObserver(authorizationChangedObserver)
+            self.authorizationChangedObserver = nil
+        }
+    }
+
     deinit {
+        // `deinit` is nonisolated, so remove observers directly rather than
+        // calling the main-actor-isolated helper.
         if let eventStoreChangedObserver {
             NotificationCenter.default.removeObserver(eventStoreChangedObserver)
         }
@@ -117,8 +171,9 @@ class CalendarManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
+            guard let self, self.isActive else { return }
             Task {
-                await self?.reloadCalendarAndReminderLists()
+                await self.reloadCalendarAndReminderLists()
             }
         }
 
@@ -129,8 +184,9 @@ class CalendarManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
+            guard let self, self.isActive else { return }
             Task {
-                await self?.refreshSelectionAndEvents()
+                await self.refreshSelectionAndEvents()
             }
         }
 
@@ -139,8 +195,9 @@ class CalendarManager: ObservableObject {
             object: nil,
             queue: .main
         ) { [weak self] _ in
+            guard let self, self.isActive else { return }
             Task {
-                await self?.refreshAfterAuthorizationChange()
+                await self.refreshAfterAuthorizationChange()
             }
         }
     }

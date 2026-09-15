@@ -62,12 +62,38 @@ class WebcamManager: NSObject, ObservableObject {
     
     private override init() {
         super.init()
+        // Construction is inert: no observers, no discovery, no capture. The
+        // feature lifecycle calls `start()` only while Camera Mirror is enabled.
+    }
+
+    /// Whether the Camera Mirror feature is currently running.
+    private(set) var isActive = false
+
+    /// Starts availability monitoring. Does not request camera access and does
+    /// not start capture.
+    func start() {
         guard !TestHostPolicy.isActive else { return }
-        NotificationCenter.default.addObserver(self, selector: #selector(deviceWasDisconnected), name: .AVCaptureDeviceWasDisconnected, object: nil)
-        NotificationCenter.default.addObserver(self, selector: #selector(deviceWasConnected), name: .AVCaptureDeviceWasConnected, object: nil)
+        guard !isActive else { return }
+        isActive = true
+        authorizationStatus = AVCaptureDevice.authorizationStatus(for: .video)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(deviceWasDisconnected),
+            name: .AVCaptureDeviceWasDisconnected, object: nil)
+        NotificationCenter.default.addObserver(
+            self, selector: #selector(deviceWasConnected),
+            name: .AVCaptureDeviceWasConnected, object: nil)
         checkCameraAvailability()
     }
-    
+
+    /// Stops capture, releases the session, and removes device observers.
+    /// Persisted device/appearance preferences are untouched.
+    func stop() {
+        guard isActive else { return }
+        isActive = false
+        NotificationCenter.default.removeObserver(self)
+        stopSession()
+    }
+
     deinit {
         NotificationCenter.default.removeObserver(self)
         

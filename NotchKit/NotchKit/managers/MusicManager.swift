@@ -20,6 +20,8 @@ class MusicManager: ObservableObject {
     private var cancellables = Set<AnyCancellable>()
     private var controllerCancellables = Set<AnyCancellable>()
     private var debounceIdleTask: Task<Void, Never>?
+    /// Feature-owned startup work, cancelled by `stop()`.
+    private var refreshTasks: [Task<Void, Never>] = []
 
     // Helper to check if macOS has removed support for NowPlayingController
     public private(set) var isNowPlayingDeprecated: Bool = false
@@ -70,44 +72,69 @@ class MusicManager: ObservableObject {
 
     // MARK: - Initialization
     init() {
-        // A test host must not start media controllers or polling.
-        guard !TestHostPolicy.isActive else { return }
+        // Construction is inert. The feature lifecycle calls `start()` only while
+        // Media is enabled, so a disabled Media feature starts no controller,
+        // observer, child process, or polling.
+    }
 
-        // Listen for changes to the default controller preference
+    deinit {
+        stop()
+    }
+
+    /// Whether the Media feature is currently running.
+    private(set) var isActive = false
+
+    /// Starts media observation for the current controller preference.
+    ///
+    /// Safe to call more than once. Under a test host this is a no-op.
+    func start() {
+        guard !TestHostPolicy.isActive else { return }
+        guard !isActive else { return }
+        isActive = true
+
+        // Listen for changes to the default controller preference.
         NotificationCenter.default.publisher(for: Notification.Name.mediaControllerChanged)
             .sink { [weak self] _ in
                 self?.setActiveControllerBasedOnPreference()
             }
             .store(in: &cancellables)
 
-        // Initialize deprecation check asynchronously
-        Task { @MainActor in
+        // Initialize deprecation check asynchronously, then the controller.
+        let task = Task { @MainActor [weak self] in
+            guard let self, self.isActive else { return }
             do {
                 self.isNowPlayingDeprecated = try await self.mediaChecker.checkDeprecationStatus()
-                print("Deprecation check completed: \(self.isNowPlayingDeprecated)")
             } catch {
-                print("Failed to check deprecation status: \(error). Defaulting to false.")
                 self.isNowPlayingDeprecated = false
             }
-            
-            // Initialize the active controller after deprecation check
+            guard self.isActive else { return }
             self.setActiveControllerBasedOnPreference()
         }
+        refreshTasks.append(task)
     }
 
-    deinit {
-        destroy()
-    }
-    
-    public func destroy() {
+    /// Stops media observation and releases the active controller.
+    ///
+    /// Playback in external applications is never changed: NotchKit only stops
+    /// observing and never sends a pause.
+    func stop() {
+        isActive = false
+        refreshTasks.forEach { $0.cancel() }
+        refreshTasks.removeAll()
         debounceIdleTask?.cancel()
+        debounceIdleTask = nil
         cancellables.removeAll()
         controllerCancellables.removeAll()
         flipWorkItem?.cancel()
+        flipWorkItem = nil
         transitionWorkItem?.cancel()
-
-        // Release active controller
+        transitionWorkItem = nil
         activeController = nil
+    }
+
+    /// App-termination teardown. Retained for the existing call site.
+    public func destroy() {
+        stop()
     }
 
     // MARK: - Setup Methods

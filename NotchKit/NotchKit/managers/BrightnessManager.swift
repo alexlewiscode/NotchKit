@@ -15,7 +15,20 @@ final class BrightnessManager: ObservableObject {
 	private let visibleDuration: TimeInterval = 1.2
 	private let client = XPCHelperClient.shared
 
-	private init() { if !TestHostPolicy.isActive { refresh() } }
+	/// Whether the HUD feature is currently running.
+	private(set) var isActive = false
+
+	private init() {}
+
+	/// Reads the current screen brightness once. Does not poll.
+	func start() {
+		guard !TestHostPolicy.isActive else { return }
+		guard !isActive else { return }
+		isActive = true
+		refresh()
+	}
+
+	func stop() { isActive = false }
 
 	var shouldShowOverlay: Bool { Date().timeIntervalSince(lastChangeAt) < visibleDuration }
 
@@ -76,7 +89,20 @@ final class KeyboardBacklightManager: ObservableObject {
 	private let visibleDuration: TimeInterval = 1.2
 	private let client = XPCHelperClient.shared
 
-	private init() { if !TestHostPolicy.isActive { refresh() } }
+	/// Whether the HUD feature is currently running.
+	private(set) var isActive = false
+
+	private init() {}
+
+	/// Reads the current keyboard backlight once. Does not poll.
+	func start() {
+		guard !TestHostPolicy.isActive else { return }
+		guard !isActive else { return }
+		isActive = true
+		refresh()
+	}
+
+	func stop() { isActive = false }
 
 	var shouldShowOverlay: Bool { Date().timeIntervalSince(lastChangeAt) < visibleDuration }
 

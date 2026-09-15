@@ -89,12 +89,16 @@ final class NotchKitRuntime {
     func bootstrap() {
         do {
             var definitions = BuiltInExtensions.definitions()
+            definitions.append(contentsOf: LegacyFeatureSettings.definitions())
             #if !NOTCHKIT_CORE_ONLY
             definitions.append(try BatteryExtensionFactory.definition(monitor: batteryMonitor))
             #endif
             try catalog.add(contentsOf: definitions)
             try catalog.registerAll(into: registry)
             rebuildSettingsCatalog()
+            // Seed authoritative enablement from legacy masters once, before the
+            // host reconciles and activates anything.
+            FeatureEnablementMigration.runIfNeeded(manager: manager)
             host.start()
             presentation.refreshAll()
         } catch {
@@ -107,7 +111,13 @@ final class NotchKitRuntime {
     /// Called after definitions are registered and after any definition is
     /// removed, so a removed feature leaves no stale catalog entry or route.
     func rebuildSettingsCatalog() {
-        var runtimeManaged: Set<FeatureSettingsID> = []
+        var runtimeManaged: Set<FeatureSettingsID> = [
+            FeatureSettingsID(BuiltInExtensionIDs.shelf.rawValue),
+            LegacyFeatureSettings.calendarFeatureID,
+            LegacyFeatureSettings.mediaFeatureID,
+            LegacyFeatureSettings.hudFeatureID,
+            LegacyFeatureSettings.cameraFeatureID,
+        ]
         var order: [FeatureSettingsID: Int] = [
             FeatureSettingsID(BuiltInExtensionIDs.shelf.rawValue): 20,
             LegacyFeatureSettings.calendarFeatureID: LegacyFeatureSettings.calendarOrder,
@@ -124,8 +134,21 @@ final class NotchKitRuntime {
             from: registry.definitions,
             runtimeManaged: runtimeManaged,
             order: order,
-            adapters: LegacyFeatureSettings.adapters()
+            adapters: []
         )
+    }
+
+    /// Whether a feature's authoritative master enabled state is on.
+    ///
+    /// Core renderers use this instead of reading per-feature legacy
+    /// preferences, so a disabled feature hides its UI consistently.
+    func isFeatureEnabled(_ id: ExtensionIdentity) -> Bool {
+        manager.isEnabled(id)
+    }
+
+    /// The runtime phase for a feature, if it has been reconciled.
+    func phase(for id: ExtensionIdentity) -> ExtensionRuntimePhase {
+        host.phase(for: id)
     }
 
     /// Removes an extension and prunes the settings catalog. There is no
