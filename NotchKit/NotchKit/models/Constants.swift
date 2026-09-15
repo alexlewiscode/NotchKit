@@ -28,6 +28,31 @@ struct CustomVisualizer: Codable, Hashable, Equatable, Defaults.Serializable {
 enum CalendarSelectionState: Codable, Defaults.Serializable {
     case all
     case selected(Set<String>)
+
+    /// Applies a single-calendar toggle while preserving historical semantics:
+    /// deselecting from `.all` records an explicit set, and an empty or
+    /// exhaustive set collapses back to `.all`.
+    static func toggling(
+        _ calendarID: String,
+        isSelected: Bool,
+        allIDs: Set<String>,
+        from current: CalendarSelectionState
+    ) -> CalendarSelectionState {
+        switch current {
+        case .all:
+            guard !isSelected else { return .all }
+            return .selected(allIDs.subtracting([calendarID]))
+        case .selected(var identifiers):
+            if isSelected {
+                identifiers.insert(calendarID)
+            } else {
+                identifiers.remove(calendarID)
+            }
+            if identifiers.isEmpty { return .all }
+            if identifiers.count == allIDs.count { return .all }
+            return .selected(identifiers)
+        }
+    }
 }
 
 enum HideNotchOption: String, Defaults.Serializable {

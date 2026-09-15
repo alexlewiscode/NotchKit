@@ -32,9 +32,19 @@ final class CalendarSettingsDataProvider: ObservableObject {
     @Published private(set) var selectedCalendarIDs: Set<String> = []
 
     private let service: CalendarServiceProviding
+    private let selectionStore: CalendarSelectionStore
+    private var lastEventAuthorization: EKAuthorizationStatus?
+    private var lastReminderAuthorization: EKAuthorizationStatus?
+    /// Guards superseded list loads so a slower, older load cannot overwrite a
+    /// newer one.
+    private var loadGeneration = 0
 
-    init(service: CalendarServiceProviding = CalendarService()) {
+    init(
+        service: CalendarServiceProviding = CalendarService(),
+        selectionStore: CalendarSelectionStore = DefaultsCalendarSelectionStore()
+    ) {
         self.service = service
+        self.selectionStore = selectionStore
     }
 
     /// All calendars and reminder lists currently loaded.
@@ -44,14 +54,19 @@ final class CalendarSettingsDataProvider: ObservableObject {
     func refreshStatuses() {
         eventAuthorization = EKEventStore.authorizationStatus(for: .event)
         reminderAuthorization = EKEventStore.authorizationStatus(for: .reminder)
+        lastEventAuthorization = eventAuthorization
+        lastReminderAuthorization = reminderAuthorization
     }
 
     /// Loads the lists visible to the current authorization. Safe to call when
     /// access is not granted: it yields an empty list.
     func loadLists() async {
+        loadGeneration += 1
+        let generation = loadGeneration
         isLoading = true
-        defer { isLoading = false }
         let all = await service.calendars()
+        guard generation == loadGeneration else { return }
+        isLoading = false
         eventCalendars = all.filter { !$0.isReminder }
         reminderLists = all.filter { $0.isReminder }
         reloadSelection()
@@ -64,6 +79,7 @@ final class CalendarSettingsDataProvider: ObservableObject {
         }
         refreshStatuses()
         await loadLists()
+        NotificationCenter.default.post(name: .calendarAuthorizationChanged, object: nil)
     }
 
     /// Explicit user action: requests reminder access, then reloads if granted.
@@ -73,13 +89,26 @@ final class CalendarSettingsDataProvider: ObservableObject {
         }
         refreshStatuses()
         await loadLists()
+        NotificationCenter.default.post(name: .calendarAuthorizationChanged, object: nil)
     }
 
-    /// Re-reads status and lists after the user returns from System Settings.
+    /// Re-reads status and lists after the user returns from System Settings,
+    /// and signals a running feature only when the authorization actually
+    /// changed so the page does not spam refreshes.
     func refreshAfterReturningToApp() async {
-        refreshStatuses()
+        let previousEvent = lastEventAuthorization
+        let previousReminder = lastReminderAuthorization
+        eventAuthorization = EKEventStore.authorizationStatus(for: .event)
+        reminderAuthorization = EKEventStore.authorizationStatus(for: .reminder)
+        let changed = eventAuthorization != previousEvent || reminderAuthorization != previousReminder
+        lastEventAuthorization = eventAuthorization
+        lastReminderAuthorization = reminderAuthorization
+
         if eventAuthorization == .fullAccess || reminderAuthorization == .fullAccess {
             await loadLists()
+        }
+        if changed {
+            NotificationCenter.default.post(name: .calendarAuthorizationChanged, object: nil)
         }
     }
 
@@ -87,33 +116,23 @@ final class CalendarSettingsDataProvider: ObservableObject {
         selectedCalendarIDs.contains(calendar.id)
     }
 
-    /// Preserves the historical `calendarSelectionState` semantics: toggling all
-    /// calendars off records an explicit selection set, and an empty/exhaustive
-    /// selection collapses back to `.all`.
+    /// Preserves the historical `calendarSelectionState` semantics and signals a
+    /// running feature through the shared store.
     func setSelected(_ calendar: CalendarModel, isSelected: Bool) {
         let all = allCalendars
-        var state = Defaults[.calendarSelectionState]
-        switch state {
-        case .all:
-            if !isSelected {
-                state = .selected(Set(all.map(\.id)).subtracting([calendar.id]))
-            }
-        case .selected(var identifiers):
-            if isSelected {
-                identifiers.insert(calendar.id)
-            } else {
-                identifiers.remove(calendar.id)
-            }
-            state = identifiers.isEmpty
-                ? .all
-                : identifiers.count == all.count ? .all : .selected(identifiers)
-        }
-        Defaults[.calendarSelectionState] = state
+        let updated = CalendarSelectionState.toggling(
+            calendar.id,
+            isSelected: isSelected,
+            allIDs: Set(all.map(\.id)),
+            from: selectionStore.selectionState
+        )
+        selectionStore.selectionState = updated
         reloadSelection()
+        selectionStore.notifySelectionChanged()
     }
 
     private func reloadSelection() {
-        switch Defaults[.calendarSelectionState] {
+        switch selectionStore.selectionState {
         case .all:
             selectedCalendarIDs = Set(allCalendars.map(\.id))
         case .selected(let identifiers):
