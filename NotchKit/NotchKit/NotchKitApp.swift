@@ -298,6 +298,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         // notch windows, or present onboarding.
         guard !TestHostPolicy.isActive else { return }
 
+        TestHostPolicy.markProductionStartup()
         NotchKitRuntime.shared.bootstrap()
 
         // If automatic migration could not read the previous boringNotch

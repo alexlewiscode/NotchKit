@@ -44,9 +44,13 @@ enum TestHostPolicy {
         )
     }
 
-    /// Marks that production startup ran. A no-op under the test host.
+    /// Records that a production launch entry point actually proceeded.
+    ///
+    /// This deliberately does not check `isActive`: the callers are responsible
+    /// for guarding first. That way, deleting a guard makes this run under the
+    /// test host, sets the flag, and fails `TestHostIsolationTests` instead of
+    /// silently reintroducing production startup.
     nonisolated static func markProductionStartup() {
-        guard !isActive else { return }
         productionStartupDidRun = true
     }
 

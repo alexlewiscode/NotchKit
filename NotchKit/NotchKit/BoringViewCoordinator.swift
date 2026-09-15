@@ -103,6 +103,12 @@ class BoringViewCoordinator: ObservableObject {
     private var hudReplacementCancellable: AnyCancellable?
 
     private init() {
+        // This type is constructed by other service singletons' stored
+        // properties, so it must be inert before its own guard. Under a test host
+        // it must not migrate/write preferences, install observers, or start the
+        // media-key interceptor.
+        guard !TestHostPolicy.isActive else { return }
+
         // Perform migration from name-based to UUID-based storage
         if preferredScreenUUID == nil, let legacyName = legacyPreferredScreenName {
             // Try to find screen by name and migrate to UUID
