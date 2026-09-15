@@ -72,19 +72,6 @@ public final class BatteryExtension: NotchExtension {
         ]
     }
 
-    public func settingsDestinations() -> [ExtensionSettingsDestination] {
-        guard isActive else { return [] }
-        return [
-            ExtensionSettingsDestination(
-                id: BatteryIds.settingsDestination,
-                title: "Battery",
-                iconSystemName: "battery.100",
-                isAvailable: { true },
-                makeView: { AnyView(BatterySettingsView()) }
-            )
-        ]
-    }
-
     /// Requests the core-owned expanding notification. Core decides whether and
     /// how to present it; the extension only asks.
     private func snapshotChanged(_ snapshot: BatterySnapshot) {
@@ -103,7 +90,9 @@ public final class BatteryExtension: NotchExtension {
 /// Builds the Battery `ExtensionDefinition`.
 ///
 /// The host injects the app-wide monitor so the header indicator and the
-/// extension instance observe the same service.
+/// extension instance observe the same service. The settings page is declared
+/// lifecycle-independently here, so it is reachable while Battery is disabled or
+/// failed and opening it never starts the monitor.
 public enum BatteryExtensionFactory {
     /// The runtime-free manifest. Safe to read without starting services.
     public static func metadata() throws -> ExtensionMetadata {
@@ -113,7 +102,20 @@ public enum BatteryExtensionFactory {
     /// A definition whose instance shares `monitor`.
     @MainActor
     public static func definition(monitor: BatteryMonitor) throws -> ExtensionDefinition {
-        ExtensionDefinition(metadata: try BatteryManifest.metadata()) { context in
+        ExtensionDefinition(
+            metadata: try BatteryManifest.metadata(),
+            settings: {
+                [
+                    ExtensionSettingsDestination(
+                        id: BatteryIds.settingsDestination,
+                        title: "Battery",
+                        iconSystemName: "battery.100",
+                        isAvailable: { true },
+                        makeView: { AnyView(BatterySettingsView()) }
+                    )
+                ]
+            }
+        ) { context in
             BatteryExtension(context: context, monitor: monitor)
         }
     }

@@ -70,7 +70,21 @@ enum BuiltInExtensions {
                     )
                 ],
                 defaultEnabled: true
-            )
+            ),
+            settings: {
+                [
+                    ExtensionSettingsDestination(
+                        id: BuiltInExtensionIDs.shelfSettings,
+                        title: "Shelf",
+                        iconSystemName: "tray.fill",
+                        // Configuration stays reachable regardless of the
+                        // `boringShelf`/extension-state flags, so a user can
+                        // always restore Shelf visibility.
+                        isAvailable: { true },
+                        makeView: { AnyView(ShelfSettingsPage()) }
+                    )
+                ]
+            }
         ) { _ in
             ShelfExtension()
         }
@@ -105,8 +119,10 @@ final class HomeExtension: NotchExtension {
     }
 }
 
-/// The activated Shelf extension. Contributes the Shelf tab and settings page
-/// while active.
+/// The activated Shelf extension. Contributes the Shelf tab while active.
+///
+/// Settings are declared on `shelfDefinition`, not here, so configuration is
+/// reachable while Shelf is disabled or failed.
 @MainActor
 final class ShelfExtension: NotchExtension {
     func openDestinations() -> [NotchOpenDestination] {
@@ -118,18 +134,6 @@ final class ShelfExtension: NotchExtension {
                 order: 1,
                 isAvailable: { Defaults[.boringShelf] },
                 makeView: { AnyView(ShelfView()) }
-            )
-        ]
-    }
-
-    func settingsDestinations() -> [ExtensionSettingsDestination] {
-        [
-            ExtensionSettingsDestination(
-                id: BuiltInExtensionIDs.shelfSettings,
-                title: "Shelf",
-                iconSystemName: "tray.fill",
-                isAvailable: { Defaults[.boringShelf] },
-                makeView: { AnyView(Shelf()) }
             )
         ]
     }

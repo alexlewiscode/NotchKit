@@ -40,11 +40,15 @@ class SettingsWindowController: NSWindowController {
     private func setupWindow() {
         guard let window = window else { return }
         
-        window.title = "Boring Notch Settings"
+        window.title = "NotchKit Settings"
         window.titlebarAppearsTransparent = false
         window.titleVisibility = .visible
         window.toolbarStyle = .unified
         window.isMovableByWindowBackground = true
+        // Minimum size keeps the sidebar, longer localized labels, and the
+        // extension detail navigation usable while remaining resizable.
+        window.minSize = NSSize(width: 760, height: 560)
+        window.contentMinSize = NSSize(width: 760, height: 560)
         
         // Make it behave like a regular app window with proper Spaces support
         window.collectionBehavior = [.managed, .participatesInCycle, .fullScreenAuxiliary]

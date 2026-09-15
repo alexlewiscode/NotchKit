@@ -32,6 +32,8 @@ final class NotchKitRuntime {
 
     let registry: ExtensionRegistry
     let catalog = ExtensionCatalog()
+    /// Authoritative settings catalog for the Extensions hub.
+    let settingsCatalog = SettingsCatalog()
     let manager: ExtensionManager
     let contributions = ContributionStore()
     let presentation: PresentationCoordinator
@@ -92,11 +94,46 @@ final class NotchKitRuntime {
             #endif
             try catalog.add(contentsOf: definitions)
             try catalog.registerAll(into: registry)
+            rebuildSettingsCatalog()
             host.start()
             presentation.refreshAll()
         } catch {
             logger.error("NotchKit bootstrap failed: \(String(describing: error), privacy: .public)")
         }
+    }
+
+    /// Rebuilds the authoritative settings catalog from the registry.
+    ///
+    /// Called after definitions are registered and after any definition is
+    /// removed, so a removed feature leaves no stale catalog entry or route.
+    func rebuildSettingsCatalog() {
+        var runtimeManaged: Set<FeatureSettingsID> = []
+        var order: [FeatureSettingsID: Int] = [
+            FeatureSettingsID(BuiltInExtensionIDs.shelf.rawValue): 20,
+            LegacyFeatureSettings.calendarFeatureID: LegacyFeatureSettings.calendarOrder,
+            LegacyFeatureSettings.mediaFeatureID: LegacyFeatureSettings.mediaOrder,
+            LegacyFeatureSettings.hudFeatureID: LegacyFeatureSettings.hudOrder,
+            LegacyFeatureSettings.cameraFeatureID: LegacyFeatureSettings.cameraOrder,
+        ]
+        #if !NOTCHKIT_CORE_ONLY
+        let batteryFeatureID = FeatureSettingsID(BatteryIds.identity.rawValue)
+        runtimeManaged.insert(batteryFeatureID)
+        order[batteryFeatureID] = 0
+        #endif
+        settingsCatalog.rebuild(
+            from: registry.definitions,
+            runtimeManaged: runtimeManaged,
+            order: order,
+            adapters: LegacyFeatureSettings.adapters()
+        )
+    }
+
+    /// Removes an extension and prunes the settings catalog. There is no
+    /// production uninstall surface today; this keeps the removal path honest
+    /// for tests and future code.
+    func removeExtension(_ id: ExtensionIdentity) {
+        host.remove(id)
+        rebuildSettingsCatalog()
     }
 
     /// Re-evaluates enabled state and routing after a settings change.

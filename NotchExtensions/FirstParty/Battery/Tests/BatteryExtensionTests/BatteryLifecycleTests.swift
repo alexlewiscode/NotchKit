@@ -284,15 +284,51 @@ final class BatteryLifecycleTests: XCTestCase {
         let sut = BatteryExtension(context: context, monitor: monitor)
 
         XCTAssertTrue(sut.closedNotchContributions().isEmpty)
-        XCTAssertTrue(sut.settingsDestinations().isEmpty)
 
         try await sut.activate()
         XCTAssertEqual(sut.closedNotchContributions().count, 1)
-        XCTAssertEqual(sut.settingsDestinations().count, 1)
 
         sut.deactivate()
         XCTAssertTrue(sut.closedNotchContributions().isEmpty)
-        XCTAssertTrue(sut.settingsDestinations().isEmpty)
+    }
+
+    // MARK: Lifecycle-independent settings
+
+    func testSettingsAreDeclaredOnDefinitionWithoutStartingMonitor() throws {
+        resetSettings()
+        let source = FakePowerSource()
+        let monitor = BatteryMonitor(source: source)
+        let definition = try BatteryExtensionFactory.definition(monitor: monitor)
+
+        // Evaluating the settings declaration is configuration-only.
+        let destinations = definition.settings()
+        XCTAssertEqual(destinations.count, 1)
+        XCTAssertEqual(destinations.first?.id, BatteryIds.settingsDestination)
+        XCTAssertEqual(source.startCount, 0)
+        XCTAssertFalse(monitor.isRunning)
+
+        // Building the settings view is also configuration-only.
+        _ = destinations.first?.makeView()
+        XCTAssertEqual(source.startCount, 0)
+        XCTAssertFalse(monitor.isRunning)
+    }
+
+    func testSettingsPageReadsSameStoredKeysAsHostHistory() throws {
+        resetSettings()
+        let source = FakePowerSource()
+        let monitor = BatteryMonitor(source: source)
+        let definition = try BatteryExtensionFactory.definition(monitor: monitor)
+        guard let destination = definition.settings().first else {
+            return XCTFail("Missing settings destination")
+        }
+
+        BatterySettings.showBatteryIndicator = false
+        let preferenceKey = BatterySettingsKeys.showBatteryIndicator
+        XCTAssertEqual(UserDefaults.standard.object(forKey: preferenceKey) as? Bool, false)
+
+        _ = destination.makeView()
+        XCTAssertEqual(UserDefaults.standard.object(forKey: preferenceKey) as? Bool, false)
+        resetSettings()
     }
 
     func testContributionAvailabilityMatchesLegacyGating() async throws {
