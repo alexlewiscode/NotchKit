@@ -127,4 +127,25 @@ final class CalendarSettingsProviderTests: XCTestCase {
             "A slower, older load must not overwrite the newer result"
         )
     }
+
+    func testSettingsDoNotInstantiateCalendarManager() async {
+        let before = CalendarManager.instanceCount
+        let service = FakeCalendarService()
+        service.calendarResults = [[makeCalendar("a")]]
+        let provider = CalendarSettingsDataProvider(
+            service: service,
+            selectionStore: InMemoryCalendarSelectionStore()
+        )
+
+        provider.refreshStatuses()
+        await provider.loadLists()
+        provider.setSelected(makeCalendar("a"), isSelected: false)
+        await provider.refreshAfterReturningToApp()
+
+        XCTAssertEqual(
+            CalendarManager.instanceCount,
+            before,
+            "The settings page must never instantiate a CalendarManager"
+        )
+    }
 }

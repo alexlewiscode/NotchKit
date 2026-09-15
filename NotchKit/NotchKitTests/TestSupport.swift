@@ -45,6 +45,9 @@ final class FakeCalendarService: CalendarServiceProviding {
     var calendarResults: [[CalendarModel]] = []
     private(set) var calendarCallCount = 0
 
+    /// Optional deterministic event source keyed by the requested calendar ids.
+    var eventsHandler: (([String]) -> [EventModel])?
+
     func authorizationStatus(for type: EKEntityType) -> EKAuthorizationStatus {
         statuses[type] ?? .notDetermined
     }
@@ -64,7 +67,7 @@ final class FakeCalendarService: CalendarServiceProviding {
     }
 
     func events(from start: Date, to end: Date, calendars: [String]) async -> [EventModel] {
-        []
+        eventsHandler?(calendars) ?? []
     }
 }
 
@@ -89,8 +92,10 @@ final class GatedCalendarService: CalendarServiceProviding {
     }
 
     func events(from start: Date, to end: Date, calendars: [String]) async -> [EventModel] {
-        []
+        eventsHandler?(calendars) ?? []
     }
+
+    var eventsHandler: (([String]) -> [EventModel])?
 
     func releaseFirstCall() {
         gate?.resume()
@@ -108,6 +113,25 @@ func makeCalendar(_ id: String, isReminder: Bool = false) -> CalendarModel {
         color: .systemBlue,
         isSubscribed: false,
         isReminder: isReminder
+    )
+}
+
+func makeEvent(id: String, calendar: String, start: Date = Date()) -> EventModel {
+    EventModel(
+        id: id,
+        start: start,
+        end: start.addingTimeInterval(3600),
+        title: id,
+        location: nil,
+        notes: nil,
+        url: nil,
+        isAllDay: false,
+        type: .event(.unknown),
+        calendar: makeCalendar(calendar),
+        participants: [],
+        timeZone: nil,
+        hasRecurrenceRules: false,
+        priority: nil
     )
 }
 

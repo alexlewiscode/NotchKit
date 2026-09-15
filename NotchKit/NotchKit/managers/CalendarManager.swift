@@ -47,6 +47,11 @@ final class DefaultsCalendarSelectionStore: CalendarSelectionStore {
 class CalendarManager: ObservableObject {
     static let shared = CalendarManager()
 
+    /// Test instrumentation: how many managers this process has constructed.
+    /// Settings must never construct a manager, so provider tests assert this
+    /// does not change.
+    private(set) static var instanceCount = 0
+
     @Published var currentWeekStartDate: Date
     @Published var events: [EventModel] = []
     @Published var allCalendars: [CalendarModel] = []
@@ -64,14 +69,21 @@ class CalendarManager: ObservableObject {
     private var selectionChangedObserver: NSObjectProtocol?
     private var authorizationChangedObserver: NSObjectProtocol?
 
-    /// Guards asynchronous refreshes so a slower, older result can never
-    /// overwrite a newer selection. Only the latest generation may publish.
-    private var refreshGeneration = 0
+    /// List loading and event refreshing are ordered independently. A selection
+    /// or date change must never invalidate an in-flight list load (which would
+    /// leave the manager with empty lists), and an older event load must never
+    /// overwrite a newer one, even when both share a date or selection.
+    private var listGeneration = 0
+    private var eventGeneration = 0
 
     private init() {
+        Self.instanceCount += 1
         self.calendarService = CalendarService()
         self.selectionStore = DefaultsCalendarSelectionStore()
         self.currentWeekStartDate = CalendarManager.startOfDay(Date())
+        // The production singleton must be inert under a test host; tests build
+        // managers through the injected initializer below.
+        guard !TestHostPolicy.isActive else { return }
         setupObservers()
         Task {
             await reloadCalendarAndReminderLists()
@@ -80,6 +92,7 @@ class CalendarManager: ObservableObject {
 
     /// Seam for tests: inject the calendar service and selection persistence.
     init(calendarService: CalendarServiceProviding, selectionStore: CalendarSelectionStore) {
+        Self.instanceCount += 1
         self.calendarService = calendarService
         self.selectionStore = selectionStore
         self.currentWeekStartDate = CalendarManager.startOfDay(Date())
@@ -134,11 +147,14 @@ class CalendarManager: ObservableObject {
 
     @MainActor
     func reloadCalendarAndReminderLists() async {
-        refreshGeneration += 1
-        let generation = refreshGeneration
+        listGeneration += 1
+        let generation = listGeneration
         let all = await calendarService.calendars()
-        guard generation == refreshGeneration else { return }
+        guard generation == listGeneration else { return }
         applyCalendars(all)
+        // Always recompute events after a fresh list: a selection change may have
+        // arrived while the lists were loading.
+        await refreshEvents()
     }
 
     private func applyCalendars(_ all: [CalendarModel]) {
@@ -149,28 +165,28 @@ class CalendarManager: ObservableObject {
     }
 
     /// Rebuilds the effective selection from the shared store and refreshes
-    /// events. Called when the settings page changes the selection.
+    /// events. Called when the settings page changes the selection. This does not
+    /// touch list loading, so a concurrent initial load still completes.
     func refreshSelectionAndEvents() async {
-        refreshGeneration += 1
         updateSelectedCalendars()
-        await updateEvents()
+        await refreshEvents()
     }
 
     /// Reloads lists, selection, and events after an authorization change such
     /// as an explicit grant on the settings page.
     func refreshAfterAuthorizationChange() async {
-        refreshGeneration += 1
         refreshCalendarAuthorizationStatus()
-        let generation = refreshGeneration
+        listGeneration += 1
+        let generation = listGeneration
         let all = await calendarService.calendars()
-        guard generation == refreshGeneration else { return }
+        guard generation == listGeneration else { return }
         applyCalendars(all)
-        await updateEvents()
+        await refreshEvents()
     }
 
     func refreshCalendarAuthorizationStatus() {
-        calendarAuthorizationStatus = EKEventStore.authorizationStatus(for: .event)
-        reminderAuthorizationStatus = EKEventStore.authorizationStatus(for: .reminder)
+        calendarAuthorizationStatus = calendarService.authorizationStatus(for: .event)
+        reminderAuthorizationStatus = calendarService.authorizationStatus(for: .reminder)
     }
 
     func updateSelectedCalendars() {
@@ -190,24 +206,27 @@ class CalendarManager: ObservableObject {
 
     func updateCurrentDate(_ date: Date) async {
         currentWeekStartDate = Calendar.current.startOfDay(for: date)
-        await updateEvents()
+        await refreshEvents()
     }
 
-    private func updateEvents() async {
-        let generation = refreshGeneration
+    private func refreshEvents() async {
+        eventGeneration += 1
+        let generation = eventGeneration
         let calendarIDs = selectedCalendars.map { $0.id }
+        let start = currentWeekStartDate
+        let end = Calendar.current.date(byAdding: .day, value: 1, to: start)!
         let eventsResult = await calendarService.events(
-            from: currentWeekStartDate,
-            to: Calendar.current.date(byAdding: .day, value: 1, to: currentWeekStartDate)!,
+            from: start,
+            to: end,
             calendars: calendarIDs
         )
-        guard generation == refreshGeneration else { return }
+        guard generation == eventGeneration else { return }
         self.events = eventsResult
     }
 
     func setReminderCompleted(reminderID: String, completed: Bool) async {
         await calendarService.setReminderCompleted(reminderID: reminderID, completed: completed)
         // Refresh events after updating
-        await updateEvents()
+        await refreshEvents()
     }
 }
