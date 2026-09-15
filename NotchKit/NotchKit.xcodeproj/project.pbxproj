@@ -149,10 +149,157 @@
 		B1F0A0022E60000100000001 /* BrightnessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1F0A0012E60000100000001 /* BrightnessManager.swift */; };
 		B1F747F92EC7E94000F841DB /* LottieView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1F747F82EC7E94000F841DB /* LottieView.swift */; };
 		B1FEB4992C7686630066EBBC /* PanGesture.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1FEB4982C7686630066EBBC /* PanGesture.swift */; };
+		CD0000000000000000000001 /* copied build file */ = {isa = PBXBuildFile; fileRef = 115C12EB2ED3D003009754CA /* OpenNotchHUD.swift */; };
+		CD0000000000000000000002 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14C08BB82C8DE4B1000F8AA0 /* BoringCalendar.swift */; };
+		CD0000000000000000000003 /* copied build file */ = {isa = PBXBuildFile; fileRef = 5955950C2E900ED800C66711 /* ApplicationRelauncher.swift */; };
+		CD0000000000000000000004 /* copied build file */ = {isa = PBXBuildFile; fileRef = 110029292E8691B400035A57 /* FileShareView.swift */; };
+		CD0000000000000000000005 /* copied build file */ = {isa = PBXBuildFile; fileRef = 147163972C5D35B70068B555 /* MusicVisualizer.swift */; };
+		CD0000000000000000000006 /* copied build file */ = {isa = PBXBuildFile; fileRef = 11CC44A12CEE614100C7244B /* BoringViewCoordinator.swift */; };
+		CD0000000000000000000007 /* copied build file */ = {isa = PBXBuildFile; fileRef = B186543B2C6F49AE000B926A /* ShortcutConstants.swift */; };
+		CD0000000000000000000008 /* copied build file */ = {isa = PBXBuildFile; fileRef = 11A45C782E34E63100CEB175 /* MediaChecker.swift */; };
+		CD0000000000000000000009 /* copied build file */ = {isa = PBXBuildFile; fileRef = B1D365CD2C6A979C0047BDBC /* LiveActivityModifier.swift */; };
+		CD000000000000000000000A /* copied build file */ = {isa = PBXBuildFile; fileRef = 1113ABCF2E80E6BB00EC13B2 /* ThumbnailService.swift */; };
+		CD000000000000000000000B /* copied build file */ = {isa = PBXBuildFile; fileRef = 11CFC65A2E097E9D00748C80 /* WelcomeView.swift */; };
+		CD000000000000000000000C /* copied build file */ = {isa = PBXBuildFile; fileRef = 14D570BF2C5EA5870011E668 /* AnimatedFace.swift */; };
+		CD000000000000000000000D /* copied build file */ = {isa = PBXBuildFile; fileRef = B1D6FD422C6603730015F173 /* SoftwareUpdater.swift */; };
+		CD000000000000000000000E /* copied build file */ = {isa = PBXBuildFile; fileRef = 111BE9942ECF2DEF0079DD4E /* DragDetector.swift */; };
+		CD000000000000000000000F /* copied build file */ = {isa = PBXBuildFile; fileRef = B1D365CF2C6A9A6C0047BDBC /* SystemEventIndicatorModifier.swift */; };
+		CD0000000000000000000010 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1194E87B2EA19E09009C82D6 /* ImageProcessingService.swift */; };
+		CD0000000000000000000011 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1194E8862EA6DDA7009C82D6 /* BoringNotchSkyLightWindow.swift */; };
+		CD0000000000000000000012 /* copied build file */ = {isa = PBXBuildFile; fileRef = 9A0887312C7A693000C160EA /* TabButton.swift */; };
+		CD0000000000000000000013 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1153BD9B2D98853B00979FB0 /* NowPlayingController.swift */; };
+		CD0000000000000000000014 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1194E93F2EACC652009C82D6 /* Color+AccentColor.swift */; };
+		CD0000000000000000000015 /* copied build file */ = {isa = PBXBuildFile; fileRef = B141C2402CA5F53E00AC8CC8 /* SparkleView.swift */; };
+		CD0000000000000000000016 /* copied build file */ = {isa = PBXBuildFile; fileRef = 116398952DF5D6C00052E6AF /* CalendarServiceProviding.swift */; };
+		CD0000000000000000000017 /* copied build file */ = {isa = PBXBuildFile; fileRef = 59D8C23B2E589FAA00147B33 /* VolumeManager.swift */; };
+		CD0000000000000000000018 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1163988C2DF5CAB40052E6AF /* EventModel.swift */; };
+		CD0000000000000000000019 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14D570B82C5E98A20011E668 /* drop.swift */; };
+		CD000000000000000000001A /* copied build file */ = {isa = PBXBuildFile; fileRef = 11EFCD6F2E8E92D600D0B974 /* ShelfItemViewModel.swift */; };
+		CD000000000000000000001B /* copied build file */ = {isa = PBXBuildFile; fileRef = 1153BDA62D99B22200979FB0 /* YouTubeMusicController.swift */; };
+		CD000000000000000000001C /* copied build file */ = {isa = PBXBuildFile; fileRef = 1163988E2DF5CC870052E6AF /* CalendarModel.swift */; };
+		CD000000000000000000001D /* copied build file */ = {isa = PBXBuildFile; fileRef = 1153BD992D98824300979FB0 /* SpotifyController.swift */; };
+		CD000000000000000000001E /* copied build file */ = {isa = PBXBuildFile; fileRef = 118EBE282E946B3F00D54B5A /* ShareServiceFinder.swift */; };
+		CD000000000000000000001F /* copied build file */ = {isa = PBXBuildFile; fileRef = B19424082CD0FEFE003E5DC2 /* LottieAnimationView.swift */; };
+		CD0000000000000000000020 /* copied build file */ = {isa = PBXBuildFile; fileRef = B1F747F82EC7E94000F841DB /* LottieView.swift */; };
+		CD0000000000000000000021 /* copied build file */ = {isa = PBXBuildFile; fileRef = B1C974332C642B6D0000E707 /* MarqueeTextView.swift */; };
+		CD0000000000000000000022 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14288DE72C6E01C800B9F80C /* ProgressIndicator.swift */; };
+		CD0000000000000000000023 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1113ABC32E80E27000EC13B2 /* ShelfItemView.swift */; };
+		CD0000000000000000000024 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1113ABBE2E80E27000EC13B2 /* ShelfPersistenceService.swift */; };
+		CD0000000000000000000025 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1113ABB72E80E27000EC13B2 /* ShelfItem.swift */; };
+		CD0000000000000000000026 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1113ABC02E80E27000EC13B2 /* ShelfSelectionModel.swift */; };
+		CD0000000000000000000027 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1113ABBA2E80E27000EC13B2 /* QuickLookService.swift */; };
+		CD0000000000000000000028 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1113ABBD2E80E27000EC13B2 /* ShelfDropService.swift */; };
+		CD0000000000000000000029 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1100292D2E86940F00035A57 /* QuickShareService.swift */; };
+		CD000000000000000000002A /* copied build file */ = {isa = PBXBuildFile; fileRef = 1113ABBC2E80E27000EC13B2 /* ShelfActionService.swift */; };
+		CD000000000000000000002B /* copied build file */ = {isa = PBXBuildFile; fileRef = 1160F8D72DD98230006FBB94 /* NotchShape.swift */; };
+		CD000000000000000000002C /* copied build file */ = {isa = PBXBuildFile; fileRef = 5917FD102E57891600E87F1C /* MediaKeyInterceptor.swift */; };
+		CD000000000000000000002D /* copied build file */ = {isa = PBXBuildFile; fileRef = 14C08BC02C8E03AD000F8AA0 /* NSImage+Extensions.swift */; };
+		CD000000000000000000002E /* copied build file */ = {isa = PBXBuildFile; fileRef = 149E0B992C737D40006418B1 /* WebcamView.swift */; };
+		CD000000000000000000002F /* copied build file */ = {isa = PBXBuildFile; fileRef = 147163992C5D35FF0068B555 /* MusicManager.swift */; };
+		CD0000000000000000000030 /* copied build file */ = {isa = PBXBuildFile; fileRef = B1B112922C6A577E00093D8F /* MouseTracker.swift */; };
+		CD0000000000000000000031 /* copied build file */ = {isa = PBXBuildFile; fileRef = B1C448952C9712C4001F0858 /* ActionBar.swift */; };
+		CD0000000000000000000032 /* copied build file */ = {isa = PBXBuildFile; fileRef = 118EBE302E9717DB00D54B5A /* URL+SecurityScoped.swift */; };
+		CD0000000000000000000033 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1132E5152E777C140068732D /* YouTubeMusicAuthentication.swift */; };
+		CD0000000000000000000034 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14A7E5872C64A89C008C1BE9 /* HelloAnimation.swift */; };
+		CD0000000000000000000035 /* copied build file */ = {isa = PBXBuildFile; fileRef = 111BEA602ED09B1B0079DD4E /* NSScreen+UUID.swift */; };
+		CD0000000000000000000036 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1153BD8D2D986B1F00979FB0 /* MediaControllerProtocol.swift */; };
+		CD0000000000000000000037 /* copied build file */ = {isa = PBXBuildFile; fileRef = 9AB0C6BB2C73C9CB00F7CD30 /* NotchHomeView.swift */; };
+		CD0000000000000000000038 /* copied build file */ = {isa = PBXBuildFile; fileRef = B172AABF2C95DA0B001623F1 /* InlineHUD.swift */; };
+		CD0000000000000000000039 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14E9FEA92C70BF610062E83F /* DownloadView.swift */; };
+		CD000000000000000000003A /* copied build file */ = {isa = PBXBuildFile; fileRef = B1B112902C6A572100093D8F /* EditPanelView.swift */; };
+		CD000000000000000000003B /* copied build file */ = {isa = PBXBuildFile; fileRef = B1C4489A2C97376A001F0858 /* TipStore.swift */; };
+		CD000000000000000000003C /* copied build file */ = {isa = PBXBuildFile; fileRef = 1153BD902D986DB300979FB0 /* PlaybackState.swift */; };
+		CD000000000000000000003D /* copied build file */ = {isa = PBXBuildFile; fileRef = B1A78C812C8BA08100BD51B0 /* FullscreenMediaDetection.swift */; };
+		CD000000000000000000003E /* copied build file */ = {isa = PBXBuildFile; fileRef = 14E9FEAD2C7325770062E83F /* Button+Bouncing.swift */; };
+		CD000000000000000000003F /* copied build file */ = {isa = PBXBuildFile; fileRef = 14D570C82C5F38890011E668 /* BoringViewModel.swift */; };
+		CD0000000000000000000040 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14D570BB2C5E98EB0011E668 /* generic.swift */; };
+		CD0000000000000000000041 /* copied build file */ = {isa = PBXBuildFile; fileRef = 118EBE262E92DE7400D54B5A /* NSMenu+AssociatedObject.swift */; };
+		CD0000000000000000000042 /* copied build file */ = {isa = PBXBuildFile; fileRef = B1CE8CFD2C6F659400DD9871 /* KeyboardShortcutsHelper.swift */; };
+		CD0000000000000000000043 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14D570C52C5F38210011E668 /* BoringHeader.swift */; };
+		CD0000000000000000000044 /* copied build file */ = {isa = PBXBuildFile; fileRef = B17266E22C65F7FB0031BA0D /* WhatsNewView.swift */; };
+		CD0000000000000000000045 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14C08BB52C8DE42D000F8AA0 /* CalendarManager.swift */; };
+		CD0000000000000000000046 /* copied build file */ = {isa = PBXBuildFile; fileRef = B10F84A22C6C9596009F3026 /* TestView.swift */; };
+		CD0000000000000000000047 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1443E7F22C609DCE0027C1FC /* matters.swift */; };
+		CD0000000000000000000048 /* copied build file */ = {isa = PBXBuildFile; fileRef = 11C5E3152DFE88510065821E /* SettingsView.swift */; };
+		CD0000000000000000000049 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1153BD922D986E4300979FB0 /* AppleMusicController.swift */; };
+		CD000000000000000000004A /* copied build file */ = {isa = PBXBuildFile; fileRef = 11C5E3112DFE85970065821E /* SettingsWindowController.swift */; };
+		CD000000000000000000004B /* copied build file */ = {isa = PBXBuildFile; fileRef = 110029262E84FD4C00035A57 /* TemporaryFileStorageService.swift */; };
+		CD000000000000000000004C /* copied build file */ = {isa = PBXBuildFile; fileRef = 11CFC6642E09C7B300748C80 /* OnboardingFinishView.swift */; };
+		CD000000000000000000004D /* copied build file */ = {isa = PBXBuildFile; fileRef = 507266DA2C908E2E00A2D00D /* HoverButton.swift */; };
+		CD000000000000000000004E /* copied build file */ = {isa = PBXBuildFile; fileRef = 1471A8582C6281BD0058408D /* BoringNotchWindow.swift */; };
+		CD000000000000000000004F /* copied build file */ = {isa = PBXBuildFile; fileRef = 14CEF4172C5CAED300855D72 /* ContentView.swift */; };
+		CD0000000000000000000050 /* copied build file */ = {isa = PBXBuildFile; fileRef = 9A987A032C73CA66005CA465 /* ShelfView.swift */; };
+		CD0000000000000000000051 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1132E5132E777B920068732D /* YouTubeMusicNetworking.swift */; };
+		CD0000000000000000000052 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1132E5102E777B6E0068732D /* YouTubeMusicModels.swift */; };
+		CD0000000000000000000053 /* copied build file */ = {isa = PBXBuildFile; fileRef = 11CFC65E2E097F2100748C80 /* OnboardingView.swift */; };
+		CD0000000000000000000054 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14CEF4152C5CAED300855D72 /* NotchKitApp.swift */; };
+		CD0000000000000000000055 /* copied build file */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000001 /* main.swift */; };
+		CD0000000000000000000056 /* copied build file */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000011 /* LegacyIdentityArchiveReader.swift */; };
+		CD0000000000000000000057 /* copied build file */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000013 /* IdentityMigrationCoordinator.swift */; };
+		CD0000000000000000000058 /* copied build file */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000015 /* ShelfBookmarkVerifier.swift */; };
+		CD0000000000000000000059 /* copied build file */ = {isa = PBXBuildFile; fileRef = A11CE0000000000000000017 /* LegacyImportFlow.swift */; };
+		CD000000000000000000005A /* copied build file */ = {isa = PBXBuildFile; fileRef = B17266DE2C64DFA00031BA0D /* BundleInfos.swift */; };
+		CD000000000000000000005B /* copied build file */ = {isa = PBXBuildFile; fileRef = 118EBE3A2E9720C500D54B5A /* ShelfStateViewModel.swift */; };
+		CD000000000000000000005C /* copied build file */ = {isa = PBXBuildFile; fileRef = 11F747CD2EC75CEA00F841DB /* DragPreviewView.swift */; };
+		CD000000000000000000005D /* copied build file */ = {isa = PBXBuildFile; fileRef = B10348D82C74E56000475897 /* ConditionalModifier.swift */; };
+		CD000000000000000000005E /* copied build file */ = {isa = PBXBuildFile; fileRef = 118D1FD02E98FF5F00A2FF63 /* SharingStateManager.swift */; };
+		CD000000000000000000005F /* copied build file */ = {isa = PBXBuildFile; fileRef = 14D570C12C5EAFBF0011E668 /* EmptyState.swift */; };
+		CD0000000000000000000060 /* copied build file */ = {isa = PBXBuildFile; fileRef = 118EBE242E92DCCB00D54B5A /* AssociatedObject.swift */; };
+		CD0000000000000000000061 /* copied build file */ = {isa = PBXBuildFile; fileRef = 11F748652EC9AC9600F841DB /* NotchKitXPCHelperProtocol.swift */; };
+		CD0000000000000000000062 /* copied build file */ = {isa = PBXBuildFile; fileRef = 11F748662EC9AC9600F841DB /* XPCHelperClient.swift */; };
+		CD0000000000000000000063 /* copied build file */ = {isa = PBXBuildFile; fileRef = 118EBE2C2E97165600D54B5A /* Bookmark.swift */; };
+		CD0000000000000000000064 /* copied build file */ = {isa = PBXBuildFile; fileRef = B1FEB4982C7686630066EBBC /* PanGesture.swift */; };
+		CD0000000000000000000065 /* copied build file */ = {isa = PBXBuildFile; fileRef = 11F748832ECB27DC00F841DB /* MusicSlotConfigurationView.swift */; };
+		CD0000000000000000000066 /* copied build file */ = {isa = PBXBuildFile; fileRef = 9A0887342C7AFF8E00C160EA /* TabSelectionView.swift */; };
+		CD0000000000000000000067 /* copied build file */ = {isa = PBXBuildFile; fileRef = 112FB7342CCF16F70015238C /* NotchSpaceManager.swift */; };
+		CD0000000000000000000068 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14FC6E4F2C7DED5600C7BEA5 /* DataTypes+Extensions.swift */; };
+		CD0000000000000000000069 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1153BD972D9881F900979FB0 /* AppleScriptHelper.swift */; };
+		CD000000000000000000006A /* copied build file */ = {isa = PBXBuildFile; fileRef = 11CFC6602E097F6800748C80 /* PermissionsRequestView.swift */; };
+		CD000000000000000000006B /* copied build file */ = {isa = PBXBuildFile; fileRef = 14D570D12C5F6C6A0011E668 /* BoringExtrasMenu.swift */; };
+		CD000000000000000000006C /* copied build file */ = {isa = PBXBuildFile; fileRef = 11D58EA12E760AE100FA8377 /* ImageService.swift */; };
+		CD000000000000000000006D /* copied build file */ = {isa = PBXBuildFile; fileRef = 11F748812ECB07A400F841DB /* MusicControlButton.swift */; };
+		CD000000000000000000006E /* copied build file */ = {isa = PBXBuildFile; fileRef = 14288DD62C6E015000B9F80C /* AudioPlayer.swift */; };
+		CD000000000000000000006F /* copied build file */ = {isa = PBXBuildFile; fileRef = 149E0B962C737D00006418B1 /* WebcamManager.swift */; };
+		CD0000000000000000000070 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14288E0B2C6F8EC000B9F80C /* AppIcons.swift */; };
+		CD0000000000000000000071 /* copied build file */ = {isa = PBXBuildFile; fileRef = B1C448972C972CC4001F0858 /* ListItemPopover.swift */; };
+		CD0000000000000000000072 /* copied build file */ = {isa = PBXBuildFile; fileRef = B19016232CC15B4D00E3F12E /* Constants.swift */; };
+		CD0000000000000000000073 /* copied build file */ = {isa = PBXBuildFile; fileRef = 1100290B2E847E2800035A57 /* NSItemProvider+LoadHelpers.swift */; };
+		CD0000000000000000000074 /* copied build file */ = {isa = PBXBuildFile; fileRef = 11CFC6622E09917B00748C80 /* MusicControllerSelectionView.swift */; };
+		CD0000000000000000000075 /* copied build file */ = {isa = PBXBuildFile; fileRef = B1F0A0012E60000100000001 /* BrightnessManager.swift */; };
+		CD0000000000000000000076 /* copied build file */ = {isa = PBXBuildFile; productRef = 111BEA5E2ED07A340079DD4E /* MacroVisionKit */; };
+		CD0000000000000000000077 /* copied build file */ = {isa = PBXBuildFile; productRef = 9A987A0F2C73CA8D005CA465 /* Collections */; };
+		CD0000000000000000000078 /* copied build file */ = {isa = PBXBuildFile; productRef = 1194E8842EA57D23009C82D6 /* SkyLightWindow */; };
+		CD0000000000000000000079 /* copied build file */ = {isa = PBXBuildFile; fileRef = 112B0EBA2E30DD5000562D6C /* MediaRemoteAdapter.framework */; };
+		CD000000000000000000007A /* copied build file */ = {isa = PBXBuildFile; productRef = 14D0321C2C68F3350096E6A1 /* Sparkle */; };
+		CD000000000000000000007B /* copied build file */ = {isa = PBXBuildFile; productRef = 111BEA6E2ED166E20079DD4E /* MacroVisionKit */; };
+		CD000000000000000000007C /* copied build file */ = {isa = PBXBuildFile; productRef = 11F748722EC9DA9300F841DB /* Lottie */; };
+		CD000000000000000000007D /* copied build file */ = {isa = PBXBuildFile; productRef = 14D032192C68F32E0096E6A1 /* LaunchAtLogin */; };
+		CD000000000000000000007E /* copied build file */ = {isa = PBXBuildFile; productRef = 111BEA502ECFBF7F0079DD4E /* MacroVisionKit */; };
+		CD000000000000000000007F /* copied build file */ = {isa = PBXBuildFile; productRef = B18654382C6F4990000B926A /* KeyboardShortcuts */; };
+		CD0000000000000000000080 /* copied build file */ = {isa = PBXBuildFile; productRef = B19016212CC15B3D00E3F12E /* Defaults */; };
+		CD0000000000000000000081 /* copied build file */ = {isa = PBXBuildFile; productRef = 111BE95C2ECD71E10079DD4E /* AsyncXPCConnection */; };
+		CD0000000000000000000082 /* copied build file */ = {isa = PBXBuildFile; productRef = B1628B912CC260C0003D8DF3 /* SwiftUIIntrospect */; };
+		CD0000000000000000000083 /* copied build file */ = {isa = PBXBuildFile; productRef = A1B2C3D42E00000000000002 /* NotchExtensionSDK */; };
+		CD0000000000000000000084 /* copied build file */ = {isa = PBXBuildFile; productRef = A1B2C3D42E00000000000003 /* NotchExtensionRuntime */; };
+		CD0000000000000000000085 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14CEF41C2C5CAED400855D72 /* Preview Assets.xcassets */; };
+		CD0000000000000000000086 /* copied build file */ = {isa = PBXBuildFile; fileRef = 14CEF4192C5CAED400855D72 /* Assets.xcassets */; };
+		CD0000000000000000000087 /* copied build file */ = {isa = PBXBuildFile; fileRef = 112B0EB52E30DD0F00562D6C /* MediaRemoteAdapterTestClient */; };
+		CD0000000000000000000088 /* copied build file */ = {isa = PBXBuildFile; fileRef = 112B0EB32E30DD0F00562D6C /* mediaremote-adapter.pl */; };
+		CD0000000000000000000089 /* copied build file */ = {isa = PBXBuildFile; fileRef = B17266E02C6532560031BA0D /* Localizable.xcstrings */; };
+		CD000000000000000000008A /* copied build file */ = {isa = PBXBuildFile; fileRef = 14A7E5962C65FD31008C1BE9 /* boring.m4a */; };
+		CD000000000000000000008B /* copied build file */ = {isa = PBXBuildFile; fileRef = 112B0EBA2E30DD5000562D6C /* MediaRemoteAdapter.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		CD000000000000000000008C /* copied build file */ = {isa = PBXBuildFile; fileRef = 11F7484F2EC9AABA00F841DB /* NotchKitXPCHelper.xpc */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
 		11F748592EC9AABA00F841DB /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 14CEF40A2C5CAED200855D72 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 11F7484E2EC9AABA00F841DB;
+			remoteInfo = NotchKitXPCHelper;
+		};
+		CC0000000000000000000009 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 14CEF40A2C5CAED200855D72 /* Project object */;
 			proxyType = 1;
@@ -182,6 +329,28 @@
 				117AB5172E30E09C00558921 /* MediaRemoteAdapter.framework in Embed Frameworks */,
 			);
 			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0000000000000000000006 /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 12;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				CD000000000000000000008B /* copied */,
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0000000000000000000007 /* Embed XPC Services */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/XPCServices";
+			dstSubfolderSpec = 16;
+			files = (
+				CD000000000000000000008C /* copied */,
+			);
+			name = "Embed XPC Services";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXCopyFilesBuildPhase section */
@@ -318,6 +487,7 @@
 		B1F0A0012E60000100000001 /* BrightnessManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrightnessManager.swift; sourceTree = "<group>"; };
 		B1F747F82EC7E94000F841DB /* LottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LottieView.swift; sourceTree = "<group>"; };
 		B1FEB4982C7686630066EBBC /* PanGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanGesture.swift; sourceTree = "<group>"; };
+		CC0000000000000000000002 /* NotchKitCoreOnly.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NotchKitCoreOnly.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -364,6 +534,28 @@
 				A1B2C3D42E00000000000004 /* NotchExtensionSDK in Frameworks */,
 				A1B2C3D42E00000000000005 /* NotchExtensionRuntime in Frameworks */,
 				B47E1A000000000000000003 /* BatteryExtension in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0000000000000000000004 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD0000000000000000000076 /* copied */,
+				CD0000000000000000000077 /* copied */,
+				CD0000000000000000000078 /* copied */,
+				CD0000000000000000000079 /* copied */,
+				CD000000000000000000007A /* copied */,
+				CD000000000000000000007B /* copied */,
+				CD000000000000000000007C /* copied */,
+				CD000000000000000000007D /* copied */,
+				CD000000000000000000007E /* copied */,
+				CD000000000000000000007F /* copied */,
+				CD0000000000000000000080 /* copied */,
+				CD0000000000000000000081 /* copied */,
+				CD0000000000000000000082 /* copied */,
+				CD0000000000000000000083 /* copied */,
+				CD0000000000000000000084 /* copied */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -565,6 +757,7 @@
 			isa = PBXGroup;
 			children = (
 				14CEF4122C5CAED300855D72 /* NotchKit.app */,
+				CC0000000000000000000002 /* NotchKitCoreOnly.app */,
 				11F7484F2EC9AABA00F841DB /* NotchKitXPCHelper.xpc */,
 			);
 			name = Products;
@@ -847,6 +1040,46 @@
 			productReference = 14CEF4122C5CAED300855D72 /* NotchKit.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CC0000000000000000000001 /* NotchKitCoreOnly */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CC000000000000000000000A /* Build configuration list for PBXNativeTarget "NotchKitCoreOnly" */;
+			buildPhases = (
+				CC0000000000000000000003 /* Sources */,
+				CC0000000000000000000004 /* Frameworks */,
+				CC0000000000000000000005 /* Resources */,
+				CC0000000000000000000006 /* Embed Frameworks */,
+				CC0000000000000000000007 /* Embed XPC Services */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CC0000000000000000000008 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				112FB72F2CCF12CC0015238C /* private */,
+				A1B2C3D42E00000000000006 /* ExtensionHost */,
+			);
+			name = NotchKitCoreOnly;
+			packageProductDependencies = (
+				CE0000000000000000000001 /* pkg */,
+				CE0000000000000000000002 /* pkg */,
+				CE0000000000000000000003 /* pkg */,
+				CE0000000000000000000004 /* pkg */,
+				CE0000000000000000000005 /* pkg */,
+				CE0000000000000000000006 /* pkg */,
+				CE0000000000000000000007 /* pkg */,
+				CE0000000000000000000008 /* pkg */,
+				CE0000000000000000000009 /* pkg */,
+				CE000000000000000000000A /* pkg */,
+				CE000000000000000000000B /* pkg */,
+				CE000000000000000000000C /* pkg */,
+				CE000000000000000000000D /* pkg */,
+				CE000000000000000000000E /* pkg */,
+			);
+			productName = NotchKitCoreOnly;
+			productReference = CC0000000000000000000002 /* NotchKitCoreOnly.app */;
+			productType = "com.apple.product-type.application";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -895,6 +1128,7 @@
 			projectRoot = "";
 			targets = (
 				14CEF4112C5CAED300855D72 /* NotchKit */,
+				CC0000000000000000000001 /* NotchKitCoreOnly */,
 				11F7484E2EC9AABA00F841DB /* NotchKitXPCHelper */,
 			);
 		};
@@ -918,6 +1152,19 @@
 				112B0EB92E30DD0F00562D6C /* mediaremote-adapter.pl in Resources */,
 				B17266E12C6532560031BA0D /* Localizable.xcstrings in Resources */,
 				14A7E5972C65FD31008C1BE9 /* boring.m4a in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CC0000000000000000000005 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD0000000000000000000085 /* copied */,
+				CD0000000000000000000086 /* copied */,
+				CD0000000000000000000087 /* copied */,
+				CD0000000000000000000088 /* copied */,
+				CD0000000000000000000089 /* copied */,
+				CD000000000000000000008A /* copied */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1055,6 +1302,130 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CC0000000000000000000003 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CD0000000000000000000001 /* copied */,
+				CD0000000000000000000002 /* copied */,
+				CD0000000000000000000003 /* copied */,
+				CD0000000000000000000004 /* copied */,
+				CD0000000000000000000005 /* copied */,
+				CD0000000000000000000006 /* copied */,
+				CD0000000000000000000007 /* copied */,
+				CD0000000000000000000008 /* copied */,
+				CD0000000000000000000009 /* copied */,
+				CD000000000000000000000A /* copied */,
+				CD000000000000000000000B /* copied */,
+				CD000000000000000000000C /* copied */,
+				CD000000000000000000000D /* copied */,
+				CD000000000000000000000E /* copied */,
+				CD000000000000000000000F /* copied */,
+				CD0000000000000000000010 /* copied */,
+				CD0000000000000000000011 /* copied */,
+				CD0000000000000000000012 /* copied */,
+				CD0000000000000000000013 /* copied */,
+				CD0000000000000000000014 /* copied */,
+				CD0000000000000000000015 /* copied */,
+				CD0000000000000000000016 /* copied */,
+				CD0000000000000000000017 /* copied */,
+				CD0000000000000000000018 /* copied */,
+				CD0000000000000000000019 /* copied */,
+				CD000000000000000000001A /* copied */,
+				CD000000000000000000001B /* copied */,
+				CD000000000000000000001C /* copied */,
+				CD000000000000000000001D /* copied */,
+				CD000000000000000000001E /* copied */,
+				CD000000000000000000001F /* copied */,
+				CD0000000000000000000020 /* copied */,
+				CD0000000000000000000021 /* copied */,
+				CD0000000000000000000022 /* copied */,
+				CD0000000000000000000023 /* copied */,
+				CD0000000000000000000024 /* copied */,
+				CD0000000000000000000025 /* copied */,
+				CD0000000000000000000026 /* copied */,
+				CD0000000000000000000027 /* copied */,
+				CD0000000000000000000028 /* copied */,
+				CD0000000000000000000029 /* copied */,
+				CD000000000000000000002A /* copied */,
+				CD000000000000000000002B /* copied */,
+				CD000000000000000000002C /* copied */,
+				CD000000000000000000002D /* copied */,
+				CD000000000000000000002E /* copied */,
+				CD000000000000000000002F /* copied */,
+				CD0000000000000000000030 /* copied */,
+				CD0000000000000000000031 /* copied */,
+				CD0000000000000000000032 /* copied */,
+				CD0000000000000000000033 /* copied */,
+				CD0000000000000000000034 /* copied */,
+				CD0000000000000000000035 /* copied */,
+				CD0000000000000000000036 /* copied */,
+				CD0000000000000000000037 /* copied */,
+				CD0000000000000000000038 /* copied */,
+				CD0000000000000000000039 /* copied */,
+				CD000000000000000000003A /* copied */,
+				CD000000000000000000003B /* copied */,
+				CD000000000000000000003C /* copied */,
+				CD000000000000000000003D /* copied */,
+				CD000000000000000000003E /* copied */,
+				CD000000000000000000003F /* copied */,
+				CD0000000000000000000040 /* copied */,
+				CD0000000000000000000041 /* copied */,
+				CD0000000000000000000042 /* copied */,
+				CD0000000000000000000043 /* copied */,
+				CD0000000000000000000044 /* copied */,
+				CD0000000000000000000045 /* copied */,
+				CD0000000000000000000046 /* copied */,
+				CD0000000000000000000047 /* copied */,
+				CD0000000000000000000048 /* copied */,
+				CD0000000000000000000049 /* copied */,
+				CD000000000000000000004A /* copied */,
+				CD000000000000000000004B /* copied */,
+				CD000000000000000000004C /* copied */,
+				CD000000000000000000004D /* copied */,
+				CD000000000000000000004E /* copied */,
+				CD000000000000000000004F /* copied */,
+				CD0000000000000000000050 /* copied */,
+				CD0000000000000000000051 /* copied */,
+				CD0000000000000000000052 /* copied */,
+				CD0000000000000000000053 /* copied */,
+				CD0000000000000000000054 /* copied */,
+				CD0000000000000000000055 /* copied */,
+				CD0000000000000000000056 /* copied */,
+				CD0000000000000000000057 /* copied */,
+				CD0000000000000000000058 /* copied */,
+				CD0000000000000000000059 /* copied */,
+				CD000000000000000000005A /* copied */,
+				CD000000000000000000005B /* copied */,
+				CD000000000000000000005C /* copied */,
+				CD000000000000000000005D /* copied */,
+				CD000000000000000000005E /* copied */,
+				CD000000000000000000005F /* copied */,
+				CD0000000000000000000060 /* copied */,
+				CD0000000000000000000061 /* copied */,
+				CD0000000000000000000062 /* copied */,
+				CD0000000000000000000063 /* copied */,
+				CD0000000000000000000064 /* copied */,
+				CD0000000000000000000065 /* copied */,
+				CD0000000000000000000066 /* copied */,
+				CD0000000000000000000067 /* copied */,
+				CD0000000000000000000068 /* copied */,
+				CD0000000000000000000069 /* copied */,
+				CD000000000000000000006A /* copied */,
+				CD000000000000000000006B /* copied */,
+				CD000000000000000000006C /* copied */,
+				CD000000000000000000006D /* copied */,
+				CD000000000000000000006E /* copied */,
+				CD000000000000000000006F /* copied */,
+				CD0000000000000000000070 /* copied */,
+				CD0000000000000000000071 /* copied */,
+				CD0000000000000000000072 /* copied */,
+				CD0000000000000000000073 /* copied */,
+				CD0000000000000000000074 /* copied */,
+				CD0000000000000000000075 /* copied */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -1062,6 +1433,11 @@
 			isa = PBXTargetDependency;
 			target = 11F7484E2EC9AABA00F841DB /* NotchKitXPCHelper */;
 			targetProxy = 11F748592EC9AABA00F841DB /* PBXContainerItemProxy */;
+		};
+		CC0000000000000000000008 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 11F7484E2EC9AABA00F841DB /* NotchKitXPCHelper */;
+			targetProxy = CC0000000000000000000009 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1182,72 +1558,6 @@
 			};
 			name = Debug;
 		};
-		B47E1A0000000000000000A1 /* CoreOnly */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
-				CLANG_ANALYZER_NONNULL = YES;
-				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
-				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_ENABLE_OBJC_WEAK = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
-				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = YES;
-				DEBUG_INFORMATION_FORMAT = dwarf;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_C_LANGUAGE_STANDARD = gnu17;
-				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"DEBUG=1",
-					"$(inherited)",
-				);
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
-				MTL_FAST_MATH = YES;
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = macosx;
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG NOTCHKIT_CORE_ONLY $(inherited)";
-				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_STRICT_CONCURRENCY = targeted;
-				SWIFT_VERSION = 5.0;
-			};
-			name = CoreOnly;
-		};
 		14CEF4202C5CAED400855D72 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1360,61 +1670,6 @@
 			};
 			name = Debug;
 		};
-		B47E1A0000000000000000A2 /* CoreOnly */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
-				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
-				CODE_SIGN_ENTITLEMENTS = NotchKit/NotchKit.entitlements;
-				CODE_SIGN_IDENTITY = "Apple Development";
-				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
-				CODE_SIGN_STYLE = Automatic;
-				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 271;
-				DEAD_CODE_STRIPPING = YES;
-				DEVELOPMENT_ASSET_PATHS = "\"NotchKit/Preview Content\"";
-				DEVELOPMENT_TEAM = "";
-				ENABLE_HARDENED_RUNTIME = YES;
-				ENABLE_PREVIEWS = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(PROJECT_DIR)/mediaremote-adapter",
-				);
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = NotchKit/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = NotchKit;
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
-				INFOPLIST_KEY_LSBackgroundOnly = NO;
-				INFOPLIST_KEY_LSUIElement = YES;
-				INFOPLIST_KEY_NSAppleEventsUsageDescription = "This app uses AppleEvents to control music";
-				INFOPLIST_KEY_NSCalendarsUsageDescription = "This app uses the calendar to display your calendar events";
-				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to display a live camera view";
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
-				INFOPLIST_KEY_NSRemindersUsageDescription = "This app uses Reminders to display your scheduled reminder in the calendar";
-				LD_RUNPATH_SEARCH_PATHS = (
-					"$(inherited)",
-					"@executable_path/../Frameworks",
-				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
-				MARKETING_VERSION = 2.7.3;
-				PRODUCT_BUNDLE_IDENTIFIER = com.notchkit.app;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = "";
-				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "NOTCHKIT_CORE_ONLY $(inherited)";
-				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_STRICT_CONCURRENCY = targeted;
-				SWIFT_VERSION = 5.0;
-				SYSTEM_FRAMEWORK_SEARCH_PATHS = (
-					"$(inherited)",
-					"$(SDKROOT)/System/Library/PrivateFrameworks",
-				);
-			};
-			name = CoreOnly;
-		};
 		14CEF4232C5CAED400855D72 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -1468,6 +1723,115 @@
 			};
 			name = Release;
 		};
+		CC000000000000000000000B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
+				CODE_SIGN_ENTITLEMENTS = NotchKit/NotchKit.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 271;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_ASSET_PATHS = "\"NotchKit/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/mediaremote-adapter",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotchKit/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotchKitCoreOnly;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSBackgroundOnly = NO;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "This app uses AppleEvents to control music";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "This app uses the calendar to display your calendar events";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to display a live camera view";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSRemindersUsageDescription = "This app uses Reminders to display your scheduled reminder in the calendar";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 2.7.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.notchkit.coreonly;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG NOTCHKIT_CORE_ONLY $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = targeted;
+				SWIFT_VERSION = 5.0;
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/System/Library/PrivateFrameworks",
+				);
+			};
+			name = Debug;
+		};
+		CC000000000000000000000C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = YES;
+				CLANG_ENABLE_MODULES = YES;
+				CODE_SIGN_ALLOW_ENTITLEMENTS_MODIFICATION = YES;
+				CODE_SIGN_ENTITLEMENTS = NotchKit/NotchKit.entitlements;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 271;
+				DEAD_CODE_STRIPPING = YES;
+				DEVELOPMENT_ASSET_PATHS = "\"NotchKit/Preview Content\"";
+				DEVELOPMENT_TEAM = "";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/mediaremote-adapter",
+				);
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = NotchKit/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = NotchKitCoreOnly;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.utilities";
+				INFOPLIST_KEY_LSBackgroundOnly = NO;
+				INFOPLIST_KEY_LSUIElement = YES;
+				INFOPLIST_KEY_NSAppleEventsUsageDescription = "This app uses AppleEvents to control music";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "This app uses the calendar to display your calendar events";
+				INFOPLIST_KEY_NSCameraUsageDescription = "This app uses the camera to display a live camera view";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				INFOPLIST_KEY_NSRemindersUsageDescription = "This app uses Reminders to display your scheduled reminder in the calendar";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 2.7.3;
+				PRODUCT_BUNDLE_IDENTIFIER = com.notchkit.coreonly;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "NOTCHKIT_CORE_ONLY $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_STRICT_CONCURRENCY = targeted;
+				SWIFT_VERSION = 5.0;
+				SYSTEM_FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(SDKROOT)/System/Library/PrivateFrameworks",
+				);
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1485,7 +1849,6 @@
 			buildConfigurations = (
 				14CEF41F2C5CAED400855D72 /* Debug */,
 				14CEF4202C5CAED400855D72 /* Release */,
-				B47E1A0000000000000000A1 /* CoreOnly */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -1495,7 +1858,15 @@
 			buildConfigurations = (
 				14CEF4222C5CAED400855D72 /* Debug */,
 				14CEF4232C5CAED400855D72 /* Release */,
-				B47E1A0000000000000000A2 /* CoreOnly */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CC000000000000000000000A /* Build configuration list for PBXNativeTarget "NotchKitCoreOnly" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CC000000000000000000000B /* Debug */,
+				CC000000000000000000000C /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -1674,6 +2045,74 @@
 			productName = KeyboardShortcuts;
 		};
 		B19016212CC15B3D00E3F12E /* Defaults */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B19016202CC15B3D00E3F12E /* XCRemoteSwiftPackageReference "Defaults" */;
+			productName = Defaults;
+		};
+		CE0000000000000000000001 /* AsyncXPCConnection */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 111BE95B2ECD71E10079DD4E /* XCRemoteSwiftPackageReference "AsyncXPCConnection" */;
+			productName = AsyncXPCConnection;
+		};
+		CE0000000000000000000002 /* NotchExtensionSDK */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D42E00000000000001 /* XCLocalSwiftPackageReference "Packages/NotchExtensionSDK" */;
+			productName = NotchExtensionSDK;
+		};
+		CE0000000000000000000003 /* NotchExtensionRuntime */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A1B2C3D42E00000000000001 /* XCLocalSwiftPackageReference "Packages/NotchExtensionSDK" */;
+			productName = NotchExtensionRuntime;
+		};
+		CE0000000000000000000004 /* MacroVisionKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MacroVisionKit;
+		};
+		CE0000000000000000000005 /* MacroVisionKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = MacroVisionKit;
+		};
+		CE0000000000000000000006 /* MacroVisionKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 111BEA6D2ED166E20079DD4E /* XCRemoteSwiftPackageReference "MacroVisionKit" */;
+			productName = MacroVisionKit;
+		};
+		CE0000000000000000000007 /* SkyLightWindow */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 1194E8832EA57D23009C82D6 /* XCRemoteSwiftPackageReference "SkyLightWindow" */;
+			productName = SkyLightWindow;
+		};
+		CE0000000000000000000008 /* Lottie */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 11F748712EC9DA9300F841DB /* XCRemoteSwiftPackageReference "lottie-spm" */;
+			productName = Lottie;
+		};
+		CE0000000000000000000009 /* LaunchAtLogin */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 14D032182C68F32E0096E6A1 /* XCRemoteSwiftPackageReference "LaunchAtLogin-Modern" */;
+			productName = LaunchAtLogin;
+		};
+		CE000000000000000000000A /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 14D0321B2C68F3350096E6A1 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
+		};
+		CE000000000000000000000B /* Collections */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 9A987A0E2C73CA8D005CA465 /* XCRemoteSwiftPackageReference "swift-collections" */;
+			productName = Collections;
+		};
+		CE000000000000000000000C /* SwiftUIIntrospect */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B1628B902CC260C0003D8DF3 /* XCRemoteSwiftPackageReference "swiftui-introspect" */;
+			productName = SwiftUIIntrospect;
+		};
+		CE000000000000000000000D /* KeyboardShortcuts */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = B18654372C6F4990000B926A /* XCRemoteSwiftPackageReference "KeyboardShortcuts" */;
+			productName = KeyboardShortcuts;
+		};
+		CE000000000000000000000E /* Defaults */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = B19016202CC15B3D00E3F12E /* XCRemoteSwiftPackageReference "Defaults" */;
 			productName = Defaults;
