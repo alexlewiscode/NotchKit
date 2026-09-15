@@ -500,6 +500,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
                     NotchSpaceManager.shared.notchSpace.windows.remove(window)
                     windows.removeValue(forKey: uuid)
                     viewModels.removeValue(forKey: uuid)
+                    NotchKitRuntime.shared.presentation.removeRouter(for: DisplayID(uuid))
                 }
             }
 

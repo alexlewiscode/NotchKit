@@ -34,7 +34,12 @@ final class HostPresentationService: NotchPresentationService {
         case .all:
             displays = coordinator.displayIDs
         case .display:
-            displays = target.display.map { [$0] } ?? [activeDisplay()]
+            if let id = target.display,
+               id == activeDisplay() || coordinator.displayIDs.contains(id) {
+                displays = [id]
+            } else {
+                displays = [activeDisplay()]
+            }
         }
 
         for display in displays {

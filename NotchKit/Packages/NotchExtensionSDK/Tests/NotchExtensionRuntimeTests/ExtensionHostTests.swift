@@ -177,4 +177,64 @@ final class ExtensionHostTests: XCTestCase {
         XCTAssertEqual(harness.host.phase(for: id), .inactive)
         XCTAssertTrue(harness.host.contributions.openDestinations.isEmpty)
     }
+
+    func testReEnableDuringDeactivationActivatesAgain() async throws {
+        let id = try TestFactory.identity("com.notchkit.alpha")
+        let instance = TestLifecycleExtension()
+        instance.activateDelay = .milliseconds(50)
+        let harness = makeHost(
+            definitions: [
+                lifecycleDefinition(id: id, defaultEnabled: true) { context in
+                    instance.lastContext = context
+                    return instance
+                }
+            ]
+        )
+
+        harness.host.start()
+        harness.host.setEnabled(false, for: id)   // begins deactivation during activation
+        harness.host.setEnabled(true, for: id)    // arrives while .deactivating
+        await harness.host.waitForQuiescence()
+
+        XCTAssertEqual(harness.host.phase(for: id), .active)
+        XCTAssertEqual(harness.host.contributions.openDestinations.count, 1)
+    }
+
+    func testReAddAfterRemoveActivatesCleanlyDespiteStaleTask() async throws {
+        let id = try TestFactory.identity("com.notchkit.alpha")
+        let failing = TestLifecycleExtension()
+        failing.failOnActivate = true
+        failing.activateDelay = .milliseconds(50)
+
+        let harness = makeHost(
+            definitions: [
+                lifecycleDefinition(id: id, defaultEnabled: true) { context in
+                    failing.lastContext = context
+                    return failing
+                }
+            ]
+        )
+
+        harness.host.start()          // slow, failing activation in flight
+        harness.host.remove(id)       // cancels it and deregisters
+
+        let replacement = StaticExtension(
+            open: [TestFactory.destination("com.notchkit.alpha.open")]
+        )
+        let replacementMetadata = TestFactory.metadata(
+            id: id,
+            defaultEnabled: true,
+            entryPoints: [
+                ExtensionEntryPoint(id: "com.notchkit.alpha.open", kind: .openDestination)
+            ]
+        )
+        try harness.registry.register(
+            ExtensionDefinition(metadata: replacementMetadata) { _ in replacement }
+        )
+        harness.host.setEnabled(true, for: id)
+        await harness.host.waitForQuiescence()
+
+        XCTAssertEqual(harness.host.phase(for: id), .active)
+        XCTAssertEqual(harness.host.contributions.openDestinations.count, 1)
+    }
 }

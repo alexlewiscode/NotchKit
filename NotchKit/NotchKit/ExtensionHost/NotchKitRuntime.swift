@@ -63,6 +63,11 @@ final class NotchKitRuntime {
                 permissions: HostPermissionService()
             )
         }
+        // Async activation/deactivation completes after `bootstrap`, so refresh
+        // presentation whenever a phase changes.
+        host.onStateChanged = { [weak presentation] in
+            presentation?.refreshAll()
+        }
     }
 
     /// Registers the first-party catalog and starts enabled extensions.

@@ -26,8 +26,9 @@ public final class ContributionStore {
     private var closedByExtension: [ExtensionIdentity: [ClosedNotchContribution]] = [:]
     private var settingsByExtension: [ExtensionIdentity: [ExtensionSettingsDestination]] = [:]
 
+    // Destinations (open and settings) share one index so a `DestinationID` is
+    // globally unique across the store, matching the shared error case.
     private var extensionByDestination: [DestinationID: ExtensionIdentity] = [:]
-    private var extensionBySettings: [DestinationID: ExtensionIdentity] = [:]
     private var extensionByContribution: [ContributionID: ExtensionIdentity] = [:]
 
     public nonisolated init() {}
@@ -50,7 +51,7 @@ public final class ContributionStore {
             }
         }
         for destination in settings {
-            guard extensionBySettings[destination.id] == nil,
+            guard extensionByDestination[destination.id] == nil,
                   destinations.insert(destination.id).inserted
             else {
                 throw ContributionStoreError.duplicateDestinationID(destination.id)
@@ -70,7 +71,7 @@ public final class ContributionStore {
         closedByExtension[id] = closed
         settingsByExtension[id] = settings
         for destination in open { extensionByDestination[destination.id] = id }
-        for destination in settings { extensionBySettings[destination.id] = id }
+        for destination in settings { extensionByDestination[destination.id] = id }
         for contribution in closed { extensionByContribution[contribution.id] = id }
     }
 
@@ -80,7 +81,7 @@ public final class ContributionStore {
             extensionByDestination.removeValue(forKey: destination.id)
         }
         for destination in settingsByExtension[id] ?? [] {
-            extensionBySettings.removeValue(forKey: destination.id)
+            extensionByDestination.removeValue(forKey: destination.id)
         }
         for contribution in closedByExtension[id] ?? [] {
             extensionByContribution.removeValue(forKey: contribution.id)
@@ -95,7 +96,6 @@ public final class ContributionStore {
         closedByExtension.removeAll()
         settingsByExtension.removeAll()
         extensionByDestination.removeAll()
-        extensionBySettings.removeAll()
         extensionByContribution.removeAll()
     }
 
@@ -138,7 +138,7 @@ public final class ContributionStore {
     }
 
     public func extensionID(forSettingsDestination id: DestinationID) -> ExtensionIdentity? {
-        extensionBySettings[id]
+        extensionByDestination[id]
     }
 
     public func extensionID(forContribution id: ContributionID) -> ExtensionIdentity? {

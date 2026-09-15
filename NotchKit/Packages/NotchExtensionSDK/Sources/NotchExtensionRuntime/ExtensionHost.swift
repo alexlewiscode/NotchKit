@@ -40,9 +40,12 @@ public final class ExtensionHost {
     private var bags: [ExtensionIdentity: ExtensionCancellationBag] = [:]
     private var generations: [ExtensionIdentity: Int] = [:]
     private var tasks: [ExtensionIdentity: Task<Void, Never>] = [:]
+    /// Monotonic across the whole host, never reset, so a stale completion can
+    /// never match a newer lifecycle even after `remove` or `shutdown`.
+    private var nextGeneration = 0
 
     /// Called whenever any extension's phase changes.
-    public var onStateChanged: (() -> Void)?
+    public var onStateChanged: (@MainActor () -> Void)?
 
     public init(
         registry: ExtensionRegistry,
@@ -85,10 +88,10 @@ public final class ExtensionHost {
 
     /// Enables or disables an extension and reconciles.
     public func setEnabled(_ enabled: Bool, for id: ExtensionIdentity) {
+        // `ExtensionManager` fires `onEnabledChanged` only when the value
+        // actually changes, and that callback reconciles. Calling reconcile
+        // here as well would schedule a second, overlapping transition.
         manager.setEnabled(enabled, for: id)
-        // `manager.setEnabled` only fires `onEnabledChanged` when the value
-        // changes, so reconcile explicitly to cover the no-op case too.
-        reconcileNow()
     }
 
     /// Reconciles desired enabled state against live instances.
@@ -100,9 +103,9 @@ public final class ExtensionHost {
 
             if enabled {
                 switch phase {
-                case .inactive, .failed:
+                case .inactive, .failed, .deactivating:
                     beginActivation(definition)
-                case .activating, .active, .deactivating:
+                case .activating, .active:
                     break
                 }
             } else {
@@ -197,7 +200,10 @@ public final class ExtensionHost {
 
     private func finishActivation(_ id: ExtensionIdentity, generation: Int) {
         guard generations[id] == generation else { return }
-        guard let instance = instances[id] else { return }
+        guard let instance = instances[id] else {
+            tasks[id] = nil
+            return
+        }
 
         guard manager.isEnabled(id) else {
             // Disabled while activating: coalesce straight to deactivation.
@@ -268,7 +274,8 @@ public final class ExtensionHost {
     }
 
     private func advanceGeneration(for id: ExtensionIdentity) {
-        generations[id, default: 0] += 1
+        nextGeneration += 1
+        generations[id] = nextGeneration
     }
 
     private func setPhase(_ phase: ExtensionRuntimePhase, _ id: ExtensionIdentity) {
