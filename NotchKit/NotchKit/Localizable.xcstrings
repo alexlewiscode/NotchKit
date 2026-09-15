@@ -23687,6 +23687,48 @@
           }
         }
       }
+    },
+    "Events and reminders in the notch." : {
+      "extractionState" : "manual"
+    },
+    "Now playing, controls, and visualizer." : {
+      "extractionState" : "manual"
+    },
+    "Volume, brightness, and media-key indicators." : {
+      "extractionState" : "manual"
+    },
+    "Webcam preview in the notch." : {
+      "extractionState" : "manual"
+    },
+    "Built-in features" : {
+      "extractionState" : "manual"
+    },
+    "Turn a feature on or off with its switch, or open the row to configure it. Configuration stays available while a feature is off." : {
+      "extractionState" : "manual"
+    },
+    "Starting…" : {
+      "extractionState" : "manual"
+    },
+    "Stopping…" : {
+      "extractionState" : "manual"
+    },
+    "Off" : {
+      "extractionState" : "manual"
+    },
+    "Grant Access" : {
+      "extractionState" : "manual"
+    },
+    "Use the switch on the Extensions page to turn the Shelf on or off. Items already on the Shelf are kept while it is off." : {
+      "extractionState" : "manual"
+    },
+    "Replaces the standard macOS volume, display brightness, and keyboard brightness HUDs with a custom design. Use the switch on the Extensions page to turn the HUD on or off." : {
+      "extractionState" : "manual"
+    },
+    "Accessibility access is granted." : {
+      "extractionState" : "manual"
+    },
+    "Use the switch on the Extensions page to turn the Camera Mirror on or off. Camera access is requested the first time the mirror is opened, not while configuring it here." : {
+      "extractionState" : "manual"
     }
   },
   "version" : "1.0"
