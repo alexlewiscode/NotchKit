@@ -39,10 +39,11 @@ catalog, distribution, or installation calls. See [Non-goals](#non-goals).
   ranges, entry points, definition/instance, host services, cancellation,
   compatibility), the `NotchExtensionRuntime` registry/manager/contribution
   store/lifecycle host/per-display router/closed-notch selection, and the pure
-  identity-migration transforms. 92 package tests pass.
+  identity-migration transforms. 100 package tests pass.
 - Implemented and build-verified: the macOS host, project/product/scheme rename
-  to NotchKit, the `com.notchkit.*` identity namespace, per-display routing, and
-  the disabled upstream updater UI.
+  to NotchKit, the `com.notchkit.*` identity namespace, per-display routing, the
+  disabled upstream updater UI, and a separate `NotchKitCoreOnly` app target
+  that is genuinely Battery-free.
 - Proposed: the `NotchAPI/` server, `NotchExtensions/` tooling, out-of-process
   extension loading, distribution, and signing. See ADR 0002 for the gating.
 

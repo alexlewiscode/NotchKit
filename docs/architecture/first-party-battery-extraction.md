@@ -44,55 +44,69 @@ If first-party policy later forbids extensions reading system power state, the
 smallest follow-up is a `NotchPowerService` on `ExtensionContext` exposing a
 `BatterySnapshot` and an observer token; that is **proposed, not implemented**.
 
-## Core-only build
+## Core-only build (Battery-free)
 
-A `CoreOnly` build configuration sets `NOTCHKIT_CORE_ONLY`, under which the host
-does not import, register, or instantiate Battery: no monitor is created, the
-header indicator is absent, and the Battery settings pane is not built.
+`NotchKitCoreOnly` is a separate app target and scheme that shares the same
+source files as `NotchKit` but does **not** declare the `BatteryExtension`
+package product dependency. Under `NOTCHKIT_CORE_ONLY`, the host does not
+import, register, or instantiate Battery: no monitor is created, the header
+indicator is absent, and the Battery settings pane is not built.
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-xcodebuild -project NotchKit/NotchKit.xcodeproj -scheme NotchKit \
-  -configuration CoreOnly -destination 'platform=macOS' build
+xcodebuild -project NotchKit/NotchKit.xcodeproj -scheme NotchKitCoreOnly \
+  -configuration Debug -destination 'generic/platform=macOS' build
 ```
 
-**Known limitation (not overclaimed):** Xcode/SwiftPM 5.9 cannot vary a package
-product's linkage per build configuration, so the Battery package artifact is
-still linked by the shared app target even though no code references it.
-Removing the artifact from the core-only binary requires a separate app target
-(or a SwiftPM feature flag). That is proposed future work; the current
-configuration excludes Battery's registration, UI, and services at compile time,
-which is stronger than hiding UI or toggling enablement, but it is not a
-package-level exclusion.
+Verified on this branch (Debug and Release): the core-only link file list
+contains no `BatteryExtension.o`, the app binary contains zero
+`BatteryExtension` symbols and no `com.notchkit.battery` registration strings,
+and the bundle packages no Battery resources. The default `NotchKit` target
+still links and registers Battery (992 `BatteryExtension` symbols).
+
+"Core-only" means **without Battery** in this milestone. Other features
+(Calendar, Shelf, HUD, Media) have not yet been extracted and are still part of
+core.
+
+The earlier `CoreOnly` build configuration was removed: it only excluded code
+paths while still linking the Battery package, which did not meet the absence
+criterion.
 
 ## Verification
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
-xcrun swift test --package-path NotchKit/Packages/NotchExtensionSDK   # 94 tests
-xcrun swift test --package-path NotchExtensions/FirstParty/Battery    # 12 tests
+xcrun swift test --package-path NotchKit/Packages/NotchExtensionSDK   # 100 tests
+xcrun swift test --package-path NotchExtensions/FirstParty/Battery    # 16 tests
+xcrun swift test --package-path NotchExtensions/validation            # 5 tests
 xcodebuild -project NotchKit/NotchKit.xcodeproj -scheme NotchKit \
-  -configuration Debug -destination 'platform=macOS' build             # succeeds
+  -configuration Debug -destination 'generic/platform=macOS' build             # succeeds
+xcodebuild -project NotchKit/NotchKit.xcodeproj -scheme NotchKitCoreOnly \
+  -configuration Debug -destination 'generic/platform=macOS' build             # succeeds
 ```
 
-The 12 Battery tests cover activation, disablement, re-enable, idempotent
-partial activation, stale events after deactivation, preference preservation,
-display-aware presentation, and contribution gating.
+The Battery tests cover activation, disablement, re-enable, idempotent partial
+activation, stale events after deactivation, preference preservation,
+display-aware presentation, and contribution gating. The runtime tests add
+deterministic shared-service ownership coverage (rapid toggles, superseded
+deactivation, superseded activation whose replacement fails, disable during a
+delayed activation, prompt contribution withdrawal, and removal mid-transition).
 
-## Coordination with Agent 2
+## Runtime race fixed in the integration branch
 
 1. **Additive SDK change:** `NotchGeometry` / `notchGeometry` (see above).
-2. **Runtime race to fix in `ExtensionHost` (not Battery-specific).**
-   `beginDeactivation` runs `instance.deactivate()` and `bag.cancelAll()` before
-   its generation guard, and `beginActivation` replaces `tasks[id]` without
-   cancelling a pending deactivation task. On a rapid disable→enable, a stale
-   deactivation can call the previous instance's `deactivate()` after the new
-   activation started, leaving an active extension with a stopped service. The
-   fix belongs in the runtime: cancel/replace the pending deactivation task
-   before starting a new activation, or move the teardown behind the generation
-   guard. Battery guards its own service (`BatteryMonitor` generation token),
-   but the host ordering can still defeat it. Not fixed here to avoid
-   redesigning the runtime contract.
+2. **Runtime race (fixed).** `beginDeactivation` previously ran
+   `instance.deactivate()` and `bag.cancelAll()` before its generation guard,
+   and `beginActivation` replaced `tasks[id]` without cancelling a pending
+   deactivation. On a rapid disable→enable, a stale deactivation could call the
+   previous instance's `deactivate()` after the new activation started, stopping
+   the shared `BatteryMonitor`.
+   The integration branch fixes the ownership ordering in `ExtensionHost`:
+   `beginActivation` cancels the pending transition and owns teardown of the
+   previous instance exactly once, `beginDeactivation` checks the generation
+   before any teardown side effect, and a superseded late `activate()` is torn
+   down whenever no live instance owns the service (disabled, removed,
+   replacement failed, or shutdown). Deterministic tests cover each case.
 
 ## Not verified here
 
