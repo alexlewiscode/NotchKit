@@ -101,6 +101,10 @@ explicit buttons on their pages.
   hides the indicator because both gate on the same identity.
 - `MenuBarExtra`, `NotchSpaceManager`, window geometry, and routing stay alive
   when every optional feature is off.
+- A `.failed` extension is still re-attempted by `reconcileNow()` (pre-existing
+  behavior); only `.requiresPermission` waits for explicit retry. No adapter
+  currently throws `deviceUnavailable`, so this is latent.
 - GUI interaction checks (clicking a row, toggling, VoiceOver) are covered by
   catalog-level tests and must still be confirmed interactively; see the handoff
-  report.
+  report. Row click and toggle separation are structurally guaranteed (a plain
+  `Button` sibling to a `Toggle`, never nested).
