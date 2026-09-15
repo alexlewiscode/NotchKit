@@ -16,7 +16,7 @@ class SettingsWindowController: NSWindowController {
     
     private init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 700, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 780, height: 600),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -45,9 +45,9 @@ class SettingsWindowController: NSWindowController {
         window.titleVisibility = .visible
         window.toolbarStyle = .unified
         window.isMovableByWindowBackground = true
-        // Minimum size keeps the sidebar, longer localized labels, and the
-        // extension detail navigation usable while remaining resizable.
-        window.minSize = NSSize(width: 760, height: 560)
+        // `contentMinSize` is the content-based minimum; AppKit derives the
+        // frame minimum (which includes the title bar) from it. Setting
+        // `minSize` as well would compare unlike frame/content values.
         window.contentMinSize = NSSize(width: 760, height: 560)
         
         // Make it behave like a regular app window with proper Spaces support

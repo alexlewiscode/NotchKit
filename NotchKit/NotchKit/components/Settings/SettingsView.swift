@@ -26,7 +26,7 @@ struct SettingsView: View {
 
     var body: some View {
         NavigationSplitView {
-            List(selection: $selectedSection) {
+            List(selection: sidebarSelection) {
                 ForEach(SettingsSection.allCases) { section in
                     NavigationLink(value: section) {
                         Label(section.title, systemImage: section.systemImage)
@@ -86,6 +86,21 @@ struct SettingsView: View {
                 updaterController: SPUStandardUpdaterController(
                     startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil))
         }
+    }
+
+    /// Selecting Shortcuts from the sidebar clears any temporary owner focus
+    /// left over from a feature link. Feature links set `selectedSection`
+    /// directly, so their focus is preserved.
+    private var sidebarSelection: Binding<SettingsSection?> {
+        Binding(
+            get: { selectedSection },
+            set: { newValue in
+                if newValue == .shortcuts {
+                    shortcutsOwner = nil
+                }
+                selectedSection = newValue
+            }
+        )
     }
 }
 

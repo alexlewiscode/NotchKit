@@ -717,6 +717,13 @@ struct HUDSettingsPage: View {
         .task {
             accessibilityAuthorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
         }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            // Read-only refresh when returning from System Settings. Does not
+            // request permission, start the media-key interceptor, or poll.
+            Task {
+                accessibilityAuthorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
+            }
+        }
         .onReceive(NotificationCenter.default.publisher(for: .accessibilityAuthorizationChanged)) { notification in
             if let granted = notification.userInfo?["granted"] as? Bool {
                 accessibilityAuthorized = granted

@@ -255,7 +255,19 @@ private struct CatalogEntryRow: View {
                 .labelsHidden()
                 .toggleStyle(.switch)
                 .controlSize(.small)
+                // Guard against overlapping transitions; settings access stays
+                // available regardless.
+                .disabled(isTransitioning)
                 .accessibilityLabel("Enable \(entry.displayName)")
+        }
+    }
+
+    private var isTransitioning: Bool {
+        switch phase {
+        case .activating, .deactivating:
+            return true
+        default:
+            return false
         }
     }
 }
