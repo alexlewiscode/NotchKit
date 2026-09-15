@@ -131,4 +131,126 @@ final class SettingsCatalogTests: XCTestCase {
         let definition = ExtensionDefinition(metadata: metadata) { _ in StaticExtension() }
         XCTAssertTrue(definition.settings().isEmpty)
     }
+
+    // MARK: Diagnostics
+
+    func testMissingSettingsDeclarationIsDiagnosedWithoutInstantiation() throws {
+        let id = try TestFactory.identity("com.notchkit.legacy")
+        var instantiated = false
+        let metadata = TestFactory.metadata(
+            id: id,
+            entryPoints: [
+                ExtensionEntryPoint(id: "com.notchkit.settings.legacy", kind: .settingsDestination)
+            ]
+        )
+        // A legacy definition that kept settings on the deprecated instance
+        // method and supplies no definition-level declaration.
+        let definition = ExtensionDefinition(metadata: metadata) { _ in
+            instantiated = true
+            return StaticExtension()
+        }
+
+        let catalog = SettingsCatalog()
+        catalog.rebuild(from: [definition])
+
+        XCTAssertTrue(catalog.entries.isEmpty)
+        XCTAssertFalse(instantiated, "Diagnostics must not instantiate the extension")
+        XCTAssertTrue(
+            catalog.diagnostics.contains {
+                $0.kind == .missingSettingsDeclaration(
+                    featureID: FeatureSettingsID("com.notchkit.legacy"),
+                    entryPointID: "com.notchkit.settings.legacy"
+                )
+            },
+            "Expected a missing-settings-declaration diagnostic, got \(catalog.diagnostics)"
+        )
+    }
+
+    func testUndeclaredSettingsDestinationIsDiagnosed() throws {
+        let id = try TestFactory.identity("com.notchkit.alpha")
+        // Metadata declares no entry points, but the definition supplies a page.
+        let metadata = TestFactory.metadata(id: id)
+        let destination = TestFactory.settingsDestination("com.notchkit.settings.alpha")
+        let definition = ExtensionDefinition(
+            metadata: metadata,
+            settings: { [destination] },
+            makeInstance: { _ in StaticExtension() }
+        )
+
+        let catalog = SettingsCatalog()
+        catalog.rebuild(from: [definition])
+
+        XCTAssertTrue(
+            catalog.diagnostics.contains {
+                $0.kind == .undeclaredSettingsDestination(
+                    featureID: FeatureSettingsID("com.notchkit.alpha"),
+                    destinationID: destination.id
+                )
+            }
+        )
+    }
+
+    func testDuplicateFeatureIDKeepsFirstAndDiagnoses() throws {
+        let catalog = SettingsCatalog()
+        let first = try definition(
+            "com.notchkit.alpha",
+            settings: [TestFactory.settingsDestination("com.notchkit.settings.alpha")]
+        )
+        let adapter = SettingsCatalogEntry(
+            id: FeatureSettingsID("com.notchkit.alpha"),
+            displayName: "Duplicate",
+            iconSystemName: "square",
+            owner: nil,
+            management: .configurationOnly,
+            order: 1,
+            destinations: [TestFactory.settingsDestination("com.notchkit.settings.alpha.other")]
+        )
+
+        catalog.rebuild(from: [first], adapters: [adapter])
+
+        XCTAssertEqual(catalog.entries.count, 1)
+        XCTAssertEqual(catalog.entries.first?.owner, first.id)
+        XCTAssertTrue(
+            catalog.diagnostics.contains {
+                $0.kind == .duplicateFeatureID(FeatureSettingsID("com.notchkit.alpha"))
+            }
+        )
+    }
+
+    func testOrderingIsDeterministicForEqualOrder() throws {
+        let catalog = SettingsCatalog()
+        let zeta = try definition(
+            "com.notchkit.zeta",
+            settings: [TestFactory.settingsDestination("com.notchkit.settings.zeta")]
+        )
+        let alpha = try definition(
+            "com.notchkit.alpha",
+            settings: [TestFactory.settingsDestination("com.notchkit.settings.alpha")]
+        )
+
+        catalog.rebuild(from: [zeta, alpha])
+
+        XCTAssertEqual(
+            catalog.entries.map(\.id.rawValue),
+            ["com.notchkit.alpha", "com.notchkit.zeta"]
+        )
+    }
+
+    func testRebuildClearsDiagnostics() throws {
+        let id = try TestFactory.identity("com.notchkit.legacy")
+        let metadata = TestFactory.metadata(
+            id: id,
+            entryPoints: [
+                ExtensionEntryPoint(id: "com.notchkit.settings.legacy", kind: .settingsDestination)
+            ]
+        )
+        let definition = ExtensionDefinition(metadata: metadata) { _ in StaticExtension() }
+        let catalog = SettingsCatalog()
+
+        catalog.rebuild(from: [definition])
+        XCTAssertFalse(catalog.diagnostics.isEmpty)
+
+        catalog.rebuild(from: [])
+        XCTAssertTrue(catalog.diagnostics.isEmpty)
+    }
 }

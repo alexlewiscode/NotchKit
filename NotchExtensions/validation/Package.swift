@@ -22,7 +22,10 @@ let package = Package(
         ),
         .executableTarget(
             name: "ext-validate",
-            dependencies: ["ValidationCore"]
+            dependencies: [
+                "ValidationCore",
+                .product(name: "NotchExtensionSDK", package: "NotchExtensionSDK"),
+            ]
         ),
         .testTarget(
             name: "ValidationCoreTests",

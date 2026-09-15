@@ -10,16 +10,19 @@ import Foundation
 import NotchExtensionSDK
 import ValidationCore
 
+let defaultHostVersion = ExtValidateOptionsParser.defaultHostVersion
+let defaultSDKVersion = ExtValidateOptionsParser.defaultSDKVersion
+
 let usage = """
 Usage: ext-validate <path-to-manifest.json> [<path> ...] \
-[--host-version 1.0.0] [--sdk-version 1.0.0]
+[--host-version \(defaultHostVersion)] [--sdk-version \(defaultSDKVersion)]
 
 Validates one or more NotchKit extension manifests against the canonical
 schema and the running host/SDK compatibility rules.
 
 Options:
-  --host-version <x.y.z>   Host application version (default 1.0.0).
-  --sdk-version <x.y.z>    Extension SDK/API version (default 1.0.0).
+  --host-version <x.y.z>   Host application version (default \(defaultHostVersion)).
+  --sdk-version <x.y.z>    Extension SDK/API version (default \(defaultSDKVersion)).
   -h, --help               Show this help.
 
 Exit codes:
@@ -38,47 +41,20 @@ func failUsage(_ message: String) -> Never {
     exit(2)
 }
 
-var manifestPaths: [String] = []
-var hostVersion = ExtensionVersion(major: 1, minor: 0, patch: 0)
-var sdkVersion = ExtensionAPIVersion(major: 1, minor: 0, patch: 0)
-
-let arguments = Array(CommandLine.arguments.dropFirst())
-var index = 0
-while index < arguments.count {
-    let argument = arguments[index]
-    switch argument {
-    case "--host-version":
-        index += 1
-        guard index < arguments.count, let parsed = ExtensionVersion(arguments[index]) else {
-            failUsage("--host-version requires a major.minor.patch value")
-        }
-        hostVersion = parsed
-    case "--sdk-version":
-        index += 1
-        guard index < arguments.count, let parsed = ExtensionVersion(arguments[index]) else {
-            failUsage("--sdk-version requires a major.minor.patch value")
-        }
-        sdkVersion = ExtensionAPIVersion(major: parsed.major, minor: parsed.minor, patch: parsed.patch)
-    case "-h", "--help":
-        print(usage)
-        exit(0)
-    default:
-        if argument.hasPrefix("-") {
-            failUsage("unknown option '\(argument)'")
-        }
-        manifestPaths.append(argument)
-    }
-    index += 1
-}
-
-guard !manifestPaths.isEmpty else {
-    failUsage("no manifest paths provided")
+let options: ExtValidateOptions
+do {
+    options = try ExtValidateOptionsParser.parse(Array(CommandLine.arguments.dropFirst()))
+} catch ExtValidateOptionsError.helpRequested {
+    print(usage)
+    exit(0)
+} catch {
+    failUsage("\(error)")
 }
 
 var hadError = false
 var hadIOError = false
 
-for path in manifestPaths {
+for path in options.manifestPaths {
     let data: Data
     do {
         data = try Data(contentsOf: URL(fileURLWithPath: path))
@@ -90,8 +66,8 @@ for path in manifestPaths {
 
     let issues = ManifestValidator.validate(
         data: data,
-        hostVersion: hostVersion,
-        sdkVersion: sdkVersion
+        hostVersion: options.hostVersion,
+        sdkVersion: options.sdkVersion
     )
 
     for issue in issues {

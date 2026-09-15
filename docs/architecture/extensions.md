@@ -62,11 +62,14 @@ module establishes the boundary; migration is incremental.
 
 `NotchExtensionSDK` is semantic-versioned.
 
-- The current API version is `1.0.0`.
-- Compatibility is determined by **major** version. A descriptor whose major
-  version differs from the running core is rejected by `ExtensionRegistry`.
-- Additive changes bump the minor version. Breaking changes bump the major
-  version and require a migration note here.
+- The current API version is `1.1.0` (the `ExtensionDefinition.settings`
+  addition).
+- Compatibility is enforced by `ExtensionCompatibility.validate` through each
+  manifest's `artifactKind`, `supportedHostVersions`, and `supportedSDKVersions`,
+  plus capability/entry-point invariants; it is **not** major-only. Additive
+  changes bump the minor version and stay inside the existing `1.x` supported
+  ranges.
+- Breaking changes bump the major version and require a migration note here.
 - Every public symbol must be documented. Phase 1 keeps the surface deliberately
   small and avoids unrestricted hooks.
 

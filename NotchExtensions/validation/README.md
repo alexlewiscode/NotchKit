@@ -28,7 +28,7 @@ export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
 swift build
 swift test
 swift run ext-validate <path-to-manifest.json> [<path> ...] \
-    [--host-version 1.0.0] [--sdk-version 1.0.0]
+    [--host-version 1.0.0] [--sdk-version 1.1.0]
 ```
 
 Examples:

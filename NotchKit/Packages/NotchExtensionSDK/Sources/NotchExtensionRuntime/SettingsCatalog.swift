@@ -15,6 +15,7 @@
 import Combine
 import Foundation
 import NotchExtensionSDK
+import os
 
 /// A stable host feature id used by the settings catalog and routes.
 public struct FeatureSettingsID: Hashable, Identifiable, Sendable {
@@ -64,6 +65,36 @@ public struct SettingsCatalogEntry: Identifiable {
     }
 }
 
+/// A nonfatal catalog construction diagnostic.
+///
+/// These surface developer mistakes (a definition whose declared settings entry
+/// point has no matching settings declaration, or id collisions) without ever
+/// crashing the app or activating an extension.
+public struct SettingsCatalogDiagnostic: Equatable, Sendable {
+    public enum Kind: Equatable, Sendable {
+        /// Metadata declares a settings destination entry point, but the
+        /// definition's `settings` declaration provides no destination with that
+        /// id.
+        case missingSettingsDeclaration(featureID: FeatureSettingsID, entryPointID: String)
+        /// A declared settings destination id is not among the metadata entry
+        /// points (undeclared identity).
+        case undeclaredSettingsDestination(featureID: FeatureSettingsID, destinationID: DestinationID)
+        /// Two definition/adapter entries claim the same feature id. The later
+        /// one is dropped; unrelated feature settings are never merged.
+        case duplicateFeatureID(FeatureSettingsID)
+        /// Two entries provide the same destination id. The later one is dropped.
+        case duplicateDestinationID(DestinationID, featureID: FeatureSettingsID)
+    }
+
+    public let kind: Kind
+    public let message: String
+
+    public init(kind: Kind, message: String) {
+        self.kind = kind
+        self.message = message
+    }
+}
+
 /// The authoritative settings catalog for the Extensions hub.
 @MainActor
 public final class SettingsCatalog: ObservableObject {
@@ -73,9 +104,20 @@ public final class SettingsCatalog: ObservableObject {
     /// Bumped whenever the catalog is rebuilt, so views can prune stale routes.
     @Published public private(set) var revision = UUID()
 
+    /// Nonfatal diagnostics produced by the most recent rebuild.
+    public private(set) var diagnostics: [SettingsCatalogDiagnostic] = []
+
+    private let logger = Logger(subsystem: "com.notchkit.app", category: "SettingsCatalog")
+
     public nonisolated init() {}
 
     /// Rebuilds the catalog from definitions and host adapters.
+    ///
+    /// Collision policy: the first registration of a feature id wins;
+    /// definitions are processed before adapters; a later entry with a duplicate
+    /// feature or destination id is dropped with a diagnostic rather than
+    /// merging unrelated settings. Ordering is deterministic (explicit order,
+    /// then display name, then id).
     ///
     /// - Parameters:
     ///   - definitions: registered extension definitions. Their `settings`
@@ -90,14 +132,37 @@ public final class SettingsCatalog: ObservableObject {
         order: [FeatureSettingsID: Int] = [:],
         adapters: [SettingsCatalogEntry] = []
     ) {
+        diagnostics = []
+        var seenFeatureIDs = Set<FeatureSettingsID>()
         var seenDestinations = Set<DestinationID>()
         var result: [SettingsCatalogEntry] = []
 
         for definition in definitions {
-            let destinations = definition.settings()
-                .filter { seenDestinations.insert($0.id).inserted }
-            guard !destinations.isEmpty else { continue }
             let featureID = FeatureSettingsID(definition.id.rawValue)
+            let declaredSettings = definition.settings()
+            diagnoseEntryPointContract(
+                featureID: featureID,
+                metadata: definition.metadata,
+                declared: declaredSettings
+            )
+
+            guard !declaredSettings.isEmpty else { continue }
+
+            guard seenFeatureIDs.insert(featureID).inserted else {
+                record(
+                    .duplicateFeatureID(featureID),
+                    "Duplicate feature id '\(featureID.rawValue)'; keeping the first registration."
+                )
+                continue
+            }
+
+            let destinations = uniqueDestinations(
+                declaredSettings,
+                featureID: featureID,
+                seen: &seenDestinations
+            )
+            guard !destinations.isEmpty else { continue }
+
             result.append(
                 SettingsCatalogEntry(
                     id: featureID,
@@ -113,9 +178,21 @@ public final class SettingsCatalog: ObservableObject {
         }
 
         for adapter in adapters {
-            let destinations = adapter.destinations
-                .filter { seenDestinations.insert($0.id).inserted }
+            guard seenFeatureIDs.insert(adapter.id).inserted else {
+                record(
+                    .duplicateFeatureID(adapter.id),
+                    "Duplicate feature id '\(adapter.id.rawValue)'; keeping the first registration."
+                )
+                continue
+            }
+
+            let destinations = uniqueDestinations(
+                adapter.destinations,
+                featureID: adapter.id,
+                seen: &seenDestinations
+            )
             guard !destinations.isEmpty else { continue }
+
             result.append(
                 SettingsCatalogEntry(
                     id: adapter.id,
@@ -131,7 +208,9 @@ public final class SettingsCatalog: ObservableObject {
 
         entries = result.sorted { lhs, rhs in
             if lhs.order != rhs.order { return lhs.order < rhs.order }
-            return lhs.displayName.localizedStandardCompare(rhs.displayName) == .orderedAscending
+            let nameOrder = lhs.displayName.localizedStandardCompare(rhs.displayName)
+            if nameOrder != .orderedSame { return nameOrder == .orderedAscending }
+            return lhs.id.rawValue < rhs.id.rawValue
         }
         revision = UUID()
     }
@@ -156,5 +235,68 @@ public final class SettingsCatalog: ObservableObject {
     /// Every destination id currently in the catalog.
     public var destinationIDs: Set<DestinationID> {
         Set(entries.flatMap { $0.destinations.map(\.id) })
+    }
+
+    // MARK: - Helpers
+
+    private func diagnoseEntryPointContract(
+        featureID: FeatureSettingsID,
+        metadata: ExtensionMetadata,
+        declared: [ExtensionSettingsDestination]
+    ) {
+        let declaredIDs = Set(declared.map { $0.id.rawValue })
+        let entryPointIDs = Set(
+            metadata.entryPoints
+                .filter { $0.kind == .settingsDestination }
+                .map(\.id)
+        )
+
+        for entryPointID in entryPointIDs where !declaredIDs.contains(entryPointID) {
+            record(
+                .missingSettingsDeclaration(
+                    featureID: featureID,
+                    entryPointID: entryPointID
+                ),
+                "Extension '\(featureID.rawValue)' declares settings destination "
+                    + "'\(entryPointID)' in its metadata but supplies no matching "
+                    + "ExtensionDefinition.settings declaration; that page is unreachable. "
+                    + "Move it from settingsDestinations() onto ExtensionDefinition.settings."
+            )
+        }
+
+        for destination in declared where !entryPointIDs.contains(destination.id.rawValue) {
+            record(
+                .undeclaredSettingsDestination(
+                    featureID: featureID,
+                    destinationID: destination.id
+                ),
+                "Extension '\(featureID.rawValue)' declares a settings page "
+                    + "'\(destination.id.rawValue)' that is not listed as a settings-destination "
+                    + "entry point in its metadata."
+            )
+        }
+    }
+
+    private func uniqueDestinations(
+        _ destinations: [ExtensionSettingsDestination],
+        featureID: FeatureSettingsID,
+        seen: inout Set<DestinationID>
+    ) -> [ExtensionSettingsDestination] {
+        destinations.filter { destination in
+            guard seen.insert(destination.id).inserted else {
+                record(
+                    .duplicateDestinationID(destination.id, featureID: featureID),
+                    "Destination id '\(destination.id.rawValue)' was already registered; "
+                        + "dropping the duplicate from '\(featureID.rawValue)'."
+                )
+                return false
+            }
+            return true
+        }
+    }
+
+    private func record(_ kind: SettingsCatalogDiagnostic.Kind, _ message: String) {
+        diagnostics.append(SettingsCatalogDiagnostic(kind: kind, message: message))
+        logger.warning("SettingsCatalog: \(message, privacy: .public)")
     }
 }

@@ -116,6 +116,54 @@ public protocol NotchExtension: AnyObject {
 - `settingsDestinations()` is retained only as a source-compatibility surface and
   is ignored by the host.
 
+### Migrating settings off the instance method
+
+`settingsDestinations()` still compiles, but the host no longer calls it. This is
+**source compatibility without behavioural compatibility**: an extension whose
+metadata declares a `settings-destination` entry point but that keeps returning
+its page from the instance method will build and run, but its settings page will
+be unreachable. The host logs a nonfatal diagnostic (it never asserts) when that
+mismatch is detected at catalog-build time; it does not activate the extension to
+find the old page.
+
+Move the declaration onto the definition. The destination `id` must match the
+metadata entry point id.
+
+```swift
+// Before: only produced while the instance was active.
+final class BatteryExtension: NotchExtension {
+    func settingsDestinations() -> [ExtensionSettingsDestination] {
+        [ExtensionSettingsDestination(
+            id: BatteryIds.settingsDestination,
+            title: "Battery",
+            iconSystemName: "battery.100",
+            isAvailable: { true },
+            makeView: { AnyView(BatterySettingsView()) }
+        )]
+    }
+}
+
+// After: declared lifecycle-independently, reachable while disabled or failed.
+let definition = ExtensionDefinition(
+    metadata: try BatteryManifest.metadata(),
+    settings: {
+        [ExtensionSettingsDestination(
+            id: BatteryIds.settingsDestination,
+            title: "Battery",
+            iconSystemName: "battery.100",
+            isAvailable: { true },
+            makeView: { AnyView(BatterySettingsView()) }
+        )]
+    }
+) { context in
+    BatteryExtension(context: context, monitor: monitor)
+}
+```
+
+The `settings` closure may read configuration and build views on demand, but must
+not create or capture a live `NotchExtension`, an `ExtensionContext`, or a
+long-lived service.
+
 ## Host services
 
 ```swift
