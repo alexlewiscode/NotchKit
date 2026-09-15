@@ -47,3 +47,22 @@ jobs:
         verbosity: xcpretty
         upload-logs: always
         configuration: release
+
+  host-tests:
+    name: NotchKit host settings and provider tests
+    # The settings catalog, calendar propagation, and page-scoped providers are
+    # host-module behaviour, so they are tested with the app as test host.
+    runs-on: macos-15
+    steps:
+    - name: Code Checkout
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+    - uses: mxcl/xcodebuild@d3ee9b419c1be9a988086c58fe0988f32d99cfc5 # v3.6.0
+      with:
+        xcode: ^16
+        platform: macOS
+        scheme: NotchKitTests
+        working-directory: NotchKit
+        action: test
+        verbosity: xcpretty
+        upload-logs: always
+        configuration: Debug

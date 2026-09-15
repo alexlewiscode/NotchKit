@@ -52,8 +52,8 @@ final class CalendarSettingsDataProvider: ObservableObject {
 
     /// Reads the current TCC status only. Never requests access.
     func refreshStatuses() {
-        eventAuthorization = EKEventStore.authorizationStatus(for: .event)
-        reminderAuthorization = EKEventStore.authorizationStatus(for: .reminder)
+        eventAuthorization = service.authorizationStatus(for: .event)
+        reminderAuthorization = service.authorizationStatus(for: .reminder)
         lastEventAuthorization = eventAuthorization
         lastReminderAuthorization = reminderAuthorization
     }
@@ -74,7 +74,7 @@ final class CalendarSettingsDataProvider: ObservableObject {
 
     /// Explicit user action: requests calendar access, then reloads if granted.
     func requestEventAccess() async {
-        if EKEventStore.authorizationStatus(for: .event) == .notDetermined {
+        if service.authorizationStatus(for: .event) == .notDetermined {
             _ = try? await service.requestAccess(to: .event)
         }
         refreshStatuses()
@@ -84,7 +84,7 @@ final class CalendarSettingsDataProvider: ObservableObject {
 
     /// Explicit user action: requests reminder access, then reloads if granted.
     func requestReminderAccess() async {
-        if EKEventStore.authorizationStatus(for: .reminder) == .notDetermined {
+        if service.authorizationStatus(for: .reminder) == .notDetermined {
             _ = try? await service.requestAccess(to: .reminder)
         }
         refreshStatuses()
@@ -98,8 +98,8 @@ final class CalendarSettingsDataProvider: ObservableObject {
     func refreshAfterReturningToApp() async {
         let previousEvent = lastEventAuthorization
         let previousReminder = lastReminderAuthorization
-        eventAuthorization = EKEventStore.authorizationStatus(for: .event)
-        reminderAuthorization = EKEventStore.authorizationStatus(for: .reminder)
+        eventAuthorization = service.authorizationStatus(for: .event)
+        reminderAuthorization = service.authorizationStatus(for: .reminder)
         let changed = eventAuthorization != previousEvent || reminderAuthorization != previousReminder
         lastEventAuthorization = eventAuthorization
         lastReminderAuthorization = reminderAuthorization
@@ -141,7 +141,80 @@ final class CalendarSettingsDataProvider: ObservableObject {
     }
 }
 
+// MARK: - HUD
+
+/// Read-only accessibility status for the HUD settings page.
+///
+/// It only ever reads status. It cannot request permission and does not start
+/// the media-key interceptor or any polling loop; that separation is what the
+/// HUD provider test asserts.
+@MainActor
+final class HUDStatusProvider: ObservableObject {
+    @Published private(set) var isAccessibilityAuthorized = false
+
+    private let readStatus: () async -> Bool
+
+    init(readStatus: @escaping () async -> Bool) {
+        self.readStatus = readStatus
+    }
+
+    convenience init() {
+        self.init(readStatus: {
+            await XPCHelperClient.shared.isAccessibilityAuthorized()
+        })
+    }
+
+    func refresh() async {
+        isAccessibilityAuthorized = await readStatus()
+    }
+
+    /// Applies a status delivered by an external notification.
+    func apply(_ authorized: Bool) {
+        isAccessibilityAuthorized = authorized
+    }
+}
+
 // MARK: - Shelf Quick Share
+
+/// A narrow abstraction over share-provider discovery so the Shelf settings
+/// page can be tested without a real sharing picker.
+@MainActor
+protocol ShareServiceDiscovering: AnyObject {
+    func discoverProviders() async -> [QuickShareProvider]
+}
+
+/// Production discoverer backed by `ShareServiceFinder`.
+@MainActor
+final class ShareServiceFinderDiscoverer: ShareServiceDiscovering {
+    func discoverProviders() async -> [QuickShareProvider] {
+        let finder = ShareServiceFinder()
+        let testItems: [Any] = [
+            URL(string: "http://example.com") ?? URL(fileURLWithPath: "/"),
+            "Test Text" as NSString,
+        ]
+        let services = await finder.findApplicableServices(for: testItems)
+
+        var result: [QuickShareProvider] = []
+        for service in services {
+            let provider = QuickShareProvider(
+                id: service.title,
+                imageData: service.image.tiffRepresentation,
+                supportsRawText: service.canPerform(withItems: ["Test Text"])
+            )
+            if !result.contains(provider) { result.append(provider) }
+        }
+        if let airDropIndex = result.firstIndex(where: { $0.id == "AirDrop" }) {
+            let airDrop = result.remove(at: airDropIndex)
+            result.insert(airDrop, at: 0)
+        }
+        if !result.contains(where: { $0.id == "System Share Menu" }) {
+            result.append(
+                QuickShareProvider(id: "System Share Menu", imageData: nil, supportsRawText: true)
+            )
+        }
+        return result
+    }
+}
 
 /// Discovers available sharing providers for the Shelf settings page.
 ///
@@ -155,39 +228,22 @@ final class ShelfShareProviderDataSource: ObservableObject {
     @Published private(set) var isLoading = false
     @Published private(set) var didLoad = false
 
+    private let discoverer: ShareServiceDiscovering
     private var discoveryTask: Task<Void, Never>?
+
+    init(discoverer: ShareServiceDiscovering? = nil) {
+        self.discoverer = discoverer ?? ShareServiceFinderDiscoverer()
+    }
 
     /// Starts (or restarts) discovery. Cancels any in-flight discovery first.
     func load() {
         discoveryTask?.cancel()
         isLoading = true
         discoveryTask = Task { @MainActor [weak self] in
-            let finder = ShareServiceFinder()
-            let testItems: [Any] = [
-                URL(string: "http://example.com") ?? URL(fileURLWithPath: "/"),
-                "Test Text" as NSString,
-            ]
-            let services = await finder.findApplicableServices(for: testItems)
-            guard !Task.isCancelled, let self else { return }
-
-            var result: [QuickShareProvider] = []
-            for service in services {
-                let provider = QuickShareProvider(
-                    id: service.title,
-                    imageData: service.image.tiffRepresentation,
-                    supportsRawText: service.canPerform(withItems: ["Test Text"])
-                )
-                if !result.contains(provider) { result.append(provider) }
-            }
-            if let airDropIndex = result.firstIndex(where: { $0.id == "AirDrop" }) {
-                let airDrop = result.remove(at: airDropIndex)
-                result.insert(airDrop, at: 0)
-            }
-            if !result.contains(where: { $0.id == "System Share Menu" }) {
-                result.append(
-                    QuickShareProvider(id: "System Share Menu", imageData: nil, supportsRawText: true)
-                )
-            }
+            guard let self else { return }
+            let result = await self.discoverer.discoverProviders()
+            // A cancelled or superseded discovery must not publish stale results.
+            guard !Task.isCancelled else { return }
             self.providers = result
             self.isLoading = false
             self.didLoad = true

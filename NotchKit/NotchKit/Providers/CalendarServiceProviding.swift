@@ -11,6 +11,7 @@ import Foundation
 @preconcurrency import EventKit
 
 protocol CalendarServiceProviding {
+    func authorizationStatus(for type: EKEntityType) -> EKAuthorizationStatus
     func requestAccess(to type: EKEntityType) async throws -> Bool
     func calendars() async -> [CalendarModel]
     func events(from start: Date, to end: Date, calendars: [String]) async -> [EventModel]
@@ -18,6 +19,10 @@ protocol CalendarServiceProviding {
 }
 
 extension CalendarServiceProviding {
+    func authorizationStatus(for type: EKEntityType) -> EKAuthorizationStatus {
+        EKEventStore.authorizationStatus(for: type)
+    }
+
     func setReminderCompleted(reminderID: String, completed: Bool) async {}
 }
 

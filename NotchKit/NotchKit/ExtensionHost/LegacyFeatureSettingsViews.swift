@@ -611,7 +611,7 @@ struct HUDSettingsPage: View {
     @Default(.enableGradient) var enableGradient
     @Default(.optionKeyAction) var optionKeyAction
     @Default(.hudReplacement) var hudReplacement
-    @State private var accessibilityAuthorized = false
+    @StateObject private var status = HUDStatusProvider()
 
     var body: some View {
         Form {
@@ -630,11 +630,11 @@ struct HUDSettingsPage: View {
                         .labelsHidden()
                         .toggleStyle(.switch)
                         .controlSize(.large)
-                        .disabled(!accessibilityAuthorized)
+                        .disabled(!status.isAccessibilityAuthorized)
                         .accessibilityLabel("Replace system HUD")
                 }
 
-                if !accessibilityAuthorized {
+                if !status.isAccessibilityAuthorized {
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Accessibility access is required to replace the system HUD.")
                             .font(.subheadline)
@@ -646,7 +646,7 @@ struct HUDSettingsPage: View {
                             }
                             .buttonStyle(.borderedProminent)
                             Button("Refresh Status") {
-                                Task { accessibilityAuthorized = await XPCHelperClient.shared.isAccessibilityAuthorized() }
+                                Task { await status.refresh() }
                             }
                         }
                     }
@@ -715,18 +715,16 @@ struct HUDSettingsPage: View {
         .accentColor(.effectiveAccent)
         .navigationTitle("HUD")
         .task {
-            accessibilityAuthorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
+            await status.refresh()
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             // Read-only refresh when returning from System Settings. Does not
             // request permission, start the media-key interceptor, or poll.
-            Task {
-                accessibilityAuthorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
-            }
+            Task { await status.refresh() }
         }
         .onReceive(NotificationCenter.default.publisher(for: .accessibilityAuthorizationChanged)) { notification in
             if let granted = notification.userInfo?["granted"] as? Bool {
-                accessibilityAuthorized = granted
+                status.apply(granted)
             }
         }
     }

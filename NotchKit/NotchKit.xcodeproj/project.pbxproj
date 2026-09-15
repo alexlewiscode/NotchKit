@@ -306,6 +306,13 @@
 			remoteGlobalIDString = 11F7484E2EC9AABA00F841DB;
 			remoteInfo = NotchKitXPCHelper;
 		};
+		DD000000000000000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 14CEF40A2C5CAED200855D72 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 14CEF4112C5CAED300855D72;
+			remoteInfo = NotchKit;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -488,6 +495,7 @@
 		B1F747F82EC7E94000F841DB /* LottieView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LottieView.swift; sourceTree = "<group>"; };
 		B1FEB4982C7686630066EBBC /* PanGesture.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PanGesture.swift; sourceTree = "<group>"; };
 		CC0000000000000000000002 /* NotchKitCoreOnly.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = NotchKitCoreOnly.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		DD0000000000000000000001 /* NotchKitTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = NotchKitTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -504,6 +512,7 @@
 		112FB72F2CCF12CC0015238C /* private */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = private; sourceTree = "<group>"; };
 		11F748502EC9AABA00F841DB /* NotchKitXPCHelper */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (11F7485C2EC9AABA00F841DB /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = NotchKitXPCHelper; sourceTree = "<group>"; };
 		A1B2C3D42E00000000000006 /* ExtensionHost */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ExtensionHost; sourceTree = "<group>"; };
+		DD0000000000000000000002 /* NotchKitTests */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = NotchKitTests; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -556,6 +565,13 @@
 				CD0000000000000000000082 /* copied */,
 				CD0000000000000000000083 /* copied */,
 				CD0000000000000000000084 /* copied */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DD0000000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -750,6 +766,7 @@
 				11F748502EC9AABA00F841DB /* NotchKitXPCHelper */,
 				14CEF4132C5CAED300855D72 /* Products */,
 				14D031EC2C689DB70096E6A1 /* Frameworks */,
+				DD0000000000000000000002 /* NotchKitTests */,
 			);
 			sourceTree = "<group>";
 		};
@@ -1080,6 +1097,29 @@
 			productReference = CC0000000000000000000002 /* NotchKitCoreOnly.app */;
 			productType = "com.apple.product-type.application";
 		};
+		DD0000000000000000000003 /* NotchKitTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = DD0000000000000000000009 /* Build configuration list for PBXNativeTarget "NotchKitTests" */;
+			buildPhases = (
+				DD0000000000000000000004 /* Sources */,
+				DD0000000000000000000005 /* Frameworks */,
+				DD0000000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DD000000000000000000000A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				DD0000000000000000000002 /* NotchKitTests */,
+			);
+			name = NotchKitTests;
+			packageProductDependencies = (
+			);
+			productName = NotchKitTests;
+			productReference = DD0000000000000000000001 /* NotchKitTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -1129,6 +1169,7 @@
 			targets = (
 				14CEF4112C5CAED300855D72 /* NotchKit */,
 				CC0000000000000000000001 /* NotchKitCoreOnly */,
+				DD0000000000000000000003 /* NotchKitTests */,
 				11F7484E2EC9AABA00F841DB /* NotchKitXPCHelper */,
 			);
 		};
@@ -1165,6 +1206,13 @@
 				CD0000000000000000000088 /* copied */,
 				CD0000000000000000000089 /* copied */,
 				CD000000000000000000008A /* copied */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		DD0000000000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1426,6 +1474,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		DD0000000000000000000004 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -1438,6 +1493,11 @@
 			isa = PBXTargetDependency;
 			target = 11F7484E2EC9AABA00F841DB /* NotchKitXPCHelper */;
 			targetProxy = CC0000000000000000000009 /* PBXContainerItemProxy */;
+		};
+		DD000000000000000000000A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 14CEF4112C5CAED300855D72 /* NotchKit */;
+			targetProxy = DD000000000000000000000B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -1832,6 +1892,42 @@
 			};
 			name = Release;
 		};
+		DD0000000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.notchkit.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_STRICT_CONCURRENCY = targeted;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NotchKit.app/Contents/MacOS/NotchKit";
+			};
+			name = Debug;
+		};
+		DD0000000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "-";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = "";
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.notchkit.app.tests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_STRICT_CONCURRENCY = targeted;
+				SWIFT_VERSION = 5.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/NotchKit.app/Contents/MacOS/NotchKit";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -1867,6 +1963,15 @@
 			buildConfigurations = (
 				CC000000000000000000000B /* Debug */,
 				CC000000000000000000000C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		DD0000000000000000000009 /* Build configuration list for PBXNativeTarget "NotchKitTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DD0000000000000000000007 /* Debug */,
+				DD0000000000000000000008 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
