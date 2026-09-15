@@ -1,0 +1,16 @@
+{
+  "id": "com.notchkit.bad.invalidEntryPointKind",
+  "displayName": "Invalid Entry Point Kind",
+  "iconSystemName": "xmark",
+  "extensionVersion": "1.0.0",
+  "apiVersion": "1.0.0",
+  "supportedHostVersions": ">=1.0.0",
+  "supportedSDKVersions": ">=1.0.0 <2.0.0",
+  "capabilities": ["open-destination"],
+  "artifactKind": "compiled-in",
+  "entryPoints": [
+    { "id": "com.notchkit.bad.invalidEntryPointKind.page", "kind": "floating" }
+  ],
+  "defaultEnabled": false,
+  "source": "firstParty"
+}

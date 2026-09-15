@@ -1,0 +1,16 @@
+{
+  "id": "com.notchkit.bad.capabilityWithoutEntryPoint",
+  "displayName": "Capability Without Entry Point",
+  "iconSystemName": "xmark",
+  "extensionVersion": "1.0.0",
+  "apiVersion": "1.0.0",
+  "supportedHostVersions": ">=1.0.0",
+  "supportedSDKVersions": ">=1.0.0 <2.0.0",
+  "capabilities": ["open-destination", "settings-destination"],
+  "artifactKind": "compiled-in",
+  "entryPoints": [
+    { "id": "com.notchkit.bad.capabilityWithoutEntryPoint.page", "kind": "open-destination" }
+  ],
+  "defaultEnabled": false,
+  "source": "firstParty"
+}
