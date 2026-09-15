@@ -215,6 +215,55 @@ final class SettingsCatalogTests: XCTestCase {
                 $0.kind == .duplicateFeatureID(FeatureSettingsID("com.notchkit.alpha"))
             }
         )
+        XCTAssertTrue(
+            catalog.diagnostics.contains {
+                $0.kind == .duplicateFeatureID(FeatureSettingsID("com.notchkit.alpha"))
+                    && $0.message.contains("keeping the earlier registration")
+            },
+            "A retained first registration should say it was kept: \(catalog.diagnostics)"
+        )
+    }
+
+    func testDuplicateFeatureIDWhenFirstRegistrationWasRejectedDescribesActualPolicy() throws {
+        let catalog = SettingsCatalog()
+        let shared = TestFactory.settingsDestination("com.notchkit.settings.shared")
+        // The first registration of alpha reserves the id but is dropped because
+        // its only destination was already claimed by beta.
+        let beta = try definition("com.notchkit.beta", settings: [shared])
+        let alphaRejected = try definition("com.notchkit.alpha", settings: [shared])
+        let empty = try definition("com.notchkit.empty", settings: [])
+
+        let alphaAdapter = SettingsCatalogEntry(
+            id: FeatureSettingsID("com.notchkit.alpha"),
+            displayName: "Alpha duplicate",
+            iconSystemName: "square",
+            owner: nil,
+            management: .configurationOnly,
+            order: 1,
+            destinations: [TestFactory.settingsDestination("com.notchkit.settings.alpha.other")]
+        )
+
+        catalog.rebuild(
+            from: [beta, alphaRejected, empty],
+            adapters: [alphaAdapter]
+        )
+
+        XCTAssertFalse(
+            catalog.entries.contains { $0.id == FeatureSettingsID("com.notchkit.alpha") },
+            "The rejected first registration must not produce an entry"
+        )
+        let duplicate = catalog.diagnostics.first {
+            $0.kind == .duplicateFeatureID(FeatureSettingsID("com.notchkit.alpha"))
+        }
+        XCTAssertNotNil(duplicate)
+        XCTAssertFalse(
+            duplicate?.message.contains("keeping the earlier registration") ?? true,
+            "The message must not claim a retained registration when the first was rejected"
+        )
+        XCTAssertTrue(
+            duplicate?.message.contains("never reassigned") ?? false,
+            "The message must describe that the id is not reassigned: \(String(describing: duplicate?.message))"
+        )
     }
 
     func testOrderingIsDeterministicForEqualOrder() throws {

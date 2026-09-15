@@ -113,11 +113,12 @@ public final class SettingsCatalog: ObservableObject {
 
     /// Rebuilds the catalog from definitions and host adapters.
     ///
-    /// Collision policy: the first registration of a feature id wins;
-    /// definitions are processed before adapters; a later entry with a duplicate
-    /// feature or destination id is dropped with a diagnostic rather than
-    /// merging unrelated settings. Ordering is deterministic (explicit order,
-    /// then display name, then id).
+    /// Collision policy: a feature id belongs to the first registration that
+    /// reaches the id check (definitions before adapters). That registration
+    /// keeps the id even if it is later rejected for producing no destinations,
+    /// so the id is never reassigned to a later duplicate; the later duplicate is
+    /// dropped with a diagnostic rather than merging unrelated settings.
+    /// Ordering is deterministic (explicit order, then display name, then id).
     ///
     /// - Parameters:
     ///   - definitions: registered extension definitions. Their `settings`
@@ -134,6 +135,7 @@ public final class SettingsCatalog: ObservableObject {
     ) {
         diagnostics = []
         var seenFeatureIDs = Set<FeatureSettingsID>()
+        var retainedFeatureIDs = Set<FeatureSettingsID>()
         var seenDestinations = Set<DestinationID>()
         var result: [SettingsCatalogEntry] = []
 
@@ -151,7 +153,10 @@ public final class SettingsCatalog: ObservableObject {
             guard seenFeatureIDs.insert(featureID).inserted else {
                 record(
                     .duplicateFeatureID(featureID),
-                    "Duplicate feature id '\(featureID.rawValue)'; keeping the first registration."
+                    duplicateFeatureMessage(
+                        featureID,
+                        earlierWasRetained: retainedFeatureIDs.contains(featureID)
+                    )
                 )
                 continue
             }
@@ -163,6 +168,7 @@ public final class SettingsCatalog: ObservableObject {
             )
             guard !destinations.isEmpty else { continue }
 
+            retainedFeatureIDs.insert(featureID)
             result.append(
                 SettingsCatalogEntry(
                     id: featureID,
@@ -181,7 +187,10 @@ public final class SettingsCatalog: ObservableObject {
             guard seenFeatureIDs.insert(adapter.id).inserted else {
                 record(
                     .duplicateFeatureID(adapter.id),
-                    "Duplicate feature id '\(adapter.id.rawValue)'; keeping the first registration."
+                    duplicateFeatureMessage(
+                        adapter.id,
+                        earlierWasRetained: retainedFeatureIDs.contains(adapter.id)
+                    )
                 )
                 continue
             }
@@ -193,6 +202,7 @@ public final class SettingsCatalog: ObservableObject {
             )
             guard !destinations.isEmpty else { continue }
 
+            retainedFeatureIDs.insert(adapter.id)
             result.append(
                 SettingsCatalogEntry(
                     id: adapter.id,
@@ -275,6 +285,22 @@ public final class SettingsCatalog: ObservableObject {
                     + "entry point in its metadata."
             )
         }
+    }
+
+    /// The diagnostic text depends on whether the id's first registration became
+    /// a catalog entry. An earlier registration can reserve an id and still be
+    /// dropped (for example when every destination was a duplicate), in which
+    /// case the later duplicate is also ignored rather than reassigning the id.
+    private func duplicateFeatureMessage(
+        _ featureID: FeatureSettingsID,
+        earlierWasRetained: Bool
+    ) -> String {
+        if earlierWasRetained {
+            return "Duplicate feature id '\(featureID.rawValue)'; keeping the earlier registration."
+        }
+        return "Duplicate feature id '\(featureID.rawValue)'; an earlier registration reserved "
+            + "this id but produced no entry, so this duplicate is also ignored. Feature ids are "
+            + "first-come and are never reassigned."
     }
 
     private func uniqueDestinations(
