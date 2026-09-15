@@ -28,8 +28,8 @@ final class CalendarManagerPropagationTests: XCTestCase {
         await provider.loadLists()
         provider.setSelected(makeCalendar("a"), isSelected: false)
 
-        // Allow the notification-driven refresh to run on the main actor.
-        try? await Task.sleep(for: .milliseconds(150))
+        // Wait for the notification-driven refresh to run on the main actor.
+        await waitUntil { manager.selectedCalendars.map(\.id) == ["b"] }
 
         XCTAssertFalse(manager.selectedCalendarIDs.contains("a"))
         XCTAssertTrue(manager.selectedCalendarIDs.contains("b"))
@@ -75,7 +75,7 @@ final class CalendarManagerPropagationTests: XCTestCase {
         let provider = CalendarSettingsDataProvider(service: service, selectionStore: store)
         await provider.loadLists()
         provider.setSelected(makeCalendar("a"), isSelected: false)
-        try? await Task.sleep(for: .milliseconds(150))
+        await waitUntil { manager.events.map(\.calendar.id) == ["b"] }
 
         XCTAssertEqual(
             manager.events.map(\.calendar.id),
@@ -102,7 +102,7 @@ final class CalendarManagerPropagationTests: XCTestCase {
 
         let provider = CalendarSettingsDataProvider(service: service, selectionStore: store)
         await provider.refreshAfterReturningToApp()
-        try? await Task.sleep(for: .milliseconds(150))
+        await waitUntil { manager.eventCalendars.map(\.id) == ["a"] }
 
         XCTAssertEqual(manager.calendarAuthorizationStatus, .fullAccess)
         XCTAssertEqual(manager.eventCalendars.map(\.id), ["a"])
@@ -121,7 +121,7 @@ final class CalendarManagerPropagationTests: XCTestCase {
         )
 
         let reload = Task { await manager.reloadCalendarAndReminderLists() }
-        while service.eventCallCount < 1 { await Task.yield() }
+        await waitUntil { service.eventCallCount >= 1 }
 
         // A newer date is requested while the first, older date load is still in
         // flight.
@@ -132,12 +132,36 @@ final class CalendarManagerPropagationTests: XCTestCase {
 
         service.releaseFirstEventCall()
         await reload.value
-        try? await Task.sleep(for: .milliseconds(50))
 
         XCTAssertEqual(
             manager.events.first?.start,
             expectedStart,
             "A slower, older date load must not overwrite the newer date's results"
+        )
+    }
+
+    func testReminderCompletionRefreshesEvents() async {
+        let service = FakeCalendarService()
+        service.calendarResults = [[makeCalendar("a")]]
+        var completed = false
+        service.eventsHandler = { ids in
+            ids.map { makeEvent(id: completed ? "done" : "open", calendar: $0) }
+        }
+        service.reminderCompletionHandler = { _, value in completed = value }
+
+        let manager = CalendarManager(
+            calendarService: service,
+            selectionStore: InMemoryCalendarSelectionStore(.all)
+        )
+        await manager.reloadCalendarAndReminderLists()
+        XCTAssertEqual(manager.events.map(\.id), ["open"])
+
+        await manager.setReminderCompleted(reminderID: "reminder-1", completed: true)
+
+        XCTAssertEqual(
+            manager.events.map(\.id),
+            ["done"],
+            "Completing a reminder must refresh events after the mutation"
         )
     }
 
@@ -151,7 +175,7 @@ final class CalendarManagerPropagationTests: XCTestCase {
         let manager = CalendarManager(calendarService: service, selectionStore: store)
 
         let reload = Task { await manager.reloadCalendarAndReminderLists() }
-        while service.callCount < 1 { await Task.yield() }
+        await waitUntil { service.callCount >= 1 }
 
         // Selection changes while the initial calendar list is still loading.
         store.selectionState = .selected(["b"])
@@ -159,7 +183,7 @@ final class CalendarManagerPropagationTests: XCTestCase {
 
         service.releaseFirstCall()
         await reload.value
-        try? await Task.sleep(for: .milliseconds(150))
+        await waitUntil { manager.events.map(\.calendar.id) == ["b"] }
 
         XCTAssertEqual(
             manager.allCalendars.map(\.id).sorted(),

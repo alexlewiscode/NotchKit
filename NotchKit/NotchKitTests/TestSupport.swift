@@ -69,6 +69,13 @@ final class FakeCalendarService: CalendarServiceProviding {
     func events(from start: Date, to end: Date, calendars: [String]) async -> [EventModel] {
         eventsHandler?(calendars) ?? []
     }
+
+    /// Lets a test observe and react to a reminder completion mutation.
+    var reminderCompletionHandler: ((String, Bool) -> Void)?
+
+    func setReminderCompleted(reminderID: String, completed: Bool) async {
+        reminderCompletionHandler?(reminderID, completed)
+    }
 }
 
 /// A calendar service whose first `calendars()` call blocks until released, so
@@ -139,5 +146,19 @@ extension CalendarSelectionState {
     var selectedIdentifiers: Set<String>? {
         if case .selected(let identifiers) = self { return identifiers }
         return nil
+    }
+}
+
+/// Bounded wait for a condition driven by an async observer/task. Unlike a fixed
+/// sleep this returns as soon as the condition holds and cannot hang forever.
+@MainActor
+func waitUntil(
+    timeout: TimeInterval = 2,
+    _ condition: () -> Bool
+) async {
+    let deadline = Date().addingTimeInterval(timeout)
+    while !condition() && Date() < deadline {
+        await Task.yield()
+        try? await Task.sleep(nanoseconds: 1_000_000)
     }
 }

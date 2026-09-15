@@ -112,7 +112,7 @@ final class CalendarSettingsProviderTests: XCTestCase {
         )
 
         let first = Task { await provider.loadLists() }
-        while service.callCount < 1 { await Task.yield() }
+        await waitUntil { service.callCount >= 1 }
 
         // Second load supersedes the first while it is still suspended.
         await provider.loadLists()
