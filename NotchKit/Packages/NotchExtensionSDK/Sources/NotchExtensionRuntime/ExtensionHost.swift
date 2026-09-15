@@ -172,13 +172,22 @@ public final class ExtensionHost {
 
     private func beginActivation(_ definition: ExtensionDefinition) {
         let id = definition.id
+        // A newer transition supersedes any pending activation or deactivation
+        // for this identity. Cancelling the task is not enough on its own: the
+        // task may already be queued, so teardown must also be generation-guarded
+        // (see `beginDeactivation`).
+        tasks[id]?.cancel()
+        tasks[id] = nil
         advanceGeneration(for: id)
         let generation = generations[id] ?? 0
 
-        if let existing = instances[id] {
-            existing.deactivate()
-            bags[id]?.cancelAll()
-        }
+        // Tear down the previous instance exactly once, here and now, under the
+        // new generation. This transfers teardown ownership to the activation so
+        // a superseded deactivation task cannot stop the shared service again.
+        instances[id]?.deactivate()
+        bags[id]?.cancelAll()
+        instances.removeValue(forKey: id)
+        bags.removeValue(forKey: id)
 
         setPhase(.activating, id)
 
@@ -191,15 +200,22 @@ public final class ExtensionHost {
         tasks[id] = Task { [weak self] in
             do {
                 try await instance.activate()
-                self?.finishActivation(id, generation: generation)
+                self?.finishActivation(id, generation: generation, instance: instance)
             } catch {
-                self?.failActivation(id, generation: generation, error: error)
+                self?.failActivation(id, generation: generation, instance: instance, error: error)
             }
         }
     }
 
-    private func finishActivation(_ id: ExtensionIdentity, generation: Int) {
-        guard generations[id] == generation else { return }
+    private func finishActivation(
+        _ id: ExtensionIdentity,
+        generation: Int,
+        instance: any NotchExtension
+    ) {
+        guard generations[id] == generation, instances[id] === instance else {
+            tearDownSupersededActivation(instance, id: id)
+            return
+        }
         guard let instance = instances[id] else {
             tasks[id] = nil
             return
@@ -219,7 +235,7 @@ public final class ExtensionHost {
                 for: id
             )
         } catch {
-            failActivation(id, generation: generation, error: error)
+            failActivation(id, generation: generation, instance: instance, error: error)
             return
         }
 
@@ -227,14 +243,35 @@ public final class ExtensionHost {
         setPhase(.active, id)
     }
 
-    private func failActivation(_ id: ExtensionIdentity, generation: Int, error: Error) {
-        guard generations[id] == generation else { return }
-        instances[id]?.deactivate()
+    private func failActivation(
+        _ id: ExtensionIdentity,
+        generation: Int,
+        instance: any NotchExtension,
+        error: Error
+    ) {
+        guard generations[id] == generation, instances[id] === instance else {
+            tearDownSupersededActivation(instance, id: id)
+            return
+        }
+        instance.deactivate()
         bags[id]?.cancelAll()
         clearInstance(id)
         contributions.removeContributions(for: id)
         tasks[id] = nil
         setPhase(.failed(String(describing: error)), id)
+    }
+
+    /// Undoes a late activation that a newer lifecycle superseded.
+    ///
+    /// A superseded `activate()` can resume after the host already moved on and
+    /// start a shared service. If a newer instance now owns that service
+    /// (the extension is still enabled), touching it would risk stopping the
+    /// current owner, so the host leaves it alone. If the extension is disabled
+    /// or removed, nothing else owns the service and the late side effects must
+    /// be cleaned up.
+    private func tearDownSupersededActivation(_ instance: any NotchExtension, id: ExtensionIdentity) {
+        guard !manager.isEnabled(id) else { return }
+        instance.deactivate()
     }
 
     private func beginDeactivation(_ id: ExtensionIdentity) {
@@ -249,9 +286,15 @@ public final class ExtensionHost {
         let bag = bags[id]
 
         tasks[id] = Task { [weak self] in
+            guard let self else { return }
+            // If a newer transition superseded this deactivation, it owns
+            // teardown. Checking the generation *before* tearing down is what
+            // prevents a stale deactivation from stopping a service that a newer
+            // activation already started. (The body runs synchronously on the
+            // main actor, so the generation cannot change mid-teardown.)
+            guard self.generations[id] == generation else { return }
             instance?.deactivate()
             bag?.cancelAll()
-            guard let self, self.generations[id] == generation else { return }
             self.clearInstance(id)
             self.tasks[id] = nil
             self.setPhase(.inactive, id)
