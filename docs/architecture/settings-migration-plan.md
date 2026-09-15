@@ -685,3 +685,93 @@ This consolidates settings configuration. Battery remains the only fully
 lifecycle-managed feature. Extracting Calendar, Shelf, Media, HUD, or Camera
 Mirror into independently installed extensions, and any marketplace/install
 surface, remain future work.
+
+## Appendix C: review follow-up (Agent C)
+
+Reviewed head: `d1ca1cc8d21b0f3d09f98227ae62d112f5f4848a`. Follow-up commits on
+`codex/extensions-settings`:
+
+| Commit | Scope |
+| --- | --- |
+| `b511a76` | Calendar selection/authorization propagation to the live feature |
+| `865d739` | SDK/catalog corrections (diagnostics, unique ids, version refs) |
+| `bb60c8f` | Interaction polish (Battery toggle, window sizing, shortcuts focus) |
+| `03f032a` | Host test target, provider tests, CI |
+
+### Finding → fix → verification
+
+1. **Calendar selection did not reach the running feature (blocking).**
+   `CalendarSettingsDataProvider` now writes through a shared
+   `CalendarSelectionStore` and posts `calendarSelectionChanged`; an already-running
+   `CalendarManager` observes it and rebuilds the effective selection/events.
+   `calendarAuthorizationChanged` refreshes lists/selection/events after an
+   explicit grant or a change observed on return. A manager created later reads
+   the latest persisted selection in `reloadCalendarAndReminderLists`. Async
+   reloads/event fetches are generation-guarded so stale results are discarded.
+   Collapse semantics are shared via `CalendarSelectionState.toggling`. Verified
+   by `CalendarManagerPropagationTests` and `CalendarSettingsProviderTests`
+   (selection reaches a running manager; superseded loads discarded).
+2. **Deprecated settings API transition.** `SettingsCatalog.rebuild` now emits
+   nonfatal `missingSettingsDeclaration`/`undeclaredSettingsDestination`
+   diagnostics for entry-point/declaration mismatches without instantiating an
+   extension. `extension-api.md` documents the migration and states that source
+   compatibility does not imply behavioural compatibility. Package tests cover
+   missing declarations, undeclared destinations, and a valid migrated
+   definition.
+3. **HUD status refresh.** The page refreshes status read-only when the app
+   becomes active and via the explicit button. `HUDStatusProvider` has only a
+   read closure (no request/start capability); its subscription is page-scoped.
+   Verified by `HUDStatusProviderTests`.
+4. **Unique catalog feature ids.** First registration wins (definitions before
+   adapters); duplicate feature/destination ids are dropped with diagnostics;
+   ordering is deterministic (order, display name, id). Package tests cover
+   duplicate feature ids, destination collisions, stable ordering,
+   rebuild-after-removal, diagnostic reset, and no instantiation.
+5. **SDK version references.** Corrected `extension-api.md` and `extensions.md`;
+   `ext-validate` derives its default SDK version from
+   `ExtensionAPIVersion.current` via a testable `ExtValidateOptionsParser`,
+   preserving explicit `--sdk-version` overrides. Validation tests: 14.
+6. **Small interaction findings.** Battery's lifecycle switch is disabled during
+   activating/deactivating; the window uses `contentMinSize` with an initial
+   content rect that respects it; shortcuts-owner focus resets on sidebar entry
+   but is preserved from feature links; idle-face stays in Appearance; the
+   obsolete Calendar authorization/selection methods were removed after
+   confirming no callers and replacing their behaviour.
+7. **Host/provider tests.** Added a minimal `NotchKitTests` unit-test bundle
+   (app as test host) via a file-system-synchronized group, with injected fakes
+   (`FakeCalendarService`, `GatedCalendarService`, `InMemoryCalendarSelectionStore`,
+   `ShareServiceDiscovering`, `HUDStatusProvider`). 15 host tests, no real TCC,
+   calendars, or preferences. CI: `host-tests` job in `cicd.yml` runs
+   `-scheme NotchKitTests`. Schemes remain autocreated (`.gitignore` excludes
+   `*.xcscheme`), matching the baseline convention.
+8. **GUI checks.** Not performed in this headless session beyond the fact that
+   the app host launches successfully under the test runner. See below.
+
+### Automated commands/results (follow-up head)
+
+- `swift test --package-path NotchKit/Packages/NotchExtensionSDK` → 111 pass.
+- `swift test --package-path NotchExtensions/FirstParty/Battery` → 18 pass.
+- `swift test --package-path NotchExtensions/validation` → 14 pass.
+- `xcodebuild test -scheme NotchKitTests` → 15 pass.
+- `xcodebuild build -scheme NotchKit -configuration Debug` → success.
+- `xcodebuild build -scheme NotchKitCoreOnly -configuration Debug` → success.
+- CoreOnly linkage: `BatteryExtension` symbols 0 (NotchKit 332),
+  `BatterySettingsView` string absent. Battery remains genuinely excluded.
+
+### GUI checks still outstanding
+
+All interactive checks (six sidebar sections and details, Battery
+disabled/enable/disable/re-enable and transition UI, Calendar selection
+reflected in the visible notch, Calendar/reminder authorization prompts, Shelf
+discovery and Restore Shelf, HUD status after System Settings, shortcuts links
+vs sidebar entry, Back/Escape in details/text fields/sheets, initial window size
+and resizing under longer labels) require an interactive desktop session and were
+not performed. No visual correctness is inferred from compilation.
+
+### Remaining defects / notes
+
+- `MusicManager.shared` remains a pre-existing app-global read by the Media page.
+- Extension metadata `displayName`/`summary`/destination `title` remain
+  non-localizable `String`s (documented, not redesigned).
+- `autoScrollToNextEvent` inert and `useMusicVisualizer` disabled remain as
+  documented limitations.
