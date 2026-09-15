@@ -1,0 +1,74 @@
+name: Extensions
+
+on:
+  push:
+    paths:
+      - "NotchKit/Packages/NotchExtensionSDK/**"
+      - "NotchExtensions/**"
+      - ".github/workflows/extensions.yml"
+  pull_request:
+    paths:
+      - "NotchKit/Packages/NotchExtensionSDK/**"
+      - "NotchExtensions/**"
+      - ".github/workflows/extensions.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  sdk:
+    name: SDK and runtime package tests
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Test NotchExtensionSDK
+        run: swift test --package-path NotchKit/Packages/NotchExtensionSDK
+
+  battery:
+    name: Battery first-party extension tests
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Test BatteryExtension
+        run: swift test --package-path NotchExtensions/FirstParty/Battery
+
+  validation:
+    name: Manifest validation fixtures and trusted first-party manifests
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode.app
+      - name: Validator unit tests
+        run: swift test --package-path NotchExtensions/validation
+      - name: Trusted first-party manifests must validate
+        working-directory: NotchExtensions/validation
+        run: |
+          set -euo pipefail
+          manifests=()
+          while IFS= read -r -d '' manifest; do
+            manifests+=("$manifest")
+          done < <(find ../FirstParty ../examples -name manifest.json -print0)
+          if [ "${#manifests[@]}" -eq 0 ]; then
+            echo "No first-party manifests found" >&2
+            exit 1
+          fi
+          echo "Validating ${#manifests[@]} trusted manifests"
+          swift run ext-validate "${manifests[@]}"
+
+      - name: Invalid fixtures must be rejected
+        working-directory: NotchExtensions/validation
+        run: |
+          set -euo pipefail
+          status=0
+          for fixture in Fixtures/invalid/*.json; do
+            if swift run ext-validate "$fixture" >/dev/null 2>&1; then
+              echo "Expected rejection but passed: $fixture" >&2
+              status=1
+            fi
+          done
+          exit "$status"
