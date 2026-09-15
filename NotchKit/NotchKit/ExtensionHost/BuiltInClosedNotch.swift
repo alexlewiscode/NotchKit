@@ -24,7 +24,6 @@ enum BuiltInClosedNotch {
         gestureProgress: Binding<CGFloat>
     ) -> [ClosedNotchContribution] {
         [
-            battery(),
             inlineHUD(vm: vm, hoverAnimation: hoverAnimation, gestureProgress: gestureProgress),
             music(vm: vm, gestureProgress: gestureProgress),
             idleFace(vm: vm),
@@ -49,7 +48,6 @@ enum BuiltInClosedNotch {
             isSneakPeekVisible: coordinator.sneakPeek.show,
             flags: [
                 "inlineHUD": Defaults[.inlineHUD],
-                "showPowerStatusNotifications": Defaults[.showPowerStatusNotifications],
                 "musicLiveActivityEnabled": coordinator.musicLiveActivityEnabled,
                 "showNotHumanFace": Defaults[.showNotHumanFace],
             ]
@@ -57,24 +55,6 @@ enum BuiltInClosedNotch {
     }
 
     // MARK: - Contributions
-
-    private static func battery() -> ClosedNotchContribution {
-        ClosedNotchContribution(
-            id: BuiltInExtensionIDs.batteryContribution,
-            extensionID: BuiltInExtensionIDs.home,
-            region: .exclusion,
-            priority: 400,
-            tieBreaker: "battery",
-            isAvailable: { snapshot in
-                !snapshot.isNotchOpen
-                    && snapshot.isExpandingViewShown
-                    && snapshot.expandingViewKind == "battery"
-                    && snapshot.flag("showPowerStatusNotifications")
-            },
-            makeView: { AnyView(BatteryNotificationContent()) },
-            preferredChinWidth: { _ in 640 }
-        )
-    }
 
     private static func inlineHUD(
         vm: BoringViewModel,

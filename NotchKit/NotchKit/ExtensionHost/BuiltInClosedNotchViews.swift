@@ -8,39 +8,6 @@
 import Defaults
 import SwiftUI
 
-/// Battery status notification shown while the notch is closed.
-struct BatteryNotificationContent: View {
-    @EnvironmentObject var vm: BoringViewModel
-    @ObservedObject var batteryModel = BatteryStatusViewModel.shared
-
-    var body: some View {
-        HStack(spacing: 0) {
-            HStack {
-                Text(batteryModel.statusText)
-                    .font(.subheadline)
-                    .foregroundStyle(.white)
-            }
-
-            Rectangle()
-                .fill(.black)
-                .frame(width: vm.closedNotchSize.width + 10)
-
-            HStack {
-                BoringBatteryView(
-                    batteryWidth: 30,
-                    isCharging: batteryModel.isCharging,
-                    isInLowPowerMode: batteryModel.isInLowPowerMode,
-                    isPluggedIn: batteryModel.isPluggedIn,
-                    levelBattery: batteryModel.levelBattery,
-                    isForNotification: true
-                )
-            }
-            .frame(width: 76, alignment: .trailing)
-        }
-        .frame(height: vm.effectiveClosedNotchHeight, alignment: .center)
-    }
-}
-
 /// Inline HUD wrapper that binds coordinator state and local hover/gesture state.
 struct InlineHUDContent: View {
     @ObservedObject var coordinator = BoringViewCoordinator.shared

@@ -8,9 +8,15 @@
 import Defaults
 import SwiftUI
 
+#if !NOTCHKIT_CORE_ONLY
+import BatteryExtension
+#endif
+
 struct BoringHeader: View {
     @EnvironmentObject var vm: BoringViewModel
-    @ObservedObject var batteryModel = BatteryStatusViewModel.shared
+    #if !NOTCHKIT_CORE_ONLY
+    @ObservedObject var batteryMonitor = NotchKitRuntime.shared.batteryMonitor
+    #endif
     @ObservedObject var coordinator = BoringViewCoordinator.shared
     @StateObject var tvm = ShelfStateViewModel.shared
     var body: some View {
@@ -77,18 +83,23 @@ struct BoringHeader: View {
                             }
                             .buttonStyle(PlainButtonStyle())
                         }
-                        if Defaults[.showBatteryIndicator] {
+                        #if !NOTCHKIT_CORE_ONLY
+                        if Defaults[.showBatteryIndicator]
+                            && NotchKitRuntime.shared.manager.isEnabled(BatteryIds.identity)
+                        {
                             BoringBatteryView(
                                 batteryWidth: 30,
-                                isCharging: batteryModel.isCharging,
-                                isInLowPowerMode: batteryModel.isInLowPowerMode,
-                                isPluggedIn: batteryModel.isPluggedIn,
-                                levelBattery: batteryModel.levelBattery,
-                                maxCapacity: batteryModel.maxCapacity,
-                                timeToFullCharge: batteryModel.timeToFullCharge,
-                                isForNotification: false
+                                isCharging: batteryMonitor.snapshot.isCharging,
+                                isInLowPowerMode: batteryMonitor.snapshot.isInLowPowerMode,
+                                isPluggedIn: batteryMonitor.snapshot.isPluggedIn,
+                                levelBattery: batteryMonitor.snapshot.currentCapacity,
+                                maxCapacity: batteryMonitor.snapshot.maxCapacity,
+                                timeToFullCharge: batteryMonitor.snapshot.timeToFullChargeMinutes,
+                                isForNotification: false,
+                                isPopoverActive: $vm.isBatteryPopoverActive
                             )
                         }
+                        #endif
                     }
                 }
             }

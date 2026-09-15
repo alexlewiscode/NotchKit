@@ -17,10 +17,16 @@ import NotchExtensionRuntime
 @MainActor
 final class HostPresentationService: NotchPresentationService {
     private let coordinator: PresentationCoordinator
+    private let viewCoordinator: BoringViewCoordinator
     private let activeDisplay: @MainActor () -> DisplayID
 
-    init(coordinator: PresentationCoordinator, activeDisplay: @escaping @MainActor () -> DisplayID) {
+    init(
+        coordinator: PresentationCoordinator,
+        viewCoordinator: BoringViewCoordinator,
+        activeDisplay: @escaping @MainActor () -> DisplayID
+    ) {
         self.coordinator = coordinator
+        self.viewCoordinator = viewCoordinator
         self.activeDisplay = activeDisplay
     }
 
@@ -47,7 +53,18 @@ final class HostPresentationService: NotchPresentationService {
             switch request {
             case .open(let destination):
                 router.select(destination)
-            case .close, .showSneakPeek, .hideSneakPeek:
+            case .showSneakPeek(let kind, let value, _):
+                // Core owns how (and whether) a transient expanding view is
+                // shown. Battery is the only compiled-in contributor that uses
+                // this today.
+                if kind == "battery" {
+                    viewCoordinator.toggleExpandingView(
+                        status: true,
+                        type: .battery,
+                        value: CGFloat(value ?? 0)
+                    )
+                }
+            case .close, .hideSneakPeek:
                 // Core owns closing and sneak-peek timing; not wired this phase.
                 break
             }

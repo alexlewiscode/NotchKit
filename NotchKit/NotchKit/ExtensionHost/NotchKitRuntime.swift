@@ -10,6 +10,10 @@ import NotchExtensionSDK
 import NotchExtensionRuntime
 import os
 
+#if !NOTCHKIT_CORE_ONLY
+import BatteryExtension
+#endif
+
 /// Small holder so the context factory can read the active display without
 /// capturing the runtime during its own initialization.
 @MainActor
@@ -32,6 +36,12 @@ final class NotchKitRuntime {
     let contributions = ContributionStore()
     let presentation: PresentationCoordinator
     let host: ExtensionHost
+
+    #if !NOTCHKIT_CORE_ONLY
+    /// The app-wide battery service shared by the Battery extension and the
+    /// open-notch header indicator. Created once, never per display.
+    let batteryMonitor = BatteryMonitor()
+    #endif
 
     private let displayBox = ActiveDisplayBox()
     private let logger = Logger(subsystem: NotchKitIdentity.bundleIdentifier, category: "NotchKit")
@@ -56,7 +66,10 @@ final class NotchKitRuntime {
             ExtensionContext(
                 identity: id,
                 cancellation: bag,
-                presentation: HostPresentationService(coordinator: presentation) {
+                presentation: HostPresentationService(
+                    coordinator: presentation,
+                    viewCoordinator: BoringViewCoordinator.shared
+                ) {
                     displayBox.value
                 },
                 store: UserDefaultsExtensionScopedStore(identity: id),
@@ -73,7 +86,11 @@ final class NotchKitRuntime {
     /// Registers the first-party catalog and starts enabled extensions.
     func bootstrap() {
         do {
-            try catalog.add(contentsOf: BuiltInExtensions.definitions())
+            var definitions = BuiltInExtensions.definitions()
+            #if !NOTCHKIT_CORE_ONLY
+            definitions.append(try BatteryExtensionFactory.definition(monitor: batteryMonitor))
+            #endif
+            try catalog.add(contentsOf: definitions)
             try catalog.registerAll(into: registry)
             host.start()
             presentation.refreshAll()

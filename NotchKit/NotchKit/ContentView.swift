@@ -73,7 +73,8 @@ struct ContentView: View {
         }()
 
         let snapshot = BuiltInClosedNotch.snapshot(vm: vm, coordinator: coordinator)
-        let contributions = NotchKitRuntime.shared.manager.isEnabled(BuiltInExtensionIDs.home)
+        let extensionContributions = NotchKitRuntime.shared.contributions.closedNotchContributions
+        let homeContributions = NotchKitRuntime.shared.manager.isEnabled(BuiltInExtensionIDs.home)
             ? BuiltInClosedNotch.contributions(
                 vm: vm,
                 hoverAnimation: $isHovering,
@@ -82,7 +83,7 @@ struct ContentView: View {
             : []
         let closedRender = ClosedNotchRenderer.render(
             snapshot: snapshot,
-            contributions: contributions,
+            contributions: extensionContributions + homeContributions,
             baseChinWidth: vm.closedNotchSize.width
         )
         
@@ -271,6 +272,13 @@ struct ContentView: View {
                                         width: vm.closedNotchSize.width - 20,
                                         height: vm.effectiveClosedNotchHeight
                                     )
+                            )
+                        )
+                        .environment(
+                            \.notchGeometry,
+                            NotchGeometry(
+                                closedNotchWidth: vm.closedNotchSize.width,
+                                closedNotchHeight: vm.effectiveClosedNotchHeight
                             )
                         )
                     }
