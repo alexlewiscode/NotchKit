@@ -20,6 +20,9 @@ public final class BatteryExtension: NotchExtension {
     private let context: ExtensionContext
     private let monitor: BatteryMonitor
     private var isActive = false
+    /// Test seam: forces `activate()` to throw after the service has started,
+    /// so partial-failure teardown can be exercised.
+    var activationFailure: Error?
 
     public init(context: ExtensionContext, monitor: BatteryMonitor) {
         self.context = context
@@ -36,6 +39,9 @@ public final class BatteryExtension: NotchExtension {
             self?.snapshotChanged(snapshot)
         }
         monitor.start()
+        if let activationFailure {
+            throw activationFailure
+        }
     }
 
     public func deactivate() {

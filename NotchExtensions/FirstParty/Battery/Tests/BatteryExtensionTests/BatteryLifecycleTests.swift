@@ -29,7 +29,8 @@ final class FakePowerSource: PowerSourceObserving {
     func stop() {
         stopCount += 1
         activeCount = max(0, activeCount - 1)
-        handler = nil
+        // Deliberately keep `handler`: tests use it to deliver a late event and
+        // prove the monitor ignores stale callbacks after stop().
     }
 
     func emit(_ snapshot: BatterySnapshot) {
@@ -342,5 +343,81 @@ final class BatteryLifecycleTests: XCTestCase {
                 hostVersion: ExtensionVersion(major: 1, minor: 0, patch: 0)
             )
         )
+    }
+
+    // MARK: Migration and robustness
+
+    func testSettingsKeysMatchHistoricalHostKeys() {
+        // These literals are the historical host UserDefaults keys. Changing
+        // them without migrating stored values would silently reset preferences.
+        XCTAssertEqual(BatterySettingsKeys.showPowerStatusNotifications, "showPowerStatusNotifications")
+        XCTAssertEqual(BatterySettingsKeys.showBatteryIndicator, "showBatteryIndicator")
+        XCTAssertEqual(BatterySettingsKeys.showBatteryPercentage, "showBatteryPercentage")
+        XCTAssertEqual(BatterySettingsKeys.showPowerStatusIcons, "showPowerStatusIcons")
+    }
+
+    func testContributionUnavailableWhenNotificationsDisabled() async throws {
+        resetSettings()
+        BatterySettings.showPowerStatusNotifications = false
+        let source = FakePowerSource()
+        let monitor = BatteryMonitor(source: source)
+        let (context, _, _) = makeContext()
+        let sut = BatteryExtension(context: context, monitor: monitor)
+        try await sut.activate()
+
+        guard let contribution = sut.closedNotchContributions().first else {
+            return XCTFail("Missing contribution")
+        }
+        XCTAssertFalse(
+            contribution.isAvailable(
+                ClosedNotchRenderSnapshot(
+                    isNotchOpen: false,
+                    expandingViewKind: "battery",
+                    isExpandingViewShown: true
+                )
+            )
+        )
+        sut.deactivate()
+        resetSettings()
+    }
+
+    func testPartialActivationFailureLeavesNoObserver() async throws {
+        resetSettings()
+        enum Boom: Error { case failed }
+        let source = FakePowerSource()
+        let monitor = BatteryMonitor(source: source)
+        let (context, _, _) = makeContext()
+        let sut = BatteryExtension(context: context, monitor: monitor)
+        sut.activationFailure = Boom.failed
+
+        do {
+            try await sut.activate()
+            XCTFail("Expected activation to throw")
+        } catch {
+            // Expected. The host would now call deactivate().
+        }
+        sut.deactivate()
+
+        XCTAssertEqual(source.activeCount, 0)
+        XCTAssertFalse(monitor.isRunning)
+        XCTAssertTrue(sut.closedNotchContributions().isEmpty)
+    }
+
+    func testMonitorDoesNotReadPowerStateUntilStarted() {
+        let source = FakePowerSource()
+        source.current = BatterySnapshot(
+            isPluggedIn: true,
+            isCharging: true,
+            currentCapacity: 90,
+            maxCapacity: 100,
+            isInLowPowerMode: false,
+            timeToFullChargeMinutes: 5
+        )
+        let monitor = BatteryMonitor(source: source)
+        // Construction must not sample the source.
+        XCTAssertEqual(monitor.snapshot, .unknown)
+        monitor.start()
+        XCTAssertEqual(monitor.snapshot.currentCapacity, 90)
+        monitor.stop()
     }
 }

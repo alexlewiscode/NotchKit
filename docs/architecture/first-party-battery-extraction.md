@@ -47,8 +47,8 @@ smallest follow-up is a `NotchPowerService` on `ExtensionContext` exposing a
 ## Core-only build
 
 A `CoreOnly` build configuration sets `NOTCHKIT_CORE_ONLY`, under which the host
-does not import, register, or instantiate Battery, and does not create a monitor
-or settings page.
+does not import, register, or instantiate Battery: no monitor is created, the
+header indicator is absent, and the Battery settings pane is not built.
 
 ```sh
 export DEVELOPER_DIR=/Applications/Xcode.app/Contents/Developer
@@ -78,6 +78,21 @@ xcodebuild -project NotchKit/NotchKit.xcodeproj -scheme NotchKit \
 The 12 Battery tests cover activation, disablement, re-enable, idempotent
 partial activation, stale events after deactivation, preference preservation,
 display-aware presentation, and contribution gating.
+
+## Coordination with Agent 2
+
+1. **Additive SDK change:** `NotchGeometry` / `notchGeometry` (see above).
+2. **Runtime race to fix in `ExtensionHost` (not Battery-specific).**
+   `beginDeactivation` runs `instance.deactivate()` and `bag.cancelAll()` before
+   its generation guard, and `beginActivation` replaces `tasks[id]` without
+   cancelling a pending deactivation task. On a rapid disable→enable, a stale
+   deactivation can call the previous instance's `deactivate()` after the new
+   activation started, leaving an active extension with a stopped service. The
+   fix belongs in the runtime: cancel/replace the pending deactivation task
+   before starting a new activation, or move the teardown behind the generation
+   guard. Battery guards its own service (`BatteryMonitor` generation token),
+   but the host ordering can still defeat it. Not fixed here to avoid
+   redesigning the runtime contract.
 
 ## Not verified here
 

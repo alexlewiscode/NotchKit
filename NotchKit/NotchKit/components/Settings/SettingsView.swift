@@ -42,9 +42,11 @@ struct SettingsView: View {
                 NavigationLink(value: "HUD") {
                     Label("HUDs", systemImage: "dial.medium.fill")
                 }
+                #if !NOTCHKIT_CORE_ONLY
                 NavigationLink(value: "Battery") {
                     Label("Battery", systemImage: "battery.100.bolt")
                 }
+                #endif
 //                NavigationLink(value: "Downloads") {
 //                    Label("Downloads", systemImage: "square.and.arrow.down")
 //                }
@@ -81,8 +83,10 @@ struct SettingsView: View {
                     CalendarSettings()
                 case "HUD":
                     HUD()
+                #if !NOTCHKIT_CORE_ONLY
                 case "Battery":
                     Charge()
+                #endif
                 case "Shelf":
                     Shelf()
                 case "Shortcuts":
@@ -348,6 +352,7 @@ struct GeneralSettings: View {
     }
 }
 
+#if !NOTCHKIT_CORE_ONLY
 struct Charge: View {
     var body: some View {
         Form {
@@ -381,6 +386,7 @@ struct Charge: View {
         .navigationTitle("Battery")
     }
 }
+#endif
 
 //struct Downloads: View {
 //    @Default(.selectedDownloadIndicatorStyle) var selectedDownloadIndicatorStyle

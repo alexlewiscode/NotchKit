@@ -26,19 +26,27 @@ public final class BatteryMonitor: ObservableObject {
     public var onChange: (@MainActor (BatterySnapshot) -> Void)?
 
     private let source: PowerSourceObserving
+    /// Monotonic per-start token so a late callback from a previous start is
+    /// ignored after `stop()`.
+    private var generation = 0
 
     public init(source: PowerSourceObserving? = nil) {
-        let resolved = source ?? IOKitPowerSource()
-        self.source = resolved
-        self.snapshot = resolved.current
+        // Do not read power state at construction: metadata/registration must
+        // not touch the system, and the extension is not active yet.
+        self.source = source ?? IOKitPowerSource()
+        self.snapshot = .unknown
     }
 
     /// Starts observing if not already running. Idempotent.
     public func start() {
         guard !isRunning else { return }
         isRunning = true
+        generation += 1
+        let generation = self.generation
         source.start { [weak self] newValue in
-            guard let self else { return }
+            guard let self, self.isRunning, self.generation == generation else {
+                return
+            }
             self.snapshot = newValue
             self.onChange?(newValue)
         }
@@ -51,6 +59,7 @@ public final class BatteryMonitor: ObservableObject {
     public func stop() {
         guard isRunning else { return }
         isRunning = false
+        generation += 1
         source.stop()
     }
 
