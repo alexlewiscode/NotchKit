@@ -603,3 +603,85 @@ Comparing the independently-derived inventory with Agent A's key audit:
   `settings-inventory.md` are resolved in
   [Reconciliation record](#reconciliation-record); no key or control is removed
   as part of that reconciliation.
+## Appendix B: implementation status (Agent C)
+
+Branch: `codex/extensions-settings`, based on development
+`00a57505696225d42bbd66a051d4a93e0c6d9f56`, with Agent A's inventory
+(`46afd93`) and this plan (`d5c10d0`) incorporated once by cherry-pick.
+
+Reviewable commits:
+
+| Commit | Scope |
+| --- | --- |
+| `ace04d9` | SDK/runtime settings contract, `ExtensionAPIVersion` `1.1.0`, catalog core, tests, documentation reconciliation |
+| `0035ec2` | Host consolidation: typed navigation, catalog wiring, legacy adapters/providers, sidebar redistribution, Battery consolidation, old-page removal |
+| `45d7e06` | Localized settings strings |
+
+### Deliberate deviations from the plan
+
+- The pure catalog core (`FeatureSettingsID`, `SettingsManagement`,
+  `SettingsCatalogEntry`, `SettingsCatalog`) lives in the linked
+  `NotchExtensionRuntime` module rather than a host-only file. The runtime
+  package has no app-internal dependencies, and this makes catalog
+  construction, duplicate prevention, and removal staleness unit-testable under
+  the existing `swift test` CI job. The **host remains the authority**: it
+  supplies `runtimeManaged`, presentation order, and the legacy adapters, and
+  `SettingsRoutes.swift` owns the SwiftUI navigation types.
+- The six sidebar sections and the Extensions `NavigationStack` replace the
+  previous string `selectedTab`. Sidebar selection was never persisted, so no
+  navigation migration was added.
+
+### SDK/API transition
+
+- `ExtensionDefinition.settings` is additive and source-compatible; it defaults
+  to `[]`, so existing initializers still compile.
+- `NotchExtension.settingsDestinations()` is retained and deprecated; the host
+  ignores it. `ContributionStore.set(open:closed:settings:for:)` is unchanged,
+  so consumers of the settings API are not broken.
+- `ExtensionAPIVersion.current` moves `1.0.0 -> 1.1.0` because the documented
+  policy treats additive changes as minor bumps. The serialized manifest schema
+  and its `manifest.json`/validator fixtures are unchanged.
+
+### Verification actually performed
+
+- `swift test --package-path NotchKit/Packages/NotchExtensionSDK`: **106** tests
+  (baseline 100 + 5 catalog + 1 retry) pass.
+- `swift test --package-path NotchExtensions/FirstParty/Battery`: **18** tests
+  (baseline 16 + 2 lifecycle-independent settings) pass.
+- `swift test --package-path NotchExtensions/validation`: **5** tests pass.
+- `xcodebuild ... -scheme NotchKit -configuration Debug`: build succeeds.
+- `xcodebuild ... -scheme NotchKitCoreOnly -configuration Debug`: build
+  succeeds; Battery is still excluded by product linkage and definition
+  registration, so it has no catalog entry, row, or route.
+- Added tests: listing settings does not instantiate extensions; catalog
+  construction is duplicate-free; rebuild after removal leaves no stale entry;
+  `reconcileNow()` retries an already-enabled failed extension; Battery settings
+  are declared on the definition and building the page starts no monitor.
+
+### Not performed (require a GUI/hardware session)
+
+- Interactive GUI checks of every sidebar section and feature detail, Battery
+  enable/disable/re-enable, Calendar permission prompts and authorized list
+  loading, Shelf provider discovery, Media/HUD/Camera configuration, Shortcuts
+  owner focus, Back/Escape/keyboard behaviour, and window resizing under longer
+  localized labels. These were **not** run in this session; no visual
+  correctness is inferred from a successful build.
+- The host target has no unit-test target, so the page-scoped providers
+  (`CalendarSettingsDataProvider`, `ShelfShareProviderDataSource`) were verified
+  by build and inspection only. Adding a host test target is future work.
+
+### Pre-existing limitations preserved
+
+- `autoScrollToNextEvent` is surfaced but inert; `useMusicVisualizer` is
+  surfaced but permanently disabled; `musicControlSlotLimit` stays unsurfaced.
+- Extension `displayName`/`summary`/destination `title` are `String`, not
+  `LocalizedStringKey`, so they do not localize. Recorded, not redesigned.
+- `MusicManager.shared` remains a pre-existing app-global that the Media page
+  reads (deprecation status, slot preview); it is not started by settings.
+
+### Scope
+
+This consolidates settings configuration. Battery remains the only fully
+lifecycle-managed feature. Extracting Calendar, Shelf, Media, HUD, or Camera
+Mirror into independently installed extensions, and any marketplace/install
+surface, remain future work.
