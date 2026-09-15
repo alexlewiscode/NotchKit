@@ -80,8 +80,6 @@ class BoringViewCoordinator: ObservableObject {
         }
     }
     
-    @Default(.hudReplacement) var hudReplacement: Bool
-    
     // Legacy storage for migration
     @AppStorage("preferred_screen_name") private var legacyPreferredScreenName: String?
     

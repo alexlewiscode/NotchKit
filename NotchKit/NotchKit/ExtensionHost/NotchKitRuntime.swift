@@ -83,6 +83,29 @@ final class NotchKitRuntime {
         host.onStateChanged = { [weak presentation] in
             presentation?.refreshAll()
         }
+        // When accessibility is granted while a permission-gated feature is
+        // blocked, retry it automatically. This is the host-side counterpart to
+        // the row's explicit "Grant Access" action.
+        accessibilityObserver = NotificationCenter.default.addObserver(
+            forName: .accessibilityAuthorizationChanged,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.retryPermissionBlockedFeatures()
+            }
+        }
+    }
+
+    private var accessibilityObserver: NSObjectProtocol?
+
+    private func retryPermissionBlockedFeatures() {
+        for identity in BuiltInExtensionIDs.toggleableFeatures
+        where manager.isEnabled(identity) {
+            if case .requiresPermission = host.phase(for: identity) {
+                host.retry(identity)
+            }
+        }
     }
 
     /// Registers the first-party catalog and starts enabled extensions.
