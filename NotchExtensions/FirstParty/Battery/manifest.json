@@ -1,0 +1,25 @@
+{
+  "$schema": "../../manifests/manifest.schema.json",
+  "id": "com.notchkit.battery",
+  "displayName": "Battery",
+  "summary": "Shows charging status and power notifications in the closed notch.",
+  "iconSystemName": "battery.100",
+  "extensionVersion": "1.0.0",
+  "apiVersion": "1.0.0",
+  "supportedHostVersions": ">=1.0.0",
+  "supportedSDKVersions": ">=1.0.0 <2.0.0",
+  "capabilities": ["closed-notch-contribution", "settings-destination"],
+  "artifactKind": "compiled-in",
+  "entryPoints": [
+    {
+      "id": "com.notchkit.contribution.battery",
+      "kind": "closed-notch-contribution"
+    },
+    {
+      "id": "com.notchkit.settings.battery",
+      "kind": "settings-destination"
+    }
+  ],
+  "defaultEnabled": true,
+  "source": "firstParty"
+}
