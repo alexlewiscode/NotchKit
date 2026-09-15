@@ -68,19 +68,26 @@ enum FeatureEnablementMigration {
         }
 
         var outcome = Outcome()
-        let seeds: [(ExtensionIdentity, Bool)] = [
-            (BuiltInExtensionIDs.shelf, legacy.shelf),
-            (BuiltInExtensionIDs.calendar, legacy.calendar),
-            (BuiltInExtensionIDs.hud, legacy.hud),
-            (BuiltInExtensionIDs.camera, legacy.camera),
+        // `shelf` is special: it already existed as a registered extension in the
+        // previous milestone with `defaultEnabled == true`, so every install has a
+        // persisted authoritative value that came from the default, not from a
+        // user choice. The user-facing master for Shelf was `boringShelf`, so the
+        // legacy value must win once. Every other feature had no authoritative
+        // value at all, so an existing value is a genuine user choice.
+        let seeds: [(identity: ExtensionIdentity, legacyValue: Bool, overridesExisting: Bool)] = [
+            (BuiltInExtensionIDs.shelf, legacy.shelf, true),
+            (BuiltInExtensionIDs.calendar, legacy.calendar, false),
+            (BuiltInExtensionIDs.hud, legacy.hud, false),
+            (BuiltInExtensionIDs.camera, legacy.camera, false),
         ]
 
-        for (identity, legacyValue) in seeds {
-            if manager.state.enabled[identity.rawValue] == nil {
-                manager.setEnabled(legacyValue, for: identity)
-                outcome.seeded.append(identity)
+        for seed in seeds {
+            let existing = manager.state.enabled[seed.identity.rawValue]
+            if existing == nil || (seed.overridesExisting && existing != seed.legacyValue) {
+                manager.setEnabled(seed.legacyValue, for: seed.identity)
+                outcome.seeded.append(seed.identity)
             } else {
-                outcome.preserved.append(identity)
+                outcome.preserved.append(seed.identity)
             }
         }
         return outcome

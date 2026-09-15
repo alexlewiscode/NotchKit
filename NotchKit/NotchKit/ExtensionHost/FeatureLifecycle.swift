@@ -104,7 +104,10 @@ final class HUDFeature: NotchExtension {
     }
 
     func activate() async throws {
-        guard context.permissions.status(for: .accessibility) == .authorized else {
+        // Use the same accessibility trust source the event tap requires (the
+        // XPC helper), so "Grant Access" and the gate can never disagree.
+        let authorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
+        guard authorized else {
             throw ExtensionActivationError.permissionRequired(.accessibility)
         }
 
@@ -115,23 +118,28 @@ final class HUDFeature: NotchExtension {
             KeyboardBacklightManager.shared.stop()
         }
 
-        // `hudReplacement` is retained as a one-way mirror for core presentation
-        // code that still reads it; the feature lifecycle is authoritative.
-        Defaults[.hudReplacement] = true
         VolumeManager.shared.start()
         BrightnessManager.shared.start()
         KeyboardBacklightManager.shared.start()
         await MediaKeyInterceptor.shared.start()
+
+        // If the tap could not be installed (for example the permission was
+        // revoked between the check and the install), report an accurate state
+        // instead of claiming HUD is active.
+        guard MediaKeyInterceptor.shared.isRunning else {
+            throw ExtensionActivationError.permissionRequired(.accessibility)
+        }
     }
 
     func deactivate() {
-        Defaults[.hudReplacement] = false
         MediaKeyInterceptor.shared.stop()
         VolumeManager.shared.stop()
         BrightnessManager.shared.stop()
         KeyboardBacklightManager.shared.stop()
-        // Dismiss any HUD presentation this feature owns.
-        BoringViewCoordinator.shared.toggleSneakPeek(status: false, type: .music)
+        // Dismiss only a HUD-owned presentation; never a Media sneak peek.
+        BoringViewCoordinator.shared.dismissSneakPeek(
+            kinds: [.volume, .brightness, .backlight, .mic]
+        )
         context.cancellation.cancelAll()
     }
 }

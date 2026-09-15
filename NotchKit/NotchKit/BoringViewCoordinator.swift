@@ -217,6 +217,16 @@ class BoringViewCoordinator: ObservableObject {
         }
     }
 
+    /// Hides the current sneak peek only when it is one of the supplied kinds.
+    /// Used by a feature to dismiss a presentation it owns without touching
+    /// another feature's presentation.
+    func dismissSneakPeek(kinds: [SneakContentType]) {
+        guard sneakPeek.show, kinds.contains(sneakPeek.type) else { return }
+        withAnimation(.smooth) {
+            sneakPeek.show = false
+        }
+    }
+
     func toggleExpandingView(
         status: Bool,
         type: SneakContentType,

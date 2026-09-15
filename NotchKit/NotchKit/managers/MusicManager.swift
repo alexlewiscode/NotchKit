@@ -116,7 +116,8 @@ class MusicManager: ObservableObject {
     /// Stops media observation and releases the active controller.
     ///
     /// Playback in external applications is never changed: NotchKit only stops
-    /// observing and never sends a pause.
+    /// observing and never sends a pause. Published playback state is reset so a
+    /// disabled Media feature never leaves the closed notch showing stale media.
     func stop() {
         isActive = false
         refreshTasks.forEach { $0.cancel() }
@@ -130,6 +131,33 @@ class MusicManager: ObservableObject {
         transitionWorkItem?.cancel()
         transitionWorkItem = nil
         activeController = nil
+        resetPublishedPlaybackState()
+    }
+
+    /// Clears transient playback presentation state. Preferences are untouched.
+    private func resetPublishedPlaybackState() {
+        songTitle = "I'm Handsome"
+        artistName = "Me"
+        albumArt = defaultImage
+        album = "Self Love"
+        isPlaying = false
+        isPlayerIdle = true
+        bundleIdentifier = nil
+        songDuration = 0
+        elapsedTime = 0
+        playbackRate = 1
+        isShuffled = false
+        repeatMode = .off
+        volume = 0.5
+        volumeControlSupported = true
+        usingAppIconForArtwork = false
+        currentLyrics = ""
+        isFetchingLyrics = false
+        syncedLyrics = []
+        canFavoriteTrack = false
+        isFavoriteTrack = false
+        avgColor = .white
+        artworkData = nil
     }
 
     /// App-termination teardown. Retained for the existing call site.

@@ -29,8 +29,19 @@ final class MediaKeyInterceptor {
     private var runLoopSource: CFRunLoopSource?
     private let step: Float = 1.0 / 16.0
     private var audioPlayer: AVAudioPlayer?
-    
+    /// Reentrancy guard: a superseded activation can resume after a newer one,
+    /// and the only other guard (`eventTap == nil`) is checked before the first
+    /// suspension point. Without this, two overlapping starts could each create a
+    /// tap and leak the first.
+    private var isStarting = false
+    /// Incremented by `stop()`, so a start that is mid-flight can detect that it
+    /// was superseded and bail out without installing a tap.
+    private var startToken = 0
+
     private init() {}
+
+    /// Whether an event tap is currently installed.
+    var isRunning: Bool { eventTap != nil }
     
     // MARK: - Accessibility (via XPC)
     
@@ -46,22 +57,25 @@ final class MediaKeyInterceptor {
     
     func start(promptIfNeeded: Bool = false) async {
         guard !TestHostPolicy.isActive else { return }
-        guard eventTap == nil else { return }
+        guard eventTap == nil, !isStarting else { return }
+        isStarting = true
+        let token = startToken
+        defer { isStarting = false }
 
         // The HUD feature lifecycle owns whether interception runs; this method
-        // no longer consults `hudReplacement` directly.
-
-        // Check accessibility authorization
-        let authorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
+        // no longer consults `hudReplacement` directly. Use the same trust
+        // source the tap requires (the XPC helper reads `AXIsProcessTrusted`).
+        var authorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
+        // A stop or newer start during the await supersedes this one.
+        guard token == startToken, eventTap == nil else { return }
         if !authorized {
             if promptIfNeeded {
-                let granted = await ensureAccessibilityAuthorization(promptIfNeeded: true)
-                guard granted else { return }
-            } else {
-                return
+                authorized = await ensureAccessibilityAuthorization(promptIfNeeded: true)
             }
+            guard token == startToken, eventTap == nil else { return }
+            guard authorized else { return }
         }
-        
+
         let mask = CGEventMask(1 << kSystemDefinedEventType.rawValue)
         eventTap = CGEvent.tapCreate(
             tap: .cghidEventTap,
@@ -86,6 +100,7 @@ final class MediaKeyInterceptor {
     }
     
     func stop() {
+        startToken &+= 1
         if let eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)
         }

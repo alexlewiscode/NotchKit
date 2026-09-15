@@ -37,9 +37,9 @@ public enum BuiltInExtensionIDs {
     /// Camera Mirror.
     public static let camera = make("com.notchkit.camera", "camera")
 
-    /// The six user-toggleable first-party features, in presentation order.
-    ///
-    /// Home is intentionally excluded: it is required and has no toggle.
+    /// The runtime-package features that have a settings toggle. Battery is
+    /// toggled too, but its identity lives in the Battery package and is added
+    /// conditionally by the app; Home is required and has no toggle.
     public static var toggleableFeatures: [ExtensionIdentity] {
         [shelf, calendar, media, hud, camera]
     }

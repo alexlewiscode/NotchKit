@@ -80,6 +80,71 @@ final class FeatureEnablementTests: XCTestCase {
         XCTAssertEqual(second.preserved.count, 4)
     }
 
+    /// Regression: Shelf already had an authoritative value from the previous
+    /// milestone, defaulted to `true` for everyone, while the user-facing master
+    /// was `boringShelf`. A user who had Shelf off must stay off after upgrade.
+    func testMigrationShelfLegacyValueWinsOverDefaultedAuthoritativeValue() {
+        var snapshot = ExtensionStateSnapshot()
+        snapshot.enabled[BuiltInExtensionIDs.shelf.rawValue] = true  // came from the default
+        let manager = makeManager(snapshot: snapshot)
+
+        let legacy = LegacyFeatureMasters(shelf: false, calendar: false, hud: false, camera: false)
+        let outcome = FeatureEnablementMigration.migrateIfNeeded(
+            manager: manager, legacy: legacy, alreadyMigrated: false)
+
+        XCTAssertTrue(outcome.seeded.contains(BuiltInExtensionIDs.shelf))
+        XCTAssertFalse(manager.isEnabled(BuiltInExtensionIDs.shelf))
+    }
+
+    /// Other features must not have an existing authoritative value overridden.
+    func testMigrationDoesNotOverrideExplicitNonShelfChoice() {
+        var snapshot = ExtensionStateSnapshot()
+        snapshot.enabled[BuiltInExtensionIDs.calendar.rawValue] = true
+        let manager = makeManager(snapshot: snapshot)
+
+        let legacy = LegacyFeatureMasters(shelf: true, calendar: false, hud: false, camera: false)
+        _ = FeatureEnablementMigration.migrateIfNeeded(
+            manager: manager, legacy: legacy, alreadyMigrated: false)
+
+        XCTAssertTrue(manager.isEnabled(BuiltInExtensionIDs.calendar))
+    }
+
+    // MARK: - Preference preservation
+
+    func testStoppingCalendarKeepsSelectionAndClearsTransientLists() async {
+        let selectionStore = InMemoryCalendarSelectionStore(.selected(["a"]))
+        let service = FakeCalendarService()
+        service.calendarResults = [[makeCalendar("a"), makeCalendar("b", isReminder: true)]]
+        let manager = CalendarManager(calendarService: service, selectionStore: selectionStore)
+
+        await manager.reloadCalendarAndReminderLists()
+        XCTAssertFalse(manager.allCalendars.isEmpty)
+
+        manager.stop()
+
+        XCTAssertEqual(
+            selectionStore.selectionState.selectedIdentifiers, ["a"],
+            "stopping must not touch the persisted selection"
+        )
+        XCTAssertTrue(manager.events.isEmpty)
+        XCTAssertTrue(manager.allCalendars.isEmpty)
+    }
+
+    func testStoppingMediaResetsTransientPlaybackState() {
+        let manager = MusicManager()
+        manager.isPlaying = true
+        manager.isPlayerIdle = false
+        manager.songTitle = "Playing"
+        manager.bundleIdentifier = "com.apple.Music"
+
+        manager.stop()
+
+        XCTAssertFalse(manager.isPlaying)
+        XCTAssertTrue(manager.isPlayerIdle, "closed-notch idle content must be able to render again")
+        XCTAssertNil(manager.bundleIdentifier)
+        XCTAssertEqual(manager.elapsedTime, 0)
+    }
+
     // MARK: - Identities
 
     func testToggleableFeatureIdentitiesAreDistinctAndStable() {

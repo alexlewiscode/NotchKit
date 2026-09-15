@@ -28,6 +28,9 @@ class QuickShareService: ObservableObject {
     /// Whether the Shelf feature is currently running.
     private(set) var isActive = false
     private var discoveryTask: Task<Void, Never>?
+    /// Bumped on every start/stop so an in-flight discovery can detect that it
+    /// was superseded and avoid repopulating a stopped service.
+    private var discoveryGeneration = 0
 
     init() {
         // Construction is inert. The feature lifecycle calls `start()` only while
@@ -39,6 +42,7 @@ class QuickShareService: ObservableObject {
         guard !TestHostPolicy.isActive else { return }
         guard !isActive else { return }
         isActive = true
+        discoveryGeneration &+= 1
         discoveryTask?.cancel()
         discoveryTask = Task { [weak self] in
             await self?.discoverAvailableProviders()
@@ -49,16 +53,19 @@ class QuickShareService: ObservableObject {
     /// items and the persisted provider preference are untouched.
     func stop() {
         isActive = false
+        discoveryGeneration &+= 1
         discoveryTask?.cancel()
         discoveryTask = nil
         availableProviders = []
         cachedServices.removeAll()
+        isPickerOpen = false
     }
     
     // MARK: - Provider Discovery
     
     @MainActor
     func discoverAvailableProviders() async {
+        let token = discoveryGeneration
         let finder = ShareServiceFinder()
 
         // Use simple test items without creating actual temp files
@@ -69,6 +76,9 @@ class QuickShareService: ObservableObject {
         ]
 
         let services = await finder.findApplicableServices(for: testItems)
+
+        // A cancelled or superseded discovery must not publish stale results.
+        guard isActive, !Task.isCancelled, token == discoveryGeneration else { return }
 
         var providers: [QuickShareProvider] = []
 

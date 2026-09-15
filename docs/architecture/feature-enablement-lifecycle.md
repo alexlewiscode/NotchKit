@@ -40,12 +40,17 @@ The master toggles supersede these legacy per-feature UI preferences:
 | Battery | (extension state) | default value |
 
 Migration is one-time and idempotent (`FeatureEnablementMigration`, marker
-`didMigrateFeatureEnablement_v1`). It never overwrites an already-saved
-authoritative value and never deletes or resets legacy subpreferences. Legacy
-values are kept as one-way mirrors where core presentation code still reads
-them (`hudReplacement`), and the redundant master controls were removed from
-the detail pages. `showCalendar` / `showMirror` / `boringShelf` remain in
-storage only; core views now gate on `NotchKitRuntime.isFeatureEnabled`.
+`didMigrateFeatureEnablement_v1`). It never deletes or resets legacy
+subpreferences. For Calendar, HUD, and Camera it seeds only when no
+authoritative value exists, so a saved choice is preserved. Shelf is the one
+exception: it already had an authoritative value from the previous milestone
+that came from its `defaultEnabled`, not from a user choice, while the
+user-facing master was `boringShelf`; the legacy value therefore wins once.
+The redundant master controls were removed from the detail pages, so
+`showCalendar` / `showMirror` / `boringShelf` / `hudReplacement` remain in
+storage only as migration inputs; core views gate on
+`NotchKitRuntime.isFeatureEnabled`. Media's narrow `musicLiveActivityEnabled`
+is a subpreference and is never treated as the Media master.
 
 ## Lifecycle ownership map
 
