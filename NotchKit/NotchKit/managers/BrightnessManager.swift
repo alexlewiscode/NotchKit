@@ -15,7 +15,7 @@ final class BrightnessManager: ObservableObject {
 	private let visibleDuration: TimeInterval = 1.2
 	private let client = XPCHelperClient.shared
 
-	private init() { refresh() }
+	private init() { if !TestHostPolicy.isActive { refresh() } }
 
 	var shouldShowOverlay: Bool { Date().timeIntervalSince(lastChangeAt) < visibleDuration }
 
@@ -76,7 +76,7 @@ final class KeyboardBacklightManager: ObservableObject {
 	private let visibleDuration: TimeInterval = 1.2
 	private let client = XPCHelperClient.shared
 
-	private init() { refresh() }
+	private init() { if !TestHostPolicy.isActive { refresh() } }
 
 	var shouldShowOverlay: Bool { Date().timeIntervalSince(lastChangeAt) < visibleDuration }
 

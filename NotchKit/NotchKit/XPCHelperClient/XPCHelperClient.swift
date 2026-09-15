@@ -71,6 +71,7 @@ final class XPCHelperClient: NSObject {
 
     // MARK: - Monitoring
     nonisolated func startMonitoringAccessibilityAuthorization(every interval: TimeInterval = 3.0) {
+        guard !TestHostPolicy.isActive else { return }
         // Ensure only one monitor exists
         stopMonitoringAccessibilityAuthorization()
         monitoringTask = Task.detached { [weak self] in

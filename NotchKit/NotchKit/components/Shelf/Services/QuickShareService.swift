@@ -27,6 +27,7 @@ class QuickShareService: ObservableObject {
     private var lifecycleDelegate: SharingLifecycleDelegate?
    
     init() {
+        guard !TestHostPolicy.isActive else { return }
         Task {
             await discoverAvailableProviders()
         }

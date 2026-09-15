@@ -27,6 +27,7 @@ final class VolumeManager: NSObject, ObservableObject {
 
     private override init() {
         super.init()
+        guard !TestHostPolicy.isActive else { return }
         setupAudioListener()
         fetchCurrentVolume()
     }

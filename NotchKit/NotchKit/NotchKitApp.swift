@@ -25,6 +25,10 @@ struct NotchKitApp: App {
         updaterController = SPUStandardUpdaterController(
             startingUpdater: false, updaterDelegate: nil, userDriverDelegate: nil)
 
+        // The settings window eagerly builds the Extensions hub, which reaches the
+        // extension runtime and service singletons. A test host must not do that.
+        guard !TestHostPolicy.isActive else { return }
+
         // Initialize the settings window controller with the updater controller
         SettingsWindowController.shared.setUpdaterController(updaterController)
     }
@@ -50,14 +54,17 @@ struct NotchKitApp: App {
     }
 }
 
+@MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
     var statusItem: NSStatusItem?
     var windows: [String: NSWindow] = [:] // UUID -> NSWindow
     var viewModels: [String: BoringViewModel] = [:] // UUID -> BoringViewModel
     var window: NSWindow?
-    let vm: BoringViewModel = .init()
-    @ObservedObject var coordinator = BoringViewCoordinator.shared
-    var quickShareService = QuickShareService.shared
+    // Heavy service-backed state is lazy so constructing the delegate under a test
+    // host does not start media, fullscreen, webcam, or sharing services.
+    lazy var vm: BoringViewModel = .init()
+    lazy var coordinator = BoringViewCoordinator.shared
+    lazy var quickShareService = QuickShareService.shared
     var whatsNewWindow: NSWindow?
     var timer: Timer?
     var closeNotchTask: Task<Void, Never>?
@@ -74,6 +81,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationWillTerminate(_ notification: Notification) {
+        guard !TestHostPolicy.isActive else { return }
         NotificationCenter.default.removeObserver(self)
         if let observer = screenLockedObserver {
             DistributedNotificationCenter.default().removeObserver(observer)
@@ -284,6 +292,11 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+
+        // The test host must not bootstrap the extension runtime, offer the
+        // legacy import flow, install global event monitors/observers, create
+        // notch windows, or present onboarding.
+        guard !TestHostPolicy.isActive else { return }
 
         NotchKitRuntime.shared.bootstrap()
 

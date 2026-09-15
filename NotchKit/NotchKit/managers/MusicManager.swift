@@ -70,6 +70,9 @@ class MusicManager: ObservableObject {
 
     // MARK: - Initialization
     init() {
+        // A test host must not start media controllers or polling.
+        guard !TestHostPolicy.isActive else { return }
+
         // Listen for changes to the default controller preference
         NotificationCenter.default.publisher(for: Notification.Name.mediaControllerChanged)
             .sink { [weak self] _ in

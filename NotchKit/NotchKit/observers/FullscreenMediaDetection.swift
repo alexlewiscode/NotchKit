@@ -19,6 +19,7 @@ final class FullscreenMediaDetector: ObservableObject {
     private var monitorTask: Task<Void, Never>?
     
     private init() {
+        guard !TestHostPolicy.isActive else { return }
         startMonitoring()
     }
     

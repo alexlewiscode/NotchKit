@@ -21,14 +21,32 @@ final class ShelfPersistenceService {
 
     private init() {
         let fm = FileManager.default
-        let support = try? fm.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
-        let dir = (support ?? fm.temporaryDirectory).appendingPathComponent(NotchKitIdentity.shelfDirectoryName, isDirectory: true).appendingPathComponent("Shelf", isDirectory: true)
+        let dir: URL
+        if TestHostPolicy.isActive {
+            // A test host must never read or rewrite the user's real Shelf file.
+            dir = TestHostPolicy.isolationRoot
+                .appendingPathComponent("Shelf", isDirectory: true)
+        } else {
+            let support = try? fm.url(
+                for: .applicationSupportDirectory,
+                in: .userDomainMask,
+                appropriateFor: nil,
+                create: true
+            )
+            dir = (support ?? fm.temporaryDirectory)
+                .appendingPathComponent(NotchKitIdentity.shelfDirectoryName, isDirectory: true)
+                .appendingPathComponent("Shelf", isDirectory: true)
+        }
         try? fm.createDirectory(at: dir, withIntermediateDirectories: true)
         fileURL = dir.appendingPathComponent("items.json")
         encoder.outputFormatting = [.prettyPrinted]
         decoder.dateDecodingStrategy = .iso8601
         encoder.dateEncodingStrategy = .iso8601
     }
+
+    /// The directory backing persisted items. Under a test host this is inside
+    /// `TestHostPolicy.isolationRoot`, never the real Application Support path.
+    var storageDirectory: URL { fileURL.deletingLastPathComponent() }
 
     func load() -> [ShelfItem] {
         guard let data = try? Data(contentsOf: fileURL) else { return [] }

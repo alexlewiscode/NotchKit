@@ -45,6 +45,7 @@ final class MediaKeyInterceptor {
     // MARK: - Event Tap
     
     func start(promptIfNeeded: Bool = false) async {
+        guard !TestHostPolicy.isActive else { return }
         guard eventTap == nil else { return }
         
         // Ensure HUD replacement is enabled
