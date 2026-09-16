@@ -50,6 +50,24 @@ final class XPCHelperClient: NSObject {
         return service
     }
     
+    // MARK: - Accessibility prompt
+
+    /// Asks the unsandboxed helper to surface the accessibility prompt.
+    ///
+    /// This is a *request channel only*: the HUD gate always reads the app's own
+    /// trust (`HostPermissionService`). The helper can show the prompt that App
+    /// Sandbox suppresses in-process, and the grant is attributed to the app.
+    nonisolated func requestAccessibilityAuthorization() {
+        Task {
+            let service = await MainActor.run {
+                ensureRemoteService()
+            }
+            try? await service.withService { service in
+                service.requestAccessibilityAuthorization()
+            }
+        }
+    }
+    
     // MARK: - Identity migration
 
     /// Reads the pre-NotchKit app-owned data via the non-sandboxed helper.
