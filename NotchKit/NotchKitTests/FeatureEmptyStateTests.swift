@@ -117,19 +117,21 @@ final class FeatureEmptyStateTests: XCTestCase {
         )
     }
 
-    /// When Battery is registered (full build), an enabled Battery counts.
-    func testRegisteredBatteryCountsWhenAvailable() {
+    /// Battery drives a closed-notch indicator, not the expanded content, so an
+    /// enabled Battery must not suppress the empty state.
+    func testEnabledBatteryDoesNotBlockEmptyState() {
         let battery = identity("com.notchkit.battery")
         let optional = OptionalFeatureEnablement.optionalFeatureIdentities(
             fromRegistered: optionalFeatures + [battery]
         )
-        XCTAssertTrue(optional.contains(battery))
-        XCTAssertFalse(
+        XCTAssertFalse(optional.contains(battery))
+        XCTAssertTrue(
             OptionalFeatureEnablement.shouldShowEmptyState(
                 optionalFeatures: optional,
                 isEnabled: { $0 == battery },
-                phase: { _ in .active }
-            )
+                phase: { _ in .inactive }
+            ),
+            "Battery on by itself must still show the hello empty state"
         )
     }
 

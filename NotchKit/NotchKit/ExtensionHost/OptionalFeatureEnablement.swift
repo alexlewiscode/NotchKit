@@ -7,8 +7,9 @@
 //
 //  The decision reads the authoritative enablement state rather than the
 //  contribution list, because an enabled extension can legitimately contribute
-//  nothing at a given moment. Required infrastructure (Home) and features that
-//  are not registered in this build (Battery in `NotchKitCoreOnly`) are excluded.
+//  nothing at a given moment. It considers only the toggleable features that
+//  populate the expanded content: required infrastructure (Home) and the
+//  closed-notch Battery indicator are excluded.
 //
 
 import NotchExtensionSDK
@@ -33,13 +34,17 @@ enum OptionalFeatureEnablement {
         }
     }
 
-    /// Registered optional features: everything except required infrastructure
-    /// such as Home. Features that are not registered in this build (for example
-    /// Battery in `NotchKitCoreOnly`) are naturally absent.
+    /// Registered optional features that count for the empty state.
+    ///
+    /// Required infrastructure (Home) is excluded, and so is Battery: it drives
+    /// a closed-notch indicator rather than the expanded content, so enabling it
+    /// alone must not suppress the empty state. Features that are not registered
+    /// in this build (for example Battery in `NotchKitCoreOnly`) are absent.
     static func optionalFeatureIdentities(
         fromRegistered registered: [ExtensionIdentity]
     ) -> [ExtensionIdentity] {
-        registered.filter { $0 != BuiltInExtensionIDs.home }
+        let registered = Set(registered)
+        return BuiltInExtensionIDs.toggleableFeatures.filter(registered.contains)
     }
 
     /// Whether every available optional feature is off.
