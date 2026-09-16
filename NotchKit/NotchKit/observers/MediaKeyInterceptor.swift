@@ -29,11 +29,6 @@ final class MediaKeyInterceptor {
     private var runLoopSource: CFRunLoopSource?
     private let step: Float = 1.0 / 16.0
     private var audioPlayer: AVAudioPlayer?
-    /// Reentrancy guard: a superseded activation can resume after a newer one,
-    /// and the only other guard (`eventTap == nil`) is checked before the first
-    /// suspension point. Without this, two overlapping starts could each create a
-    /// tap and leak the first.
-    private var isStarting = false
     /// Incremented by `stop()`, so a start that is mid-flight can detect that it
     /// was superseded and bail out without installing a tap.
     private var startToken = 0
@@ -55,27 +50,39 @@ final class MediaKeyInterceptor {
     
     // MARK: - Event Tap
     
-    func start(promptIfNeeded: Bool = false) async {
-        guard !TestHostPolicy.isActive else { return }
-        guard eventTap == nil, !isStarting else { return }
-        isStarting = true
+    /// Ensures an event tap is installed when accessibility is authorized.
+    ///
+    /// Returns whether a tap is running when this call finishes. Concurrent
+    /// calls are safe: a superseded start detects the token change after its
+    /// await and does not install, and a same-generation duplicate sees the tap
+    /// already present rather than creating a second one.
+    @discardableResult
+    func start(promptIfNeeded: Bool = false) async -> Bool {
+        guard !TestHostPolicy.isActive else { return false }
+        if eventTap != nil { return true }
         let token = startToken
-        defer { isStarting = false }
 
         // The HUD feature lifecycle owns whether interception runs; this method
         // no longer consults `hudReplacement` directly. Use the same trust
         // source the tap requires (the XPC helper reads `AXIsProcessTrusted`).
         var authorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
         // A stop or newer start during the await supersedes this one.
-        guard token == startToken, eventTap == nil else { return }
+        guard token == startToken else { return eventTap != nil }
         if !authorized {
             if promptIfNeeded {
                 authorized = await ensureAccessibilityAuthorization(promptIfNeeded: true)
             }
-            guard token == startToken, eventTap == nil else { return }
-            guard authorized else { return }
+            guard token == startToken else { return eventTap != nil }
+            guard authorized else { return false }
         }
+        // A concurrent same-generation start may have installed the tap already.
+        guard eventTap == nil else { return true }
 
+        installTap()
+        return eventTap != nil
+    }
+
+    private func installTap() {
         let mask = CGEventMask(1 << kSystemDefinedEventType.rawValue)
         eventTap = CGEvent.tapCreate(
             tap: .cghidEventTap,

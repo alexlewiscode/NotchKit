@@ -5,6 +5,7 @@
 //  Composition root for the NotchKit extension runtime.
 //
 
+import AppKit
 import Foundation
 import NotchExtensionSDK
 import NotchExtensionRuntime
@@ -95,9 +96,24 @@ final class NotchKitRuntime {
                 self?.retryPermissionBlockedFeatures()
             }
         }
+        // The accessibility-changed notification is only posted when a status
+        // read observes a transition. Returning to the app (for example after
+        // granting in System Settings) is the reliable read point, so permission
+        // blocked features recover without the user clicking twice.
+        activeObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                _ = await XPCHelperClient.shared.isAccessibilityAuthorized()
+                self?.retryPermissionBlockedFeatures()
+            }
+        }
     }
 
     private var accessibilityObserver: NSObjectProtocol?
+    private var activeObserver: NSObjectProtocol?
 
     private func retryPermissionBlockedFeatures() {
         for identity in BuiltInExtensionIDs.toggleableFeatures

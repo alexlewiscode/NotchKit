@@ -121,12 +121,12 @@ final class HUDFeature: NotchExtension {
         VolumeManager.shared.start()
         BrightnessManager.shared.start()
         KeyboardBacklightManager.shared.start()
-        await MediaKeyInterceptor.shared.start()
 
-        // If the tap could not be installed (for example the permission was
-        // revoked between the check and the install), report an accurate state
-        // instead of claiming HUD is active.
-        guard MediaKeyInterceptor.shared.isRunning else {
+        // `start()` coalesces concurrent calls and reports whether a tap is
+        // actually running, so a rapid disable→re-enable cannot leave HUD
+        // claiming to be active without interception.
+        let running = await MediaKeyInterceptor.shared.start()
+        guard running else {
             throw ExtensionActivationError.permissionRequired(.accessibility)
         }
     }
