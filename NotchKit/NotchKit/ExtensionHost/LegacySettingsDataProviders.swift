@@ -143,14 +143,14 @@ final class CalendarSettingsDataProvider: ObservableObject {
 
 // MARK: - HUD
 
-/// Read-only accessibility status for the HUD settings page.
+/// Read-only input-access status for the HUD settings page.
 ///
 /// It only ever reads status. It cannot request permission and does not start
 /// the media-key interceptor or any polling loop; that separation is what the
 /// HUD provider test asserts.
 @MainActor
 final class HUDStatusProvider: ObservableObject {
-    @Published private(set) var isAccessibilityAuthorized = false
+    @Published private(set) var hasInputAccess = false
 
     private let readStatus: () async -> Bool
 
@@ -160,17 +160,12 @@ final class HUDStatusProvider: ObservableObject {
 
     convenience init() {
         self.init(readStatus: {
-            HostPermissionService.shared.isAccessibilityAuthorized
+            HostPermissionService.shared.hasHUDInputAccess
         })
     }
 
     func refresh() async {
-        isAccessibilityAuthorized = await readStatus()
-    }
-
-    /// Applies a status delivered by an external notification.
-    func apply(_ authorized: Bool) {
-        isAccessibilityAuthorized = authorized
+        hasInputAccess = await readStatus()
     }
 }
 

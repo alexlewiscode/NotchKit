@@ -107,21 +107,21 @@ final class NotchKitRuntime {
     /// disabled features and actively-running features are left alone, and
     /// unrelated `.failed` extensions are never touched.
     func reconcilePermissionGatedFeatures() {
-        guard HostPermissionService.shared.isAccessibilityAuthorized else { return }
+        guard HostPermissionService.shared.hasHUDInputAccess else { return }
         for identity in BuiltInExtensionIDs.toggleableFeatures {
             PermissionRefreshCoordinator.reconcileIfGranted(
                 feature: identity,
                 isEnabled: { self.manager.isEnabled($0) },
                 phase: { self.host.phase(for: $0) },
-                isPermissionGranted: { HostPermissionService.shared.isAccessibilityAuthorized },
+                isPermissionGranted: { HostPermissionService.shared.hasHUDInputAccess },
                 retry: { self.host.retry($0) }
             )
         }
     }
 
-    /// Explicit, user-initiated accessibility request from the app process.
-    func requestAccessibilityAuthorization() {
-        HostPermissionService.shared.requestAccessibilityAuthorization()
+    /// Explicit, user-initiated request for the input access HUD needs.
+    func requestHUDInputAccess() {
+        HostPermissionService.shared.requestHUDInputAccess()
     }
 
     /// Registers the first-party catalog and starts enabled extensions.

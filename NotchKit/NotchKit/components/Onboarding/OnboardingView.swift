@@ -157,9 +157,9 @@ struct OnboardingView: View {
     }
     
     func requestAccessibilityPermission() async {
-        // Request from the app process, which owns the HUD event tap.
+        // Request from the app process, which owns the event tap.
         await MainActor.run {
-            HostPermissionService.shared.requestAccessibilityAuthorization()
+            HostPermissionService.shared.requestHUDInputAccess()
         }
     }
 }

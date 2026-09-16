@@ -91,27 +91,28 @@ final class CameraFeature: NotchExtension {
 
 /// HUD: owns media-key interception and the volume/brightness observers.
 ///
-/// Enabling requires the accessibility permission. The gate and the request are
-/// app-side (see `AccessibilityAuthorizing`): the event tap is installed by the
-/// app process, so the app's own trust is what matters. Status is checked
+/// Enabling requires input access. The capability and the request are app-side
+/// (see `InputAccessAuthorizing`): the event tap is installed by the app
+/// process, so the app's own capability is what matters. Status is checked
 /// without prompting; the settings row offers an explicit "Grant Access" action.
 /// Disabling restores normal system input handling.
 @MainActor
 final class HUDFeature: NotchExtension {
     private let context: ExtensionContext
     private let interceptor: any HUDIntercepting
+    private let inputAccess: InputAccessAuthorizing
 
-    init(context: ExtensionContext, interceptor: any HUDIntercepting = MediaKeyInterceptor.shared) {
+    init(
+        context: ExtensionContext,
+        interceptor: any HUDIntercepting = MediaKeyInterceptor.shared,
+        inputAccess: InputAccessAuthorizing = SystemInputAccessAuthorization()
+    ) {
         self.context = context
         self.interceptor = interceptor
+        self.inputAccess = inputAccess
     }
 
     func activate() async throws {
-        // Read the app-side permission only; never prompt from activation.
-        guard context.permissions.status(for: .accessibility) == .authorized else {
-            throw ExtensionActivationError.permissionRequired(.accessibility)
-        }
-
         context.cancellation.add { [interceptor] in
             interceptor.stop()
             VolumeManager.shared.stop()
@@ -123,15 +124,17 @@ final class HUDFeature: NotchExtension {
         BrightnessManager.shared.start()
         KeyboardBacklightManager.shared.start()
 
-        // `start()` coalesces concurrent calls and reports whether a tap is
-        // actually running, so a rapid disable→re-enable cannot leave HUD
-        // claiming to be active without interception.
+        // Attempt the tap first. It is the authoritative capability test;
+        // `AXIsProcessTrusted()` is not a reliable gate for a modifying global
+        // tap and a sandboxed app is not promised to report true.
         let running = await interceptor.start()
         guard running else {
-            // Permission is granted; the tap simply could not be installed.
-            // Clean up the partial startup and report an operational failure
-            // rather than a permission gate the user can never satisfy.
+            // Clean up the partial startup, then classify the failure from the
+            // public preflight APIs rather than guessing.
             context.cancellation.cancelAll()
+            if !inputAccess.canModifyInput() && !inputAccess.isAccessibilityTrusted() {
+                throw ExtensionActivationError.permissionRequired(.accessibility)
+            }
             throw HUDActivationFailure.mediaKeyInterceptionUnavailable
         }
     }

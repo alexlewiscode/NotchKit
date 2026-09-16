@@ -18,7 +18,7 @@ final class HUDStatusProviderTests: XCTestCase {
 
         await provider.refresh()
         XCTAssertEqual(reads, 1)
-        XCTAssertTrue(provider.isAccessibilityAuthorized)
+        XCTAssertTrue(provider.hasInputAccess)
 
         await provider.refresh()
         XCTAssertEqual(reads, 2)
@@ -34,19 +34,6 @@ final class HUDStatusProviderTests: XCTestCase {
         await provider.refresh()
 
         XCTAssertEqual(reads, 1)
-        XCTAssertFalse(provider.isAccessibilityAuthorized)
-    }
-
-    func testApplyDoesNotReadOrStartAnything() {
-        var reads = 0
-        let provider = HUDStatusProvider(readStatus: {
-            reads += 1
-            return true
-        })
-
-        provider.apply(false)
-
-        XCTAssertEqual(reads, 0)
-        XCTAssertFalse(provider.isAccessibilityAuthorized)
+        XCTAssertFalse(provider.hasInputAccess)
     }
 }

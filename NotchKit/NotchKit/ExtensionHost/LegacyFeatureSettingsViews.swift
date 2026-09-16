@@ -595,7 +595,7 @@ struct HUDSettingsPage: View {
 
                 HStack(spacing: 12) {
                     Text(
-                        status.isAccessibilityAuthorized
+                        status.hasInputAccess
                             ? "Accessibility access is granted."
                             : "Accessibility access is required to replace the system HUD."
                     )
@@ -603,7 +603,7 @@ struct HUDSettingsPage: View {
                     .foregroundStyle(.secondary)
                     Spacer(minLength: 0)
                     Button("Request Accessibility") {
-                        NotchKitRuntime.shared.requestAccessibilityAuthorization()
+                        NotchKitRuntime.shared.requestHUDInputAccess()
                     }
                     .buttonStyle(.borderedProminent)
                     Button("Refresh Status") {

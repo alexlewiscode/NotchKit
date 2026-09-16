@@ -2,9 +2,9 @@
 //  HUDPermissionTests.swift
 //  NotchKitTests
 //
-//  The HUD accessibility flow: one app-side permission source, a non-prompting
-//  status read, an explicit app-side request, targeted refresh reconciliation,
-//  and a permission/operational-failure split.
+//  The HUD input-access flow: one host-owned capability source, a non-prompting
+//  status read, an explicit request, the tap attempt as the authoritative
+//  capability test, and a permission/operational-failure split.
 //
 
 import NotchExtensionSDK
@@ -16,17 +16,24 @@ import XCTest
 final class HUDPermissionTests: XCTestCase {
     // MARK: - Fakes
 
-    private final class FakeAccessibilityAuthorizer: AccessibilityAuthorizing {
-        var authorized: Bool
-        private(set) var requestCount = 0
+    private final class FakeInputAccess: InputAccessAuthorizing {
+        var observe: Bool
+        var modify: Bool
+        var axTrusted: Bool
+        private(set) var observationRequests = 0
+        private(set) var modificationRequests = 0
 
-        init(authorized: Bool) {
-            self.authorized = authorized
+        init(observe: Bool = false, modify: Bool = false, axTrusted: Bool = false) {
+            self.observe = observe
+            self.modify = modify
+            self.axTrusted = axTrusted
         }
 
-        func isAuthorized() -> Bool { authorized }
-
-        func requestAuthorization() { requestCount += 1 }
+        func canObserveInput() -> Bool { observe }
+        func canModifyInput() -> Bool { modify }
+        func isAccessibilityTrusted() -> Bool { axTrusted }
+        func requestObservationAccess() { observationRequests += 1 }
+        func requestModificationAccess() { modificationRequests += 1 }
     }
 
     private final class FakeHUDInterceptor: HUDIntercepting {
@@ -64,8 +71,6 @@ final class HUDPermissionTests: XCTestCase {
     }
 
     private func hudIdentity() -> ExtensionIdentity {
-        // Mirrors BuiltInExtensionIDs.hud so the test does not depend on the app
-        // target's identity constants.
         guard let id = try? ExtensionIdentity("com.notchkit.hud") else {
             fatalError("invalid HUD identity")
         }
@@ -82,89 +87,93 @@ final class HUDPermissionTests: XCTestCase {
         )
     }
 
-    // MARK: - HUD activation gate
-
-    /// App trusted / helper untrusted: the app-side source alone decides, so HUD
-    /// is not blocked by the XPC helper's (different) TCC identity.
-    func testAppTrustedStartsInterceptionWithoutPrompting() async throws {
-        let authorizer = FakeAccessibilityAuthorizer(authorized: true)
-        let interceptor = FakeHUDInterceptor(result: true)
-        let feature = HUDFeature(
-            context: makeContext(permissions: HostPermissionService(accessibility: authorizer)),
-            interceptor: interceptor
+    private func makeFeature(
+        inputAccess: FakeInputAccess,
+        interceptor: FakeHUDInterceptor
+    ) -> HUDFeature {
+        HUDFeature(
+            context: makeContext(permissions: HostPermissionService(inputAccess: inputAccess)),
+            interceptor: interceptor,
+            inputAccess: inputAccess
         )
+    }
 
-        try await feature.activate()
+    // MARK: - HUD activation
+
+    /// Access present: the tap installs and activation succeeds without prompting.
+    func testInputAccessStartsInterceptionWithoutPrompting() async throws {
+        let inputAccess = FakeInputAccess(modify: true)
+        let interceptor = FakeHUDInterceptor(result: true)
+
+        try await makeFeature(inputAccess: inputAccess, interceptor: interceptor).activate()
 
         XCTAssertEqual(interceptor.startCount, 1)
         XCTAssertTrue(interceptor.isRunning)
-        XCTAssertEqual(authorizer.requestCount, 0, "activation must never prompt")
+        XCTAssertEqual(inputAccess.observationRequests, 0)
+        XCTAssertEqual(inputAccess.modificationRequests, 0, "activation must never prompt")
     }
 
-    /// App untrusted: a grantable permission gate, and no tap is attempted.
-    func testAppUntrustedRequiresPermissionWithoutStartingInterception() async {
-        let authorizer = FakeAccessibilityAuthorizer(authorized: false)
-        let interceptor = FakeHUDInterceptor(result: true)
-        let feature = HUDFeature(
-            context: makeContext(permissions: HostPermissionService(accessibility: authorizer)),
-            interceptor: interceptor
-        )
+    /// No access and the tap fails: a grantable permission gate, with cleanup.
+    func testNoInputAccessBlocksAsPermissionGate() async {
+        let inputAccess = FakeInputAccess(modify: false, axTrusted: false)
+        let interceptor = FakeHUDInterceptor(result: false)
 
         do {
-            try await feature.activate()
+            try await makeFeature(inputAccess: inputAccess, interceptor: interceptor).activate()
             XCTFail("expected a permission gate")
         } catch {
             XCTAssertEqual(error as? ExtensionActivationError, .permissionRequired(.accessibility))
         }
-        XCTAssertEqual(interceptor.startCount, 0)
-        XCTAssertEqual(authorizer.requestCount, 0)
+        XCTAssertEqual(interceptor.startCount, 1, "the tap attempt is the capability test")
+        XCTAssertEqual(interceptor.stopCount, 1, "partial startup must be torn down")
     }
 
-    /// Granted but the tap cannot install: an operational failure (`.failed`),
-    /// not a permission gate, and the partial startup is cleaned up.
-    func testGrantedButTapFailureIsOperationalAndCleansUp() async {
-        let authorizer = FakeAccessibilityAuthorizer(authorized: true)
+    /// Access present but the tap still fails: an operational failure, not a
+    /// permission gate the user can never satisfy.
+    func testTapFailureWithAccessIsOperationalAndCleansUp() async {
+        let inputAccess = FakeInputAccess(modify: true)
         let interceptor = FakeHUDInterceptor(result: false)
-        let feature = HUDFeature(
-            context: makeContext(permissions: HostPermissionService(accessibility: authorizer)),
-            interceptor: interceptor
-        )
 
         do {
-            try await feature.activate()
+            try await makeFeature(inputAccess: inputAccess, interceptor: interceptor).activate()
             XCTFail("expected an operational failure")
         } catch {
             XCTAssertEqual(error as? HUDActivationFailure, .mediaKeyInterceptionUnavailable)
         }
-        XCTAssertEqual(interceptor.startCount, 1)
-        XCTAssertEqual(interceptor.stopCount, 1, "partial startup must be torn down")
+        XCTAssertEqual(interceptor.stopCount, 1)
         XCTAssertFalse(interceptor.isRunning)
     }
 
-    // MARK: - Status reads vs explicit requests
+    // MARK: - Status vs request
 
-    func testStatusReadNeverPromptsAndRequestPromptsAppSide() async {
-        let authorizer = FakeAccessibilityAuthorizer(authorized: false)
-        let service = HostPermissionService(accessibility: authorizer)
+    func testStatusReadNeverPromptsAndRequestPrompts() async {
+        let inputAccess = FakeInputAccess(modify: false, axTrusted: true)
+        let service = HostPermissionService(inputAccess: inputAccess)
 
-        XCTAssertEqual(service.status(for: .accessibility), .notDetermined)
-        XCTAssertEqual(authorizer.requestCount, 0, "status must never prompt")
+        XCTAssertTrue(service.hasHUDInputAccess)
+        XCTAssertEqual(service.status(for: .accessibility), .authorized)
+        XCTAssertEqual(inputAccess.observationRequests, 0, "status must never prompt")
+        XCTAssertEqual(inputAccess.modificationRequests, 0)
 
-        _ = await service.request(.accessibility)
-        XCTAssertEqual(authorizer.requestCount, 1)
+        service.requestHUDInputAccess()
+        XCTAssertEqual(inputAccess.observationRequests, 1)
+        XCTAssertEqual(inputAccess.modificationRequests, 1)
+    }
 
-        // A request is not a grant.
-        XCTAssertEqual(service.status(for: .accessibility), .notDetermined)
-        XCTAssertFalse(service.isAccessibilityAuthorized)
+    func testHasInputAccessIsFalseWithoutAnySignal() {
+        let service = HostPermissionService(inputAccess: FakeInputAccess())
+        XCTAssertFalse(service.hasHUDInputAccess)
+        XCTAssertFalse(service.canModifyInput)
+        XCTAssertFalse(service.canObserveInput)
     }
 
     // MARK: - MediaKeyInterceptor
 
-    func testInterceptorStartIsNonPromptingAndDeduplicates() async {
-        let authorizer = FakeAccessibilityAuthorizer(authorized: true)
+    func testInterceptorInstallsOnceAndDoesNotPrompt() async {
+        let inputAccess = FakeInputAccess(modify: true)
         var installs = 0
         let interceptor = MediaKeyInterceptor(
-            accessibility: authorizer,
+            inputAccess: inputAccess,
             installOverride: { installs += 1; return true }
         )
 
@@ -175,31 +184,13 @@ final class HUDPermissionTests: XCTestCase {
         XCTAssertTrue(second)
         XCTAssertEqual(installs, 1, "a running tap must not be installed twice")
         XCTAssertTrue(interceptor.isRunning)
-        XCTAssertEqual(authorizer.requestCount, 0)
-
-        interceptor.stop()
-        XCTAssertFalse(interceptor.isRunning)
-    }
-
-    func testInterceptorStartReturnsFalseWhenUntrusted() async {
-        let authorizer = FakeAccessibilityAuthorizer(authorized: false)
-        var installs = 0
-        let interceptor = MediaKeyInterceptor(
-            accessibility: authorizer,
-            installOverride: { installs += 1; return true }
-        )
-
-        let running = await interceptor.start()
-
-        XCTAssertFalse(running)
-        XCTAssertEqual(installs, 0)
-        XCTAssertEqual(authorizer.requestCount, 0, "start must never prompt")
+        XCTAssertEqual(inputAccess.observationRequests, 0)
+        XCTAssertEqual(inputAccess.modificationRequests, 0)
     }
 
     func testInterceptorTapFailureReportsNotRunning() async {
-        let authorizer = FakeAccessibilityAuthorizer(authorized: true)
         let interceptor = MediaKeyInterceptor(
-            accessibility: authorizer,
+            inputAccess: FakeInputAccess(),
             installOverride: { false }
         )
 

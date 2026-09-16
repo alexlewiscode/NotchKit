@@ -73,8 +73,9 @@ final class HostPresentationService: NotchPresentationService {
 
 /// Answers permission queries through existing host utilities.
 ///
-/// Accessibility is read from, and requested in, the app process — the process
-/// that owns the HUD event tap. This is the only accessibility gate in the app.
+/// The HUD input capability is read from, and requested in, the app process —
+/// the process that owns the media-key event tap. This is the only HUD
+/// permission gate in the app.
 @MainActor
 final class HostPermissionService: NotchPermissionService {
     /// Shared instance for callers that are not an activated extension (views
@@ -82,16 +83,16 @@ final class HostPermissionService: NotchPermissionService {
     /// `ExtensionContext`.
     static let shared = HostPermissionService()
 
-    private let accessibility: AccessibilityAuthorizing
+    private let inputAccess: InputAccessAuthorizing
 
-    init(accessibility: AccessibilityAuthorizing = SystemAccessibilityAuthorization()) {
-        self.accessibility = accessibility
+    init(inputAccess: InputAccessAuthorizing = SystemInputAccessAuthorization()) {
+        self.inputAccess = inputAccess
     }
 
     func status(for permission: NotchPermission) -> NotchPermissionStatus {
         switch permission {
         case .accessibility:
-            return accessibility.isAuthorized() ? .authorized : .notDetermined
+            return inputAccess.isAccessibilityTrusted() ? .authorized : .notDetermined
         case .camera:
             return Self.map(AVCaptureDevice.authorizationStatus(for: .video))
         case .mediaControl, .screenRecording:
@@ -102,23 +103,35 @@ final class HostPermissionService: NotchPermissionService {
     func request(_ permission: NotchPermission) async -> NotchPermissionStatus {
         switch permission {
         case .accessibility:
-            // Prompting is asynchronous: the user grants in System Settings, so
-            // the request only *asks*. Callers must re-read status afterwards.
-            accessibility.requestAuthorization()
+            // Prompting is asynchronous: this only *asks*. Callers re-read.
+            requestHUDInputAccess()
         case .camera, .mediaControl, .screenRecording:
             break
         }
         return status(for: permission)
     }
 
-    /// Whether the app process is trusted. Read-only; never prompts.
-    var isAccessibilityAuthorized: Bool {
-        accessibility.isAuthorized()
+    // MARK: - HUD input capability
+
+    /// Input Monitoring: can observe the event stream. Read-only.
+    var canObserveInput: Bool { inputAccess.canObserveInput() }
+
+    /// Input control: can modify/suppress the event stream. Read-only.
+    var canModifyInput: Bool { inputAccess.canModifyInput() }
+
+    /// AX trust. Diagnostic only; never the HUD gate.
+    var isAccessibilityTrusted: Bool { inputAccess.isAccessibilityTrusted() }
+
+    /// Whether the media-key tap has enough access to plausibly succeed. Used to
+    /// classify a failed tap, not to gate the attempt.
+    var hasHUDInputAccess: Bool {
+        inputAccess.canModifyInput() || inputAccess.isAccessibilityTrusted()
     }
 
-    /// Explicit, user-initiated accessibility request from the app process.
-    func requestAccessibilityAuthorization() {
-        accessibility.requestAuthorization()
+    /// Explicit, user-initiated request for the input access HUD needs.
+    func requestHUDInputAccess() {
+        inputAccess.requestObservationAccess()
+        inputAccess.requestModificationAccess()
     }
 
     private static func map(_ status: AVAuthorizationStatus) -> NotchPermissionStatus {

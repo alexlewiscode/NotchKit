@@ -167,7 +167,7 @@ struct ExtensionsSettingsView: View {
     /// never prompts on its own, and a request is never treated as a grant.
     private func grantPermission(_ entry: SettingsCatalogEntry) {
         guard let owner = entry.owner else { return }
-        runtime.requestAccessibilityAuthorization()
+        runtime.requestHUDInputAccess()
         runtime.host.retry(owner)
         presentation.refreshAll()
     }
