@@ -222,10 +222,6 @@ private struct FeatureSettingsRow: View {
                     }
 
                     Spacer(minLength: 0)
-
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.tertiary)
                 }
                 .contentShape(Rectangle())
             }
@@ -294,11 +290,7 @@ private struct FeatureSettingsRow: View {
                     .font(.caption)
                     .accessibilityLabel("Grant access for \(entry.displayName)")
             }
-        case .inactive:
-            if entry.management == .runtimeManaged, !isEnabled {
-                statusLabel("Off")
-            }
-        case .active:
+        case .inactive, .active:
             EmptyView()
         }
     }
