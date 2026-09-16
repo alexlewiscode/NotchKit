@@ -603,11 +603,17 @@ struct HUDSettingsPage: View {
                     .foregroundStyle(.secondary)
                     Spacer(minLength: 0)
                     Button("Request Accessibility") {
-                        XPCHelperClient.shared.requestAccessibilityAuthorization()
+                        NotchKitRuntime.shared.requestAccessibilityAuthorization()
                     }
                     .buttonStyle(.borderedProminent)
                     Button("Refresh Status") {
-                        Task { await status.refresh() }
+                        Task {
+                            await status.refresh()
+                            // Re-drive the runtime from the same app-side source
+                            // so a granted, still-enabled HUD can activate
+                            // without a second click.
+                            NotchKitRuntime.shared.reconcilePermissionGatedFeatures()
+                        }
                     }
                 }
                 .padding(.top, 6)
@@ -675,12 +681,11 @@ struct HUDSettingsPage: View {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             // Read-only refresh when returning from System Settings. Does not
-            // request permission, start the media-key interceptor, or poll.
-            Task { await status.refresh() }
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .accessibilityAuthorizationChanged)) { notification in
-            if let granted = notification.userInfo?["granted"] as? Bool {
-                status.apply(granted)
+            // prompt, start the interceptor, or poll; reconciliation only
+            // retries features already waiting on a now-granted permission.
+            Task {
+                await status.refresh()
+                NotchKitRuntime.shared.reconcilePermissionGatedFeatures()
             }
         }
     }

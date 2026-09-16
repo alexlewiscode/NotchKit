@@ -6,7 +6,6 @@
 //
 
 import AVFoundation
-import ApplicationServices
 import NotchExtensionSDK
 import NotchExtensionRuntime
 
@@ -73,12 +72,26 @@ final class HostPresentationService: NotchPresentationService {
 }
 
 /// Answers permission queries through existing host utilities.
+///
+/// Accessibility is read from, and requested in, the app process — the process
+/// that owns the HUD event tap. This is the only accessibility gate in the app.
 @MainActor
 final class HostPermissionService: NotchPermissionService {
+    /// Shared instance for callers that are not an activated extension (views
+    /// and the runtime). Extensions receive the same service through their
+    /// `ExtensionContext`.
+    static let shared = HostPermissionService()
+
+    private let accessibility: AccessibilityAuthorizing
+
+    init(accessibility: AccessibilityAuthorizing = SystemAccessibilityAuthorization()) {
+        self.accessibility = accessibility
+    }
+
     func status(for permission: NotchPermission) -> NotchPermissionStatus {
         switch permission {
         case .accessibility:
-            return AXIsProcessTrusted() ? .authorized : .notDetermined
+            return accessibility.isAuthorized() ? .authorized : .notDetermined
         case .camera:
             return Self.map(AVCaptureDevice.authorizationStatus(for: .video))
         case .mediaControl, .screenRecording:
@@ -87,7 +100,25 @@ final class HostPermissionService: NotchPermissionService {
     }
 
     func request(_ permission: NotchPermission) async -> NotchPermissionStatus {
-        status(for: permission)
+        switch permission {
+        case .accessibility:
+            // Prompting is asynchronous: the user grants in System Settings, so
+            // the request only *asks*. Callers must re-read status afterwards.
+            accessibility.requestAuthorization()
+        case .camera, .mediaControl, .screenRecording:
+            break
+        }
+        return status(for: permission)
+    }
+
+    /// Whether the app process is trusted. Read-only; never prompts.
+    var isAccessibilityAuthorized: Bool {
+        accessibility.isAuthorized()
+    }
+
+    /// Explicit, user-initiated accessibility request from the app process.
+    func requestAccessibilityAuthorization() {
+        accessibility.requestAuthorization()
     }
 
     private static func map(_ status: AVAuthorizationStatus) -> NotchPermissionStatus {

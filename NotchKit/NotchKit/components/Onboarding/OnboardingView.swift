@@ -157,6 +157,9 @@ struct OnboardingView: View {
     }
     
     func requestAccessibilityPermission() async {
-        await XPCHelperClient.shared.ensureAccessibilityAuthorization(promptIfNeeded: true)
+        // Request from the app process, which owns the HUD event tap.
+        await MainActor.run {
+            HostPermissionService.shared.requestAccessibilityAuthorization()
+        }
     }
 }

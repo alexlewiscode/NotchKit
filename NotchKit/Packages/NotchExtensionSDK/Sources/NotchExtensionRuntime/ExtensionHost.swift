@@ -94,18 +94,28 @@ public final class ExtensionHost {
         manager.setEnabled(enabled, for: id)
     }
 
-    /// Retries a failed or permission-blocked activation for an extension whose
-    /// desired state is still enabled. This is the explicit, user-initiated
-    /// path; `reconcileNow()` deliberately does not auto-retry permission gates.
+    /// Retries a failed or permission-blocked activation for one extension whose
+    /// desired state is still enabled.
+    ///
+    /// This is the explicit, user-initiated path; `reconcileNow()` deliberately
+    /// does not auto-retry permission gates. Retrying is scoped to `id`, so a
+    /// permission refresh cannot re-attempt unrelated `.failed` extensions, and
+    /// it is idempotent: an active or in-flight extension is left alone.
     public func retry(_ id: ExtensionIdentity) {
         switch phase(for: id) {
         case .failed, .requiresPermission:
             clearInstance(id)
             setPhase(.inactive, id)
-        case .inactive, .activating, .active, .deactivating:
+        case .inactive:
             break
+        case .activating, .active, .deactivating:
+            return
         }
-        reconcileNow()
+
+        guard manager.isEnabled(id),
+              let definition = registry.definitions.first(where: { $0.id == id })
+        else { return }
+        beginActivation(definition)
     }
 
     /// Reconciles desired enabled state against live instances.

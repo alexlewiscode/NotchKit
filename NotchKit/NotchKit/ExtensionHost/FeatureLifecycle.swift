@@ -91,28 +91,29 @@ final class CameraFeature: NotchExtension {
 
 /// HUD: owns media-key interception and the volume/brightness observers.
 ///
-/// Enabling requires the accessibility permission. It is checked without
-/// prompting; the settings row offers an explicit "Grant Access" action that
-/// prompts and then retries, so toggling never produces a surprise prompt.
+/// Enabling requires the accessibility permission. The gate and the request are
+/// app-side (see `AccessibilityAuthorizing`): the event tap is installed by the
+/// app process, so the app's own trust is what matters. Status is checked
+/// without prompting; the settings row offers an explicit "Grant Access" action.
 /// Disabling restores normal system input handling.
 @MainActor
 final class HUDFeature: NotchExtension {
     private let context: ExtensionContext
+    private let interceptor: any HUDIntercepting
 
-    init(context: ExtensionContext) {
+    init(context: ExtensionContext, interceptor: any HUDIntercepting = MediaKeyInterceptor.shared) {
         self.context = context
+        self.interceptor = interceptor
     }
 
     func activate() async throws {
-        // Use the same accessibility trust source the event tap requires (the
-        // XPC helper), so "Grant Access" and the gate can never disagree.
-        let authorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
-        guard authorized else {
+        // Read the app-side permission only; never prompt from activation.
+        guard context.permissions.status(for: .accessibility) == .authorized else {
             throw ExtensionActivationError.permissionRequired(.accessibility)
         }
 
-        context.cancellation.add {
-            MediaKeyInterceptor.shared.stop()
+        context.cancellation.add { [interceptor] in
+            interceptor.stop()
             VolumeManager.shared.stop()
             BrightnessManager.shared.stop()
             KeyboardBacklightManager.shared.stop()
@@ -125,14 +126,18 @@ final class HUDFeature: NotchExtension {
         // `start()` coalesces concurrent calls and reports whether a tap is
         // actually running, so a rapid disable→re-enable cannot leave HUD
         // claiming to be active without interception.
-        let running = await MediaKeyInterceptor.shared.start()
+        let running = await interceptor.start()
         guard running else {
-            throw ExtensionActivationError.permissionRequired(.accessibility)
+            // Permission is granted; the tap simply could not be installed.
+            // Clean up the partial startup and report an operational failure
+            // rather than a permission gate the user can never satisfy.
+            context.cancellation.cancelAll()
+            throw HUDActivationFailure.mediaKeyInterceptionUnavailable
         }
     }
 
     func deactivate() {
-        MediaKeyInterceptor.shared.stop()
+        interceptor.stop()
         VolumeManager.shared.stop()
         BrightnessManager.shared.stop()
         KeyboardBacklightManager.shared.stop()
@@ -141,6 +146,29 @@ final class HUDFeature: NotchExtension {
             kinds: [.volume, .brightness, .backlight, .mic]
         )
         context.cancellation.cancelAll()
+    }
+}
+
+/// The interception surface HUD owns. Implemented by `MediaKeyInterceptor` in
+/// production and by a fake in tests.
+protocol HUDIntercepting: AnyObject {
+    /// Ensures a tap is installed, returning whether one is running. Never
+    /// prompts.
+    func start() async -> Bool
+    func stop()
+    var isRunning: Bool { get }
+}
+
+/// A non-permission failure while starting HUD. Mapped by the host to `.failed`,
+/// so it is never mistaken for a grantable permission gate.
+enum HUDActivationFailure: LocalizedError, Equatable {
+    case mediaKeyInterceptionUnavailable
+
+    var errorDescription: String? {
+        switch self {
+        case .mediaKeyInterceptionUnavailable:
+            return "HUD access is granted, but media-key interception could not start."
+        }
     }
 }
 

@@ -6,35 +6,10 @@
 //
 
 import Foundation
-import ApplicationServices
 import IOKit
 import CoreGraphics
 
 class NotchKitXPCHelper: NSObject, NotchKitXPCHelperProtocol {
-    
-    @objc func isAccessibilityAuthorized(with reply: @escaping (Bool) -> Void) {
-        reply(AXIsProcessTrusted())
-    }
-
-    @objc func requestAccessibilityAuthorization() {
-        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
-        AXIsProcessTrustedWithOptions(options)
-    }
-
-    @objc func ensureAccessibilityAuthorization(_ promptIfNeeded: Bool, with reply: @escaping (Bool) -> Void) {
-        if AXIsProcessTrusted() {
-            reply(true)
-            return
-        }
-
-        if promptIfNeeded {
-            requestAccessibilityAuthorization()
-        }
-
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            reply(AXIsProcessTrusted())
-        }
-    }
     
     private class KeyboardBrightnessClient {
         private static let keyboardID: UInt64 = 1

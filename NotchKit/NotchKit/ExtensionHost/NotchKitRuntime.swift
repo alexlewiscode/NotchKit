@@ -76,7 +76,7 @@ final class NotchKitRuntime {
                     displayBox.value
                 },
                 store: UserDefaultsExtensionScopedStore(identity: id),
-                permissions: HostPermissionService()
+                permissions: HostPermissionService.shared
             )
         }
         // Async activation/deactivation completes after `bootstrap`, so refresh
@@ -84,44 +84,44 @@ final class NotchKitRuntime {
         host.onStateChanged = { [weak presentation] in
             presentation?.refreshAll()
         }
-        // When accessibility is granted while a permission-gated feature is
-        // blocked, retry it automatically. This is the host-side counterpart to
-        // the row's explicit "Grant Access" action.
-        accessibilityObserver = NotificationCenter.default.addObserver(
-            forName: .accessibilityAuthorizationChanged,
-            object: nil,
-            queue: .main
-        ) { [weak self] _ in
-            Task { @MainActor in
-                self?.retryPermissionBlockedFeatures()
-            }
-        }
-        // The accessibility-changed notification is only posted when a status
-        // read observes a transition. Returning to the app (for example after
-        // granting in System Settings) is the reliable read point, so permission
-        // blocked features recover without the user clicking twice.
+        // Returning to the app (for example after granting in System Settings)
+        // is the reliable read point for an asynchronous permission grant. Read
+        // the app-side status and retry only the features waiting on it.
         activeObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didBecomeActiveNotification,
             object: nil,
             queue: .main
         ) { [weak self] _ in
             Task { @MainActor in
-                _ = await XPCHelperClient.shared.isAccessibilityAuthorized()
-                self?.retryPermissionBlockedFeatures()
+                self?.reconcilePermissionGatedFeatures()
             }
         }
     }
 
-    private var accessibilityObserver: NSObjectProtocol?
     private var activeObserver: NSObjectProtocol?
 
-    private func retryPermissionBlockedFeatures() {
-        for identity in BuiltInExtensionIDs.toggleableFeatures
-        where manager.isEnabled(identity) {
-            if case .requiresPermission = host.phase(for: identity) {
-                host.retry(identity)
-            }
+    /// Re-reads the app-side accessibility status and re-attempts every feature
+    /// whose desired state is enabled and which is waiting on that permission.
+    ///
+    /// Targeted and idempotent: only `.requiresPermission` features are retried,
+    /// disabled features and actively-running features are left alone, and
+    /// unrelated `.failed` extensions are never touched.
+    func reconcilePermissionGatedFeatures() {
+        guard HostPermissionService.shared.isAccessibilityAuthorized else { return }
+        for identity in BuiltInExtensionIDs.toggleableFeatures {
+            PermissionRefreshCoordinator.reconcileIfGranted(
+                feature: identity,
+                isEnabled: { self.manager.isEnabled($0) },
+                phase: { self.host.phase(for: $0) },
+                isPermissionGranted: { HostPermissionService.shared.isAccessibilityAuthorized },
+                retry: { self.host.retry($0) }
+            )
         }
+    }
+
+    /// Explicit, user-initiated accessibility request from the app process.
+    func requestAccessibilityAuthorization() {
+        HostPermissionService.shared.requestAccessibilityAuthorization()
     }
 
     /// Registers the first-party catalog and starts enabled extensions.

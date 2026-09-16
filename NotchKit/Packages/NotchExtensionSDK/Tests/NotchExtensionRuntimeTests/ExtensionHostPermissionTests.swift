@@ -127,4 +127,73 @@ final class ExtensionHostPermissionTests: XCTestCase {
         XCTAssertEqual(harness.host.phase(for: harness.id), .failed("No camera devices available"))
         XCTAssertFalse(harness.instance.isActive)
     }
+
+    /// Retrying one permission-blocked extension must not re-attempt an unrelated
+    /// `.failed` extension (a permission refresh must not become a global retry).
+    func testRetryIsScopedToTheTargetExtension() async throws {
+        let blockedID = try TestFactory.identity("com.notchkit.blocked")
+        let failedID = try TestFactory.identity("com.notchkit.failed")
+        let blocked = TestLifecycleExtension()
+        blocked.activationError = ExtensionActivationError.permissionRequired(.accessibility)
+        let failing = TestLifecycleExtension()
+        failing.activationError = ExtensionActivationError.deviceUnavailable("no device")
+
+        let registry = TestFactory.registry()
+        try registry.register(
+            ExtensionDefinition(metadata: TestFactory.metadata(id: blockedID, defaultEnabled: false)) { _ in blocked }
+        )
+        try registry.register(
+            ExtensionDefinition(metadata: TestFactory.metadata(id: failedID, defaultEnabled: false)) { _ in failing }
+        )
+
+        let manager = ExtensionManager(registry: registry, store: InMemoryExtensionStateStore())
+        let host = ExtensionHost(registry: registry, manager: manager) { id, bag in
+            ExtensionContext(
+                identity: id,
+                cancellation: bag,
+                presentation: TestPresentationService(),
+                store: TestScopedStore(),
+                permissions: TestPermissionService()
+            )
+        }
+        host.start()
+        host.setEnabled(true, for: blockedID)
+        host.setEnabled(true, for: failedID)
+        await host.waitForQuiescence()
+
+        XCTAssertEqual(host.phase(for: blockedID), .requiresPermission("accessibility permission required"))
+        XCTAssertEqual(host.phase(for: failedID), .failed("no device"))
+
+        let failedCountBefore = failing.activateCount
+        let blockedCountBefore = blocked.activateCount
+
+        blocked.activationError = nil
+        host.retry(blockedID)
+        await host.waitForQuiescence()
+
+        XCTAssertEqual(host.phase(for: blockedID), .active)
+        XCTAssertEqual(blocked.activateCount, blockedCountBefore + 1)
+        XCTAssertEqual(
+            failing.activateCount, failedCountBefore,
+            "retry must not re-attempt an unrelated failed extension"
+        )
+    }
+
+    /// Disabling while a retry is mid-flight must not let a stale activation win.
+    func testDisableDuringPendingRetryDoesNotActivate() async throws {
+        let harness = try makeHarness()
+        harness.instance.activationError = ExtensionActivationError.permissionRequired(.accessibility)
+        harness.host.setEnabled(true, for: harness.id)
+        await harness.host.waitForQuiescence()
+
+        // Grant, retry with a slow activation, then disable before it completes.
+        harness.instance.activationError = nil
+        harness.instance.activateDelay = .milliseconds(50)
+        harness.host.retry(harness.id)
+        harness.host.setEnabled(false, for: harness.id)
+        await harness.host.waitForQuiescence()
+
+        XCTAssertEqual(harness.host.phase(for: harness.id), .inactive)
+        XCTAssertFalse(harness.instance.isActive)
+    }
 }

@@ -160,7 +160,7 @@ final class HUDStatusProvider: ObservableObject {
 
     convenience init() {
         self.init(readStatus: {
-            await XPCHelperClient.shared.isAccessibilityAuthorized()
+            HostPermissionService.shared.isAccessibilityAuthorized
         })
     }
 

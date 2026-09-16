@@ -9,10 +9,12 @@ import AppKit
 import ApplicationServices
 import Defaults
 import AVFoundation
+import NotchExtensionSDK
+import os
 
 private let kSystemDefinedEventType = CGEventType(rawValue: 14)!
 
-final class MediaKeyInterceptor {
+final class MediaKeyInterceptor: HUDIntercepting {
     static let shared = MediaKeyInterceptor()
     
     private enum NXKeyType: Int {
@@ -33,53 +35,67 @@ final class MediaKeyInterceptor {
     /// was superseded and bail out without installing a tap.
     private var startToken = 0
 
-    private init() {}
+    /// The app-side accessibility source. The event tap is created in this
+    /// process, so this is the only trust that matters.
+    private let accessibility: AccessibilityAuthorizing
+    /// Test seam: replaces the real `CGEvent.tapCreate` installation.
+    private let installOverride: (() -> Bool)?
+
+    private let logger = Logger(
+        subsystem: NotchKitIdentity.bundleIdentifier,
+        category: "MediaKeyInterceptor"
+    )
+
+    init(
+        accessibility: AccessibilityAuthorizing = SystemAccessibilityAuthorization(),
+        installOverride: (() -> Bool)? = nil
+    ) {
+        self.accessibility = accessibility
+        self.installOverride = installOverride
+    }
 
     /// Whether an event tap is currently installed.
-    var isRunning: Bool { eventTap != nil }
-    
-    // MARK: - Accessibility (via XPC)
-    
-    func requestAccessibilityAuthorization() {
-        XPCHelperClient.shared.requestAccessibilityAuthorization()
-    }
-    
-    func ensureAccessibilityAuthorization(promptIfNeeded: Bool = false) async -> Bool {
-        await XPCHelperClient.shared.ensureAccessibilityAuthorization(promptIfNeeded: promptIfNeeded)
-    }
-    
+    private(set) var isRunning = false
+
     // MARK: - Event Tap
-    
+
     /// Ensures an event tap is installed when accessibility is authorized.
     ///
-    /// Returns whether a tap is running when this call finishes. Concurrent
-    /// calls are safe: a superseded start detects the token change after its
-    /// await and does not install, and a same-generation duplicate sees the tap
-    /// already present rather than creating a second one.
+    /// Returns whether a tap is running when this call finishes. This is a
+    /// read-only status check: it never prompts. Concurrent calls are safe: a
+    /// superseded start detects the token change and does not install, and a
+    /// same-generation duplicate sees the tap already present rather than
+    /// creating a second one.
     @discardableResult
-    func start(promptIfNeeded: Bool = false) async -> Bool {
-        guard !TestHostPolicy.isActive else { return false }
-        if eventTap != nil { return true }
+    func start() async -> Bool {
+        if isRunning { return true }
         let token = startToken
 
-        // The HUD feature lifecycle owns whether interception runs; this method
-        // no longer consults `hudReplacement` directly. Use the same trust
-        // source the tap requires (the XPC helper reads `AXIsProcessTrusted`).
-        var authorized = await XPCHelperClient.shared.isAccessibilityAuthorized()
-        // A stop or newer start during the await supersedes this one.
-        guard token == startToken else { return eventTap != nil }
-        if !authorized {
-            if promptIfNeeded {
-                authorized = await ensureAccessibilityAuthorization(promptIfNeeded: true)
-            }
-            guard token == startToken else { return eventTap != nil }
-            guard authorized else { return false }
-        }
-        // A concurrent same-generation start may have installed the tap already.
-        guard eventTap == nil else { return true }
+        guard accessibility.isAuthorized() else { return false }
+        // A stop or newer start during any await supersedes this one.
+        guard token == startToken else { return isRunning }
+        guard !isRunning else { return true }
 
+        let installed = performInstall()
+        if !installed {
+            // CGEvent.tapCreate does not report a specific cause, so log only the
+            // context we actually have rather than claiming an OS error.
+            logger.error(
+                "Media-key event tap install failed (authorized=\(self.accessibility.isAuthorized(), privacy: .public), existingTap=\(self.eventTap != nil, privacy: .public))"
+            )
+        }
+        return installed
+    }
+
+    private func performInstall() -> Bool {
+        if let installOverride {
+            isRunning = installOverride()
+            return isRunning
+        }
+        guard !TestHostPolicy.isActive else { return false }
         installTap()
-        return eventTap != nil
+        isRunning = eventTap != nil
+        return isRunning
     }
 
     private func installTap() {
@@ -116,6 +132,7 @@ final class MediaKeyInterceptor {
         }
         runLoopSource = nil
         eventTap = nil
+        isRunning = false
     }
     
     // MARK: - Event Handling

@@ -162,11 +162,12 @@ struct ExtensionsSettingsView: View {
         presentation.refreshAll()
     }
 
-    /// Explicit, user-initiated permission request for a blocked feature.
-    /// Toggling a feature never prompts on its own.
+    /// Explicit, user-initiated permission request for a blocked feature,
+    /// issued from the app process that owns the event tap. Toggling a feature
+    /// never prompts on its own, and a request is never treated as a grant.
     private func grantPermission(_ entry: SettingsCatalogEntry) {
         guard let owner = entry.owner else { return }
-        XPCHelperClient.shared.requestAccessibilityAuthorization()
+        runtime.requestAccessibilityAuthorization()
         runtime.host.retry(owner)
         presentation.refreshAll()
     }

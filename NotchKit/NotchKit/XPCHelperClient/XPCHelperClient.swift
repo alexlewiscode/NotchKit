@@ -9,12 +9,9 @@ final class XPCHelperClient: NSObject {
     
     private var remoteService: RemoteXPCService<NotchKitXPCHelperProtocol>?
     private var connection: NSXPCConnection?
-    private var lastKnownAuthorization: Bool?
-    private var monitoringTask: Task<Void, Never>?
     
     deinit {
         connection?.invalidate()
-        stopMonitoringAccessibilityAuthorization()
     }
     
     // MARK: - Connection Management (Main Actor Isolated)
@@ -51,100 +48,6 @@ final class XPCHelperClient: NSObject {
         connection = conn
         remoteService = service
         return service
-    }
-    
-    @MainActor
-    private func getRemoteService() -> RemoteXPCService<NotchKitXPCHelperProtocol>? {
-        remoteService
-    }
-    
-    @MainActor
-    private func notifyAuthorizationChange(_ granted: Bool) {
-        guard lastKnownAuthorization != granted else { return }
-        lastKnownAuthorization = granted
-        NotificationCenter.default.post(
-            name: .accessibilityAuthorizationChanged,
-            object: nil,
-            userInfo: ["granted": granted]
-        )
-    }
-
-    // MARK: - Monitoring
-    nonisolated func startMonitoringAccessibilityAuthorization(every interval: TimeInterval = 3.0) {
-        guard !TestHostPolicy.isActive else { return }
-        // Ensure only one monitor exists
-        stopMonitoringAccessibilityAuthorization()
-        monitoringTask = Task.detached { [weak self] in
-            guard let self = self else { return }
-            while !Task.isCancelled {
-                // Call the helper method periodically which will notify on change
-                _ = await self.isAccessibilityAuthorized()
-                do {
-                    try await Task.sleep(for: .seconds(interval))
-                } catch { break }
-            }
-        }
-    }
-
-    nonisolated func stopMonitoringAccessibilityAuthorization() {
-        monitoringTask?.cancel()
-        monitoringTask = nil
-    }
-
-    // Expose whether the client is actively monitoring (useful for tests/debug)
-    var isMonitoring: Bool {
-        return monitoringTask != nil
-    }
-    
-    // MARK: - Accessibility
-    
-    nonisolated func requestAccessibilityAuthorization() {
-        Task {
-            let service = await MainActor.run {
-                ensureRemoteService()
-            }
-            try? await service.withService { service in
-                service.requestAccessibilityAuthorization()
-            }
-        }
-    }
-    
-    nonisolated func isAccessibilityAuthorized() async -> Bool {
-        do {
-            let service = await MainActor.run {
-                ensureRemoteService()
-            }
-            let result: Bool = try await service.withContinuation { service, continuation in
-                service.isAccessibilityAuthorized { authorized in
-                    continuation.resume(returning: authorized)
-                }
-            }
-            await MainActor.run {
-                notifyAuthorizationChange(result)
-            }
-            return result
-        } catch {
-            return false
-        }
-    }
-    
-    nonisolated func ensureAccessibilityAuthorization(promptIfNeeded: Bool) async -> Bool {
-        do {
-            let service = await MainActor.run {
-                ensureRemoteService()
-            }
-            let result: Bool = try await service.withContinuation { service, continuation in
-                service.ensureAccessibilityAuthorization(promptIfNeeded) { authorized in
-                    continuation.resume(returning: authorized)
-                }
-            }
-            await MainActor.run {
-                notifyAuthorizationChange(result)
-            }
-            return result
-        } catch {
-            return false
-        }
     }
     
     // MARK: - Identity migration
@@ -262,9 +165,4 @@ final class XPCHelperClient: NSObject {
         }
     }
 }
-
-extension Notification.Name {
-    static let accessibilityAuthorizationChanged = Notification.Name("accessibilityAuthorizationChanged")
-}
-
 

@@ -94,6 +94,36 @@ action. Camera activation starts only device monitoring; camera access is still
 requested the first time the mirror opens. Shelf/Calendar requests remain
 explicit buttons on their pages.
 
+### HUD accessibility is app-side
+
+The HUD event tap is created by the app process (`MediaKeyInterceptor`), so the
+app's own AX trust is the only gate that matters. All HUD accessibility reads
+and requests go through one abstraction, `AccessibilityAuthorizing`, surfaced to
+extensions as `HostPermissionService`:
+
+- **read** (`status(for: .accessibility)`): app `AXIsProcessTrusted()`; never
+  prompts. Used by HUD activation, `MediaKeyInterceptor.start()`, the HUD
+  settings status, and runtime reconciliation.
+- **request** (`request(.accessibility)`): explicit user action only, issued in
+  the app process. A request is never treated as a grant; callers re-read status
+  after returning to the app or pressing "Refresh Status".
+
+The XPC helper is no longer consulted for accessibility. Its earlier AX methods
+(and the polling monitor) were removed: the helper is a different TCC identity,
+so reading it left HUD permanently blocked whenever only the app was granted.
+The helper still owns keyboard/screen brightness and one-time identity migration.
+
+"Refresh Status" and app reactivation re-read the app-side status and run a
+targeted reconciliation: only a desired-enabled feature currently in
+`.requiresPermission` is retried, and `ExtensionHost.retry(_:)` is scoped to that
+one identity. Refresh never enables a disabled feature, never retries unrelated
+`.failed` extensions, and is idempotent.
+
+A granted permission that still cannot install the tap is an operational failure
+(`.failed`), not a permission gate; the partial startup is torn down.
+`CGEvent.tapCreate` does not report a specific cause, so only the available
+context is logged.
+
 ## Known limitations
 
 - Battery's open-notch header indicator still reads the app-wide `BatteryMonitor`
@@ -102,9 +132,12 @@ explicit buttons on their pages.
 - `MenuBarExtra`, `NotchSpaceManager`, window geometry, and routing stay alive
   when every optional feature is off.
 - A `.failed` extension is still re-attempted by `reconcileNow()` (pre-existing
-  behavior); only `.requiresPermission` waits for explicit retry. No adapter
+  behavior) on an enabled-state change; only `.requiresPermission` waits for
+  explicit retry, and explicit retries are now scoped to one identity. No adapter
   currently throws `deviceUnavailable`, so this is latent.
-- GUI interaction checks (clicking a row, toggling, VoiceOver) are covered by
-  catalog-level tests and must still be confirmed interactively; see the handoff
-  report. Row click and toggle separation are structurally guaranteed (a plain
-  `Button` sibling to a `Toggle`, never nested).
+- If the app is trusted but `CGEvent.tapCreate` still fails to install, HUD
+  reports `.failed` with its reason; moving tap ownership into the helper is a
+  separate proposal, not an automatic fallback.
+- GUI interaction checks (grant → return → activation, Refresh Status, disabled
+  refresh, denial/revocation) must still be confirmed interactively; see the
+  handoff report. Row click and toggle separation are structurally guaranteed.
