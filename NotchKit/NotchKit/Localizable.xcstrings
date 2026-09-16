@@ -8945,6 +8945,9 @@
         }
       }
     },
+    "Enable some extensions to get started." : {
+      "extractionState" : "manual"
+    },
     "Enable window shadow" : {
       "localizations" : {
         "ar" : {

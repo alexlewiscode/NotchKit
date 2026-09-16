@@ -331,7 +331,11 @@ struct ContentView: View {
               .zIndex(2)
             if vm.notchState == .open {
                 VStack {
-                    if let destination = router.activeDestinationView {
+                    if router.activeDestinationID == BuiltInExtensionIDs.homeDestination,
+                       NotchKitRuntime.shared.shouldShowEmptyState
+                    {
+                        FeatureEmptyStateView()
+                    } else if let destination = router.activeDestinationView {
                         destination
                     } else {
                         NotchHomeView()
