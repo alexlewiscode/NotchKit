@@ -202,25 +202,109 @@ final class HUDPermissionTests: XCTestCase {
         XCTAssertFalse(interceptor.isRunning)
     }
 
-    func testInterceptorRecoversFromCoreGraphicsDisableNotifications() async {
+    func testInterceptorRecoversAsynchronouslyFromTimeout() async {
         var recoveryAttempts = 0
+        let recovered = expectation(description: "tap re-enabled")
         let interceptor = MediaKeyInterceptor(
             inputAccess: FakeInputAccess(status: .granted),
             installOverride: { true },
-            reenableOverride: { recoveryAttempts += 1; return true }
+            reenableOverride: {
+                recoveryAttempts += 1
+                recovered.fulfill()
+                return true
+            }
         )
         let event = CGEvent(source: nil)!
 
         let started = await interceptor.start()
         XCTAssertTrue(started)
         _ = interceptor.handleEvent(type: .tapDisabledByTimeout, event: event)
-        _ = interceptor.handleEvent(type: .tapDisabledByUserInput, event: event)
+        XCTAssertEqual(recoveryAttempts, 0, "the event-tap callback must return before recovery")
+
+        await fulfillment(of: [recovered], timeout: 1)
 
         XCTAssertTrue(interceptor.isRunning)
-        XCTAssertEqual(recoveryAttempts, 2)
+        XCTAssertEqual(recoveryAttempts, 1)
     }
 
-    func testInterceptorFailedRecoveryTearsDownAndReinstalls() async {
+    func testUserInputDisableFailsOpenWithoutReenableOrReinstall() async throws {
+        var installs = 0
+        var recoveryAttempts = 0
+        var disables = 0
+        let disabled = expectation(description: "HUD disabled")
+        let interceptor = MediaKeyInterceptor(
+            inputAccess: FakeInputAccess(status: .requiresPermission),
+            installOverride: { installs += 1; return true },
+            reenableOverride: { recoveryAttempts += 1; return true },
+            recoveryDelayNanoseconds: 0,
+            onInterceptionDisabled: {
+                disables += 1
+                disabled.fulfill()
+            }
+        )
+
+        let started = await interceptor.start()
+        XCTAssertTrue(started)
+        let event = CGEvent(source: nil)!
+        XCTAssertNotNil(interceptor.handleEvent(type: .tapDisabledByUserInput, event: event))
+        _ = interceptor.handleEvent(type: .tapDisabledByUserInput, event: event)
+        XCTAssertEqual(recoveryAttempts, 0, "revocation must never re-enable inside the callback")
+        let restartedWhileRevocationWasPending = await interceptor.start()
+        XCTAssertFalse(restartedWhileRevocationWasPending)
+
+        await fulfillment(of: [disabled], timeout: 1)
+        try await Task.sleep(nanoseconds: 10_000_000)
+
+        XCTAssertFalse(interceptor.isRunning)
+        XCTAssertEqual(recoveryAttempts, 0)
+        XCTAssertEqual(installs, 1, "revocation must not create another modifying tap")
+        XCTAssertEqual(disables, 1, "duplicate notifications must coalesce")
+    }
+
+    func testUserInputDisableSupersedesPendingTimeoutRecovery() async {
+        var recoveryAttempts = 0
+        var installs = 0
+        let disabled = expectation(description: "HUD disabled")
+        let interceptor = MediaKeyInterceptor(
+            inputAccess: FakeInputAccess(status: .granted),
+            installOverride: { installs += 1; return true },
+            reenableOverride: { recoveryAttempts += 1; return true },
+            onInterceptionDisabled: { disabled.fulfill() }
+        )
+
+        let started = await interceptor.start()
+        XCTAssertTrue(started)
+        let event = CGEvent(source: nil)!
+        _ = interceptor.handleEvent(type: .tapDisabledByTimeout, event: event)
+        _ = interceptor.handleEvent(type: .tapDisabledByUserInput, event: event)
+
+        await fulfillment(of: [disabled], timeout: 1)
+
+        XCTAssertFalse(interceptor.isRunning)
+        XCTAssertEqual(recoveryAttempts, 0)
+        XCTAssertEqual(installs, 1)
+    }
+
+    func testTimeoutWithRevokedAccessFailsOpenWithoutReenable() async {
+        var recoveryAttempts = 0
+        let disabled = expectation(description: "HUD disabled")
+        let interceptor = MediaKeyInterceptor(
+            inputAccess: FakeInputAccess(status: .requiresPermission),
+            installOverride: { true },
+            reenableOverride: { recoveryAttempts += 1; return true },
+            onInterceptionDisabled: { disabled.fulfill() }
+        )
+
+        let started = await interceptor.start()
+        XCTAssertTrue(started)
+        _ = interceptor.handleEvent(type: .tapDisabledByTimeout, event: CGEvent(source: nil)!)
+        await fulfillment(of: [disabled], timeout: 1)
+
+        XCTAssertFalse(interceptor.isRunning)
+        XCTAssertEqual(recoveryAttempts, 0)
+    }
+
+    func testInterceptorFailedTimeoutRecoveryTearsDownAndReinstallsOnce() async {
         var installs = 0
         let reinstalled = expectation(description: "tap reinstalled")
         let interceptor = MediaKeyInterceptor(
@@ -236,12 +320,32 @@ final class HUDPermissionTests: XCTestCase {
 
         let firstStart = await interceptor.start()
         XCTAssertTrue(firstStart)
-        _ = interceptor.handleEvent(type: .tapDisabledByUserInput, event: CGEvent(source: nil)!)
-        XCTAssertFalse(interceptor.isRunning)
+        _ = interceptor.handleEvent(type: .tapDisabledByTimeout, event: CGEvent(source: nil)!)
 
         await fulfillment(of: [reinstalled], timeout: 1)
         XCTAssertTrue(interceptor.isRunning)
         XCTAssertEqual(installs, 2)
+    }
+
+    func testInterceptorStopsAfterSingleFailedReinstall() async throws {
+        var installs = 0
+        let disabled = expectation(description: "HUD disabled")
+        let interceptor = MediaKeyInterceptor(
+            inputAccess: FakeInputAccess(status: .granted),
+            installOverride: { installs += 1; return installs == 1 },
+            reenableOverride: { false },
+            recoveryDelayNanoseconds: 0,
+            onInterceptionDisabled: { disabled.fulfill() }
+        )
+
+        let started = await interceptor.start()
+        XCTAssertTrue(started)
+        _ = interceptor.handleEvent(type: .tapDisabledByTimeout, event: CGEvent(source: nil)!)
+        await fulfillment(of: [disabled], timeout: 1)
+        try await Task.sleep(nanoseconds: 10_000_000)
+
+        XCTAssertFalse(interceptor.isRunning)
+        XCTAssertEqual(installs, 2, "recovery must not enter an unbounded reinstall loop")
     }
 
     func testInterceptorStopCancelsPendingRecovery() async throws {

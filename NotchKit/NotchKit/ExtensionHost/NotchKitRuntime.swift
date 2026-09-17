@@ -84,6 +84,9 @@ final class NotchKitRuntime {
         host.onStateChanged = { [weak presentation] in
             presentation?.refreshAll()
         }
+        MediaKeyInterceptor.shared.setInterceptionDisabledHandler { [weak self] in
+            self?.host.setEnabled(false, for: BuiltInExtensionIDs.hud)
+        }
         // Returning to the app (for example after granting in System Settings)
         // is the reliable read point for an asynchronous permission grant. Read
         // the app-side status and retry only the features waiting on it.
@@ -100,14 +103,20 @@ final class NotchKitRuntime {
 
     private var activeObserver: NSObjectProtocol?
 
-    /// Re-reads the app-side accessibility status and re-attempts every feature
-    /// whose desired state is enabled and which is waiting on that permission.
+    /// Re-reads app-side Accessibility status, disabling an active HUD after
+    /// revocation or retrying a still-enabled HUD after an initial grant.
     ///
-    /// Targeted and idempotent: only `.requiresPermission` features are retried,
-    /// disabled features and actively-running features are left alone, and
-    /// unrelated `.failed` extensions are never touched.
+    /// Targeted and idempotent: unrelated `.failed` extensions are never touched.
     func reconcilePermissionGatedFeatures() {
-        guard HostPermissionService.shared.hasHUDInputAccess else { return }
+        let hasInputAccess = HostPermissionService.shared.hasHUDInputAccess
+        PermissionRefreshCoordinator.disableActiveFeatureIfRevoked(
+            feature: BuiltInExtensionIDs.hud,
+            isEnabled: { self.manager.isEnabled($0) },
+            phase: { self.host.phase(for: $0) },
+            isPermissionGranted: { hasInputAccess },
+            disable: { self.host.setEnabled(false, for: $0) }
+        )
+        guard hasInputAccess else { return }
         for identity in BuiltInExtensionIDs.toggleableFeatures {
             PermissionRefreshCoordinator.reconcileIfGranted(
                 feature: identity,

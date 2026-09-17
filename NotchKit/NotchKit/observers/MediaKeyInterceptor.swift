@@ -46,6 +46,10 @@ final class MediaKeyInterceptor: HUDIntercepting {
     /// disables it.
     private let reenableOverride: (() -> Bool)?
     private let recoveryDelayNanoseconds: UInt64
+    private var recoveryTask: Task<Void, Never>?
+    private var recoveryGeneration = 0
+    private var revocationPending = false
+    private var onInterceptionDisabled: @MainActor () -> Void
 
     private let logger = Logger(
         subsystem: NotchKitIdentity.bundleIdentifier,
@@ -56,12 +60,18 @@ final class MediaKeyInterceptor: HUDIntercepting {
         inputAccess: InputAccessAuthorizing = SystemInputAccessAuthorization(),
         installOverride: (() -> Bool)? = nil,
         reenableOverride: (() -> Bool)? = nil,
-        recoveryDelayNanoseconds: UInt64 = 1_000_000_000
+        recoveryDelayNanoseconds: UInt64 = 1_000_000_000,
+        onInterceptionDisabled: @escaping @MainActor () -> Void = {}
     ) {
         self.inputAccess = inputAccess
         self.installOverride = installOverride
         self.reenableOverride = reenableOverride
         self.recoveryDelayNanoseconds = recoveryDelayNanoseconds
+        self.onInterceptionDisabled = onInterceptionDisabled
+    }
+
+    func setInterceptionDisabledHandler(_ handler: @escaping @MainActor () -> Void) {
+        onInterceptionDisabled = handler
     }
 
     /// Whether an event tap is currently installed.
@@ -78,8 +88,12 @@ final class MediaKeyInterceptor: HUDIntercepting {
     /// creating a second one.
     @discardableResult
     func start() async -> Bool {
-        shouldRun = true
+        guard !revocationPending else { return false }
+        cancelRecovery()
+        startToken &+= 1
         let token = startToken
+        if !isRunning { tearDownTap() }
+        shouldRun = true
         return start(expectedToken: token)
     }
 
@@ -152,6 +166,8 @@ final class MediaKeyInterceptor: HUDIntercepting {
     }
     
     func stop() {
+        cancelRecovery()
+        revocationPending = false
         shouldRun = false
         startToken &+= 1
         tearDownTap()
@@ -173,11 +189,22 @@ final class MediaKeyInterceptor: HUDIntercepting {
     // MARK: - Event Handling
     
     func handleEvent(type: CGEventType, event cgEvent: CGEvent) -> Unmanaged<CGEvent>? {
-        guard isRunning else { return Unmanaged.passUnretained(cgEvent) }
-        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
-            recoverDisabledTap(reason: type == .tapDisabledByTimeout ? "timeout" : "user input")
+        if type == .tapDisabledByUserInput {
+            if !revocationPending {
+                isRunning = false
+                shouldRun = false
+                startToken &+= 1
+                revocationPending = true
+                scheduleFailOpenShutdown(reason: "disabled by user input")
+            }
             return Unmanaged.passUnretained(cgEvent)
         }
+        if type == .tapDisabledByTimeout {
+            isRunning = false
+            scheduleTimeoutRecovery()
+            return Unmanaged.passUnretained(cgEvent)
+        }
+        guard isRunning else { return Unmanaged.passUnretained(cgEvent) }
         // Ensure the CGEvent has a valid type before converting to NSEvent
         guard cgEvent.type != .null else {
             return Unmanaged.passUnretained(cgEvent)
@@ -215,7 +242,96 @@ final class MediaKeyInterceptor: HUDIntercepting {
         return nil
     }
 
-    private func recoverDisabledTap(reason: String) {
+    /// User-input disable notifications can represent a TCC revocation. Never
+    /// re-enable or invalidate the modifying tap from inside its callback: the
+    /// WindowServer event path is waiting for this callback to return.
+    private func scheduleFailOpenShutdown(reason: String) {
+        cancelRecovery()
+        recoveryGeneration &+= 1
+        let generation = recoveryGeneration
+        recoveryTask = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self else { return }
+            guard !Task.isCancelled,
+                  self.recoveryGeneration == generation,
+                  self.revocationPending
+            else { return }
+            self.recoveryTask = nil
+            self.tearDownTap()
+            self.revocationPending = false
+            self.logger.error("Media-key interception stopped: \(reason, privacy: .public)")
+            self.onInterceptionDisabled()
+        }
+    }
+
+    private func scheduleTimeoutRecovery() {
+        guard recoveryTask == nil, !revocationPending else { return }
+        let token = startToken
+        recoveryGeneration &+= 1
+        let generation = recoveryGeneration
+        recoveryTask = Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let self else { return }
+            guard self.recoveryIsCurrent(generation, token: token) else { return }
+            guard self.inputAccess.status() == .granted else {
+                self.failOpen(
+                    reason: "access was revoked after timeout",
+                    recoveryGeneration: generation
+                )
+                return
+            }
+
+            if self.reenableTap() {
+                self.clearRecovery(generation)
+                self.isRunning = true
+                self.logger.info("Media-key tap recovered after timeout")
+                return
+            }
+
+            self.logger.error("Media-key tap re-enable failed after timeout")
+            self.tearDownTap()
+            try? await Task.sleep(nanoseconds: self.recoveryDelayNanoseconds)
+            guard self.recoveryIsCurrent(generation, token: token) else { return }
+            guard self.inputAccess.status() == .granted else {
+                self.failOpen(
+                    reason: "access was revoked before reinstall",
+                    recoveryGeneration: generation
+                )
+                return
+            }
+
+            if self.start(expectedToken: token) {
+                self.clearRecovery(generation)
+                self.logger.info("Media-key tap reinstalled after timeout")
+            } else {
+                self.failOpen(
+                    reason: "timeout recovery could not reinstall the tap",
+                    recoveryGeneration: generation
+                )
+            }
+        }
+    }
+
+    private func recoveryIsCurrent(_ generation: Int, token: Int) -> Bool {
+        !Task.isCancelled
+            && recoveryGeneration == generation
+            && shouldRun
+            && !revocationPending
+            && startToken == token
+    }
+
+    private func clearRecovery(_ generation: Int) {
+        guard recoveryGeneration == generation else { return }
+        recoveryTask = nil
+    }
+
+    private func cancelRecovery() {
+        recoveryGeneration &+= 1
+        recoveryTask?.cancel()
+        recoveryTask = nil
+    }
+
+    private func reenableTap() -> Bool {
         let enabled: Bool
         if let reenableOverride {
             enabled = reenableOverride()
@@ -225,30 +341,18 @@ final class MediaKeyInterceptor: HUDIntercepting {
         } else {
             enabled = false
         }
-
-        guard enabled else {
-            logger.error("Media-key tap recovery failed after \(reason, privacy: .public)")
-            tearDownTap()
-            scheduleReinstall()
-            return
-        }
-        isRunning = true
-        logger.info("Media-key tap recovered after \(reason, privacy: .public)")
+        return enabled
     }
 
-    private func scheduleReinstall() {
-        let token = startToken
-        Task { @MainActor [weak self] in
-            guard let self else { return }
-            while self.shouldRun, token == self.startToken {
-                try? await Task.sleep(nanoseconds: self.recoveryDelayNanoseconds)
-                guard self.shouldRun, token == self.startToken else { return }
-                if self.start(expectedToken: token) {
-                    self.logger.info("Media-key tap reinstalled after recovery failure")
-                    return
-                }
-            }
-        }
+    private func failOpen(reason: String, recoveryGeneration generation: Int) {
+        clearRecovery(generation)
+        self.recoveryGeneration &+= 1
+        revocationPending = false
+        shouldRun = false
+        startToken &+= 1
+        tearDownTap()
+        logger.error("Media-key interception stopped: \(reason, privacy: .public)")
+        onInterceptionDisabled()
     }
     
     private func handleOptionAction(for keyType: NXKeyType, command: Bool) -> Bool {

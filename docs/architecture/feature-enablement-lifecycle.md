@@ -116,10 +116,17 @@ app that creates the tap. The helper still owns keyboard/screen brightness and
 one-time identity migration.
 
 "Refresh Status" and app reactivation re-read the app-side status and run a
-targeted reconciliation: only a desired-enabled feature currently in
-`.requiresPermission` is retried, and `ExtensionHost.retry(_:)` is scoped to that
-one identity. Refresh never enables a disabled feature, never retries unrelated
-`.failed` extensions, and is idempotent.
+targeted reconciliation. A desired-enabled feature currently in
+`.requiresPermission` is retried after a grant, while an active HUD is
+persistently disabled after access is revoked. Refresh never enables a disabled
+feature, never retries unrelated `.failed` extensions, and is idempotent.
+
+Event-tap disable notifications are fail-open. A user-input disable can indicate
+TCC revocation, so the callback passes the event through and defers teardown
+until after returning to WindowServer; it never re-enables or reinstalls the tap.
+A timeout may perform one asynchronous, authorization-gated re-enable and one
+fresh-install attempt. Recovery tasks are coalesced and cancellable, with no
+unbounded reinstall loop.
 
 A granted permission that still cannot install the tap is an operational failure
 (`.failed`), not a permission gate; the partial startup is torn down.

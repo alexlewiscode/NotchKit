@@ -20,6 +20,51 @@ final class PermissionRefreshCoordinatorTests: XCTestCase {
         return id
     }
 
+    func testActiveFeatureIsDisabledWhenPermissionIsRevoked() {
+        let id = identity()
+        var disables = 0
+
+        PermissionRefreshCoordinator.disableActiveFeatureIfRevoked(
+            feature: id,
+            isEnabled: { _ in true },
+            phase: { _ in .active },
+            isPermissionGranted: { false },
+            disable: { _ in disables += 1 }
+        )
+
+        XCTAssertEqual(disables, 1)
+    }
+
+    func testInitialPermissionGateRemainsEnabledWhileAccessIsMissing() {
+        let id = identity()
+        var disables = 0
+
+        PermissionRefreshCoordinator.disableActiveFeatureIfRevoked(
+            feature: id,
+            isEnabled: { _ in true },
+            phase: { _ in .requiresPermission("accessibility permission required") },
+            isPermissionGranted: { false },
+            disable: { _ in disables += 1 }
+        )
+
+        XCTAssertEqual(disables, 0)
+    }
+
+    func testActiveFeatureIsUnchangedWhilePermissionIsGranted() {
+        let id = identity()
+        var disables = 0
+
+        PermissionRefreshCoordinator.disableActiveFeatureIfRevoked(
+            feature: id,
+            isEnabled: { _ in true },
+            phase: { _ in .active },
+            isPermissionGranted: { true },
+            disable: { _ in disables += 1 }
+        )
+
+        XCTAssertEqual(disables, 0)
+    }
+
     /// Refresh after a grant re-attempts the feature exactly once, then becomes
     /// a no-op once it is active.
     func testRefreshAfterGrantActivatesEnabledBlockedFeatureOnce() {
