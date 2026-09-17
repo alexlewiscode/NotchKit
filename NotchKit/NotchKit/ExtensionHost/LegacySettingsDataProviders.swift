@@ -143,6 +143,35 @@ final class CalendarSettingsDataProvider: ObservableObject {
 
 // MARK: - HUD
 
+enum HUDInputAccessPresentation: Equatable {
+    case granted
+    case required
+
+    init(hasInputAccess: Bool) {
+        self = hasInputAccess ? .granted : .required
+    }
+
+    var message: String {
+        switch self {
+        case .granted:
+            return "Accessibility access is granted."
+        case .required:
+            return "Accessibility access is required to replace the system HUD."
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .granted:
+            return "checkmark.circle.fill"
+        case .required:
+            return "exclamationmark.triangle.fill"
+        }
+    }
+
+    var showsRequestButton: Bool { self == .required }
+}
+
 /// Read-only input-access status for the HUD settings page.
 ///
 /// It only ever reads status. It cannot request permission and does not start

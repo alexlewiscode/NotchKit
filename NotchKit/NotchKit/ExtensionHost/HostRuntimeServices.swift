@@ -92,7 +92,11 @@ final class HostPermissionService: NotchPermissionService {
     func status(for permission: NotchPermission) -> NotchPermissionStatus {
         switch permission {
         case .accessibility:
-            return inputAccess.isAccessibilityTrusted() ? .authorized : .notDetermined
+            switch inputAccess.status() {
+            case .granted: return .authorized
+            case .requiresPermission: return .notDetermined
+            case .checkFailed: return .restricted
+            }
         case .camera:
             return Self.map(AVCaptureDevice.authorizationStatus(for: .video))
         case .mediaControl, .screenRecording:
@@ -113,25 +117,13 @@ final class HostPermissionService: NotchPermissionService {
 
     // MARK: - HUD input capability
 
-    /// Input Monitoring: can observe the event stream. Read-only.
-    var canObserveInput: Bool { inputAccess.canObserveInput() }
+    var hudInputAccessStatus: HUDInputAccessStatus { inputAccess.status() }
 
-    /// Input control: can modify/suppress the event stream. Read-only.
-    var canModifyInput: Bool { inputAccess.canModifyInput() }
-
-    /// AX trust. Diagnostic only; never the HUD gate.
-    var isAccessibilityTrusted: Bool { inputAccess.isAccessibilityTrusted() }
-
-    /// Whether the media-key tap has enough access to plausibly succeed. Used to
-    /// classify a failed tap, not to gate the attempt.
-    var hasHUDInputAccess: Bool {
-        inputAccess.canModifyInput() || inputAccess.isAccessibilityTrusted()
-    }
+    var hasHUDInputAccess: Bool { hudInputAccessStatus == .granted }
 
     /// Explicit, user-initiated request for the input access HUD needs.
     func requestHUDInputAccess() {
-        inputAccess.requestObservationAccess()
-        inputAccess.requestModificationAccess()
+        inputAccess.requestAccess()
     }
 
     private static func map(_ status: AVAuthorizationStatus) -> NotchPermissionStatus {

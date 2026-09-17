@@ -4,60 +4,43 @@
 //
 //  The host-owned input-access capability the HUD media-key tap needs.
 //
-//  This deliberately does NOT use `AXIsProcessTrusted()` as a gate. Accessibility
-//  trust is not interchangeable with event-tap capability, and a sandboxed app is
-//  not promised to report `true` even when the Accessibility toggle is on. The
-//  authoritative test is the tap attempt (`MediaKeyInterceptor`); the Core
-//  Graphics preflights below classify a failure as "needs permission" versus
-//  "operational" and drive the request UI.
+//  The tap attempt is the authoritative capability test. This status provider
+//  runs in the same app process and only classifies failures or drives settings.
 //
 
 import AppKit
 import ApplicationServices
 import CoreGraphics
 
-/// Reads and requests the input permissions the media-key tap needs.
-///
-/// Status reads never prompt. Only `requestObservationAccess()` /
-/// `requestModificationAccess()` may prompt, from an explicit user action.
-protocol InputAccessAuthorizing: AnyObject {
-    /// Input Monitoring: observe the event stream (`.listenOnly`).
-    func canObserveInput() -> Bool
-    /// Input control: modify or suppress the event stream (`.defaultTap`).
-    func canModifyInput() -> Bool
-    /// Diagnostic only. Never used as the HUD gate.
-    func isAccessibilityTrusted() -> Bool
+enum HUDInputAccessStatus: Equatable {
+    case granted
+    case requiresPermission
+    case checkFailed(String)
+}
 
-    /// Explicit, user-initiated requests.
-    func requestObservationAccess()
-    func requestModificationAccess()
+/// Reads and requests the Accessibility access the modifying event tap needs.
+/// Status reads never prompt. Only `requestAccess()` may prompt.
+protocol InputAccessAuthorizing: AnyObject {
+    func status() -> HUDInputAccessStatus
+    func requestAccess()
+    var diagnostics: String { get }
 }
 
 /// Production implementation backed by the public Core Graphics permission APIs.
 final class SystemInputAccessAuthorization: InputAccessAuthorizing {
-    func canObserveInput() -> Bool {
-        CGPreflightListenEventAccess()
+    func status() -> HUDInputAccessStatus {
+        AXIsProcessTrusted() ? .granted : .requiresPermission
     }
 
-    func canModifyInput() -> Bool {
-        CGPreflightPostEventAccess()
+    var diagnostics: String {
+        "ax=\(AXIsProcessTrusted()) post=\(CGPreflightPostEventAccess())"
     }
 
-    func isAccessibilityTrusted() -> Bool {
-        AXIsProcessTrusted()
-    }
-
-    func requestObservationAccess() {
-        // Surfaces the Input Monitoring request/pane as needed.
-        _ = CGRequestListenEventAccess()
-    }
-
-    func requestModificationAccess() {
-        // `CGRequestPostEventAccess` surfaces the input-control request; the
-        // unsandboxed helper additionally surfaces the Accessibility prompt that
-        // App Sandbox suppresses in-process (macOS attributes it to this app).
+    func requestAccess() {
+        // Both requests execute in the process that creates the modifying tap.
         _ = CGRequestPostEventAccess()
-        XPCHelperClient.shared.requestAccessibilityAuthorization()
+        let options = [kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary
+        _ = AXIsProcessTrustedWithOptions(options)
         openPane("x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")
     }
 

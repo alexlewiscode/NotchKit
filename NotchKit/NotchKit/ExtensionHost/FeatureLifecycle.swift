@@ -129,13 +129,17 @@ final class HUDFeature: NotchExtension {
         // tap and a sandboxed app is not promised to report true.
         let running = await interceptor.start()
         guard running else {
-            // Clean up the partial startup, then classify the failure from the
-            // public preflight APIs rather than guessing.
+            // Clean up the partial startup, then classify it using the status
+            // from the same process that attempted the protected operation.
             context.cancellation.cancelAll()
-            if !inputAccess.canModifyInput() && !inputAccess.isAccessibilityTrusted() {
+            switch inputAccess.status() {
+            case .requiresPermission:
                 throw ExtensionActivationError.permissionRequired(.accessibility)
+            case .checkFailed(let message):
+                throw HUDActivationFailure.statusCheckFailed(message)
+            case .granted:
+                throw HUDActivationFailure.mediaKeyInterceptionUnavailable
             }
-            throw HUDActivationFailure.mediaKeyInterceptionUnavailable
         }
     }
 
@@ -154,6 +158,7 @@ final class HUDFeature: NotchExtension {
 
 /// The interception surface HUD owns. Implemented by `MediaKeyInterceptor` in
 /// production and by a fake in tests.
+@MainActor
 protocol HUDIntercepting: AnyObject {
     /// Ensures a tap is installed, returning whether one is running. Never
     /// prompts.
@@ -166,11 +171,14 @@ protocol HUDIntercepting: AnyObject {
 /// so it is never mistaken for a grantable permission gate.
 enum HUDActivationFailure: LocalizedError, Equatable {
     case mediaKeyInterceptionUnavailable
+    case statusCheckFailed(String)
 
     var errorDescription: String? {
         switch self {
         case .mediaKeyInterceptionUnavailable:
             return "HUD access is granted, but media-key interception could not start."
+        case .statusCheckFailed(let message):
+            return "HUD permission status could not be checked: \(message)"
         }
     }
 }

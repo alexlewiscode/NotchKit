@@ -6,23 +6,10 @@
 //
 
 import Foundation
-import ApplicationServices
 import IOKit
 import CoreGraphics
 
 class NotchKitXPCHelper: NSObject, NotchKitXPCHelperProtocol {
-    
-    /// Prompts for accessibility.
-    ///
-    /// This runs in the unsandboxed helper because App Sandbox suppresses the
-    /// in-process AX prompt. macOS attributes the request to the responsible
-    /// app, which is the process whose trust the HUD gate reads.
-    @objc func requestAccessibilityAuthorization() {
-        let options = [
-            kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true
-        ] as CFDictionary
-        _ = AXIsProcessTrustedWithOptions(options)
-    }
     
     private class KeyboardBrightnessClient {
         private static let keyboardID: UInt64 = 1

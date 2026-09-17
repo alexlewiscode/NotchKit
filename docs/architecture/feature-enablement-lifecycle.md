@@ -98,7 +98,7 @@ explicit buttons on their pages.
 
 The HUD event tap is created by the app process (`MediaKeyInterceptor`), so the
 app's own AX trust is the only gate that matters. All HUD accessibility reads
-and requests go through one abstraction, `AccessibilityAuthorizing`, surfaced to
+and requests go through one abstraction, `InputAccessAuthorizing`, surfaced to
 extensions as `HostPermissionService`:
 
 - **read** (`status(for: .accessibility)`): app `AXIsProcessTrusted()`; never
@@ -106,18 +106,14 @@ extensions as `HostPermissionService`:
   settings status, and runtime reconciliation.
 - **request** (`request(.accessibility)`): explicit user action only. A request
   is never treated as a grant; callers re-read status after returning to the app
-  or pressing "Refresh Status". The prompt itself is surfaced by the unsandboxed
-  XPC helper, because App Sandbox suppresses the in-process AX prompt; macOS
-  attributes the helper's request to this (responsible) app, which is what the
-  app-side read observes. The app also opens the Accessibility pane as a
+  or pressing "Refresh Status". The app requests AX and post-event access from
+  the same process that owns the tap, then opens the Accessibility pane as a
   deterministic fallback.
 
-The XPC helper is a prompt channel, never the gate. Reading the helper's own
-trust was the bug: the helper is a different TCC identity, so HUD stayed
-permanently blocked whenever only the app was granted. The helper's old
-`isAccessibilityAuthorized`/`ensureAccessibilityAuthorization` methods and the
-polling monitor were removed; only the prompt request remains. The helper still
-owns keyboard/screen brightness and one-time identity migration.
+The XPC helper is not part of HUD authorization. Reading or requesting the
+helper's own trust was the bug: the helper is a different TCC identity from the
+app that creates the tap. The helper still owns keyboard/screen brightness and
+one-time identity migration.
 
 "Refresh Status" and app reactivation re-read the app-side status and run a
 targeted reconciliation: only a desired-enabled feature currently in

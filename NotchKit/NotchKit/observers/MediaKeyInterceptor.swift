@@ -14,6 +14,7 @@ import os
 
 private let kSystemDefinedEventType = CGEventType(rawValue: 14)!
 
+@MainActor
 final class MediaKeyInterceptor: HUDIntercepting {
     static let shared = MediaKeyInterceptor()
     
@@ -34,12 +35,17 @@ final class MediaKeyInterceptor: HUDIntercepting {
     /// Incremented by `stop()`, so a start that is mid-flight can detect that it
     /// was superseded and bail out without installing a tap.
     private var startToken = 0
+    private var shouldRun = false
 
     /// Input-access diagnostics (preflights). Never used as a gate here: the tap
     /// attempt below is the authoritative capability test.
     private let inputAccess: InputAccessAuthorizing
     /// Test seam: replaces the real `CGEvent.tapCreate` installation.
     private let installOverride: (() -> Bool)?
+    /// Test seam: replaces re-enabling the installed tap after Core Graphics
+    /// disables it.
+    private let reenableOverride: (() -> Bool)?
+    private let recoveryDelayNanoseconds: UInt64
 
     private let logger = Logger(
         subsystem: NotchKitIdentity.bundleIdentifier,
@@ -48,10 +54,14 @@ final class MediaKeyInterceptor: HUDIntercepting {
 
     init(
         inputAccess: InputAccessAuthorizing = SystemInputAccessAuthorization(),
-        installOverride: (() -> Bool)? = nil
+        installOverride: (() -> Bool)? = nil,
+        reenableOverride: (() -> Bool)? = nil,
+        recoveryDelayNanoseconds: UInt64 = 1_000_000_000
     ) {
         self.inputAccess = inputAccess
         self.installOverride = installOverride
+        self.reenableOverride = reenableOverride
+        self.recoveryDelayNanoseconds = recoveryDelayNanoseconds
     }
 
     /// Whether an event tap is currently installed.
@@ -68,20 +78,24 @@ final class MediaKeyInterceptor: HUDIntercepting {
     /// creating a second one.
     @discardableResult
     func start() async -> Bool {
-        if isRunning { return true }
+        shouldRun = true
         let token = startToken
+        return start(expectedToken: token)
+    }
 
-        // A stop or newer start during any await supersedes this one.
-        guard token == startToken else { return isRunning }
+    private func start(expectedToken token: Int) -> Bool {
+        guard shouldRun, token == startToken else { return isRunning }
         guard !isRunning else { return true }
 
         let installed = performInstall()
+        guard shouldRun, token == startToken else {
+            if installed { tearDownTap() }
+            return false
+        }
         if !installed {
             // `CGEvent.tapCreate` reports no specific cause, so log only the
             // context we actually have (identity + preflights).
-            logger.error(
-                "Media-key tap unavailable (ax=\(self.inputAccess.isAccessibilityTrusted(), privacy: .public) listen=\(self.inputAccess.canObserveInput(), privacy: .public) post=\(self.inputAccess.canModifyInput(), privacy: .public))"
-            )
+            logger.error("Media-key tap unavailable (\(self.inputAccess.diagnostics, privacy: .public))")
         }
         return installed
     }
@@ -93,55 +107,60 @@ final class MediaKeyInterceptor: HUDIntercepting {
         }
         guard !TestHostPolicy.isActive else { return false }
 
-        // `.cghidEventTap` is documented as requiring root; try it first (the
-        // historical behaviour), then fall back to a session-level modifying tap.
-        // Both are `.defaultTap` so media keys can be suppressed; a `.listenOnly`
-        // fallback would double-handle the key instead of replacing it.
-        let attempts: [(CGEventTapLocation, String)] = [
-            (.cghidEventTap, "hid/default"),
-            (.cgSessionEventTap, "session/default"),
-        ]
-        for (location, label) in attempts {
-            if installTap(location: location) {
-                logger.info("Media-key tap installed (\(label, privacy: .public))")
-                isRunning = true
-                return true
-            }
-            logger.error("Media-key tap attempt failed (\(label, privacy: .public))")
+        if installTap() {
+            logger.info("Media-key tap installed (session/default)")
+            isRunning = true
+            return true
         }
+        logger.error("Media-key tap attempt failed (session/default)")
         isRunning = false
         return false
     }
 
-    private func installTap(location: CGEventTapLocation) -> Bool {
+    private func installTap() -> Bool {
         let mask = CGEventMask(1 << kSystemDefinedEventType.rawValue)
         let tap = CGEvent.tapCreate(
-            tap: location,
+            tap: .cgSessionEventTap,
             place: .headInsertEventTap,
             options: .defaultTap,
             eventsOfInterest: mask,
-            callback: { _, _, cgEvent, userInfo in
-                guard let userInfo else { return Unmanaged.passRetained(cgEvent) }
+            callback: { _, type, cgEvent, userInfo in
+                guard let userInfo else { return Unmanaged.passUnretained(cgEvent) }
                 let interceptor = Unmanaged<MediaKeyInterceptor>.fromOpaque(userInfo).takeUnretainedValue()
-                return interceptor.handleEvent(cgEvent)
+                // This tap's run-loop source is installed on the main run loop.
+                return MainActor.assumeIsolated {
+                    interceptor.handleEvent(type: type, event: cgEvent)
+                }
             },
             userInfo: UnsafeMutableRawPointer(Unmanaged.passUnretained(self).toOpaque())
         )
         guard let tap else { return false }
 
-        eventTap = tap
-        runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
-        if let runLoopSource {
-            CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+        guard let source = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0) else {
+            CFMachPortInvalidate(tap)
+            return false
         }
+        eventTap = tap
+        runLoopSource = source
+        CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
         CGEvent.tapEnable(tap: tap, enable: true)
+        guard CGEvent.tapIsEnabled(tap: tap) else {
+            tearDownTap()
+            return false
+        }
         return true
     }
     
     func stop() {
+        shouldRun = false
         startToken &+= 1
+        tearDownTap()
+    }
+
+    private func tearDownTap() {
         if let eventTap {
             CGEvent.tapEnable(tap: eventTap, enable: false)
+            CFMachPortInvalidate(eventTap)
         }
         if let runLoopSource {
             CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
@@ -153,15 +172,20 @@ final class MediaKeyInterceptor: HUDIntercepting {
     
     // MARK: - Event Handling
     
-    private func handleEvent(_ cgEvent: CGEvent) -> Unmanaged<CGEvent>? {
+    func handleEvent(type: CGEventType, event cgEvent: CGEvent) -> Unmanaged<CGEvent>? {
+        guard isRunning else { return Unmanaged.passUnretained(cgEvent) }
+        if type == .tapDisabledByTimeout || type == .tapDisabledByUserInput {
+            recoverDisabledTap(reason: type == .tapDisabledByTimeout ? "timeout" : "user input")
+            return Unmanaged.passUnretained(cgEvent)
+        }
         // Ensure the CGEvent has a valid type before converting to NSEvent
         guard cgEvent.type != .null else {
-            return Unmanaged.passRetained(cgEvent)
+            return Unmanaged.passUnretained(cgEvent)
         }
         guard let nsEvent = NSEvent(cgEvent: cgEvent),
               nsEvent.type == .systemDefined,
               nsEvent.subtype.rawValue == 8 else {
-            return Unmanaged.passRetained(cgEvent)
+            return Unmanaged.passUnretained(cgEvent)
         }
         
         let data1 = nsEvent.data1
@@ -171,7 +195,7 @@ final class MediaKeyInterceptor: HUDIntercepting {
         // 0xA = key down, 0xB = key up. Only handle key down.
         guard stateByte == 0xA,
               let keyType = NXKeyType(rawValue: keyCode) else {
-            return Unmanaged.passRetained(cgEvent)
+            return Unmanaged.passUnretained(cgEvent)
         }
         
         let flags = nsEvent.modifierFlags
@@ -189,6 +213,42 @@ final class MediaKeyInterceptor: HUDIntercepting {
         // Handle normal key press
         handleKeyPress(keyType: keyType, option: option, shift: shift, command: command)
         return nil
+    }
+
+    private func recoverDisabledTap(reason: String) {
+        let enabled: Bool
+        if let reenableOverride {
+            enabled = reenableOverride()
+        } else if let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: true)
+            enabled = CGEvent.tapIsEnabled(tap: eventTap)
+        } else {
+            enabled = false
+        }
+
+        guard enabled else {
+            logger.error("Media-key tap recovery failed after \(reason, privacy: .public)")
+            tearDownTap()
+            scheduleReinstall()
+            return
+        }
+        isRunning = true
+        logger.info("Media-key tap recovered after \(reason, privacy: .public)")
+    }
+
+    private func scheduleReinstall() {
+        let token = startToken
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            while self.shouldRun, token == self.startToken {
+                try? await Task.sleep(nanoseconds: self.recoveryDelayNanoseconds)
+                guard self.shouldRun, token == self.startToken else { return }
+                if self.start(expectedToken: token) {
+                    self.logger.info("Media-key tap reinstalled after recovery failure")
+                    return
+                }
+            }
+        }
     }
     
     private func handleOptionAction(for keyType: NXKeyType, command: Bool) -> Bool {

@@ -9,9 +9,6 @@ import Foundation
 
 /// The protocol that this service will vend as its API. This protocol will also need to be visible to the process hosting the service.
 @objc protocol NotchKitXPCHelperProtocol {
-    /// Requests the accessibility prompt. The unsandboxed helper surfaces it;
-    /// the grant is attributed to the responsible app.
-    func requestAccessibilityAuthorization()
     // Keyboard backlight / CoreBrightness access (performed by the helper)
     func isKeyboardBrightnessAvailable(with reply: @escaping (Bool) -> Void)
     func currentKeyboardBrightness(with reply: @escaping (NSNumber?) -> Void)
@@ -24,4 +21,3 @@ import Foundation
     // Returns JSON {defaultsPlist, shelfItems} (base64) or nil when unavailable.
     func readLegacyIdentityArchive(withReply reply: @escaping (Data?) -> Void)
 }
-

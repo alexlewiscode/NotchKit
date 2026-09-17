@@ -581,6 +581,10 @@ struct HUDSettingsPage: View {
     @Default(.optionKeyAction) var optionKeyAction
     @StateObject private var status = HUDStatusProvider()
 
+    private var inputAccessPresentation: HUDInputAccessPresentation {
+        HUDInputAccessPresentation(hasInputAccess: status.hasInputAccess)
+    }
+
     var body: some View {
         Form {
             Section {
@@ -594,18 +598,18 @@ struct HUDSettingsPage: View {
                 }
 
                 HStack(spacing: 12) {
-                    Text(
-                        status.hasInputAccess
-                            ? "Accessibility access is granted."
-                            : "Accessibility access is required to replace the system HUD."
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+                    Image(systemName: inputAccessPresentation.symbolName)
+                        .foregroundStyle(status.hasInputAccess ? Color.green : Color.secondary)
+                    Text(inputAccessPresentation.message)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     Spacer(minLength: 0)
-                    Button("Request Accessibility") {
-                        NotchKitRuntime.shared.requestHUDInputAccess()
+                    if inputAccessPresentation.showsRequestButton {
+                        Button("Request Accessibility") {
+                            NotchKitRuntime.shared.requestHUDInputAccess()
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
-                    .buttonStyle(.borderedProminent)
                     Button("Refresh Status") {
                         Task {
                             await status.refresh()

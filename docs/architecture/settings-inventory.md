@@ -171,7 +171,7 @@ per-calendar and per-reminder-list toggles above and is read/written by
 | Control | Symbol / path | Key | Default | Side effects | Owner | Approved destination |
 | --- | --- | --- | --- | --- | --- | --- |
 | Replace system HUD | `:493-497` | `hudReplacement` | `false` | `BoringViewCoordinator.swift:140-163`: enabling requests accessibility and starts `MediaKeyInterceptor`; disabling stops it; may revert to `false` if denied (`:156`) | HUD | Extensions / HUD |
-| Request Accessibility | `:507-510` | none | n/a | `XPCHelperClient.shared.requestAccessibilityAuthorization()` | HUD | Extensions / HUD |
+| Request Accessibility | `:507-510` | none | n/a | `HostPermissionService.requestHUDInputAccess()` | HUD | Extensions / HUD |
 | Option key behaviour | `:518-522` | `optionKeyAction` | `.openSettings` | Read `MediaKeyInterceptor.swift:142` | HUD | Extensions / HUD |
 | Progress bar style | `:524-529` | `enableGradient` | `false` | Read `SystemEventIndicatorModifier.swift:114` | HUD | Extensions / HUD |
 | Enable glowing effect | `:530-532` | `systemEventIndicatorShadow` | `false` | Read `SystemEventIndicatorModifier.swift:125` | HUD | Extensions / HUD |
