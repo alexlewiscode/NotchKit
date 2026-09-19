@@ -11,6 +11,11 @@ and what remains **unverified**, on the macOS 14 deployment target. It does not
 change the production runtime: the app stays on the in-process, first-party
 Tier A runtime (ADR 0001/0002).
 
+> Follow-up: the macOS 26 signed GUI prototype subsequently proved independent
+> installation, consented enablement, remote SwiftUI, process isolation, crash
+> containment, and teardown. See
+> [Native extension runtime Phase 1 findings](native-extension-runtime-phase-1.md).
+
 ## Environment
 
 | Item | Value |
@@ -294,8 +299,8 @@ On the test system: extension bundles are **`.appex`**
 (`/System/Library/ExtensionKit/Extensions/*.appex`), and extension-point
 definition files are **`.appexpt`**
 (`/System/Library/ExtensionKit/ExtensionPoints/*.appexpt`, an Apple binary
-plist). The `.appext` spelling used in earlier notes was not observed on disk; it
-appears to conflate these two. This does not change the availability conclusion.
+plist). These suffixes are distinct. This does not change the availability
+conclusion.
 
 ### What a real ExtensionKit run would require
 
@@ -426,7 +431,7 @@ Captured outputs:
 - The ADR 0002 availability table is **confirmed by compiler** for every listed
   symbol. No availability correction is required.
 - Terminology correction: observed on-disk artifacts are `.appex` (extensions)
-  and `.appexpt` (extension points); earlier `.appext` wording was imprecise.
+  and `.appexpt` (extension points).
 - The ADR's claim that a macOS 14 ExtensionKit path needs a hand-authored point
   definition is directionally supported (error 13 without a registered point),
   but this prototype could not get a hand-authored point accepted headlessly, so

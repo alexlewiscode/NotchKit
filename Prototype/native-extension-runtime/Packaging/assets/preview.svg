@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500">
+  <rect width="800" height="500" rx="36" fill="#111014"/>
+  <circle cx="400" cy="235" r="142" fill="none" stroke="#2c282f" stroke-width="24"/>
+  <path d="M400 93a142 142 0 1 1-116 60" fill="none" stroke="#ff665c" stroke-width="24" stroke-linecap="round"/>
+  <text x="400" y="255" fill="white" font-family="system-ui" font-size="74" font-weight="650" text-anchor="middle">25:00</text>
+  <text x="400" y="310" fill="#a7a0ad" font-family="system-ui" font-size="25" text-anchor="middle">FOCUS SESSION</text>
+</svg>
