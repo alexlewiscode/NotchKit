@@ -1,6 +1,6 @@
 # ADR 0002: Extension distribution tiers and the path to independent installation
 
-- Status: Accepted
+- Status: Accepted; Tier B feasibility proven on macOS 26, local integration in progress
 - Date: 2026-09-15
 - Supersedes in part: ADR 0001 (which claimed `ExtensionFoundation`/`ExtensionKit`
   were unavailable on macOS 14; see "Correction to ADR 0001")
@@ -39,13 +39,17 @@ specified separately.
   process boundary.** UI is either (a) hosted as an opaque remote scene, or
   (b) rendered by the host from declarative data.
 - Reserved in the manifest as `artifactKind: app-extension | xpc-service`.
-- Rejected at registration until a runnable prototype provides evidence.
+- The Phase 2 local-developer path uses an availability-gated macOS 26 adapter.
+  Its package/install policy is defined by ADR 0003 and remains subject to the
+  Phase 2 verification gates.
 
-### Tier C — installation and catalog services
+### Tier C — catalog and distribution services
 
 - The `NotchAPI` server: catalog metadata, distribution, submissions, and
   validation status.
 - Not implemented. No network code in the app. Described in `NotchAPI/README.md`.
+- A user-selected local package installer is a bounded Tier B development tool,
+  not evidence that Tier C exists.
 
 ## macOS 14 platform evaluation
 
@@ -71,14 +75,14 @@ discovery* layer is newer than the framework's headline availability.
 | `AppExtensionPoint` and all attributes (`Definition`, `Name`, `UserInterface`, `Scope`, `EnhancedSecurity`, `Bind`, `Monitor`) | **26.0+** | not on macOS 14 |
 | `ConnectionHandler` | **26.0+** | not on macOS 14 |
 | `AppExtensionProcess.makeXPCSession()` | **26.0+** | not on macOS 14 |
-| Programmatic `.appext` generation (`EX_ENABLE_EXTENSION_POINT_GENERATION`) | **26.0+** | macOS 14 needs a hand-authored `.appext` |
+| Programmatic `.appexpt` generation (`EX_ENABLE_EXTENSION_POINT_GENERATION`) | **26.0+** | macOS 14 would need a hand-authored `.appexpt` |
 
 Consequences for macOS 14:
 
 - ExtensionKit's host/UI surface and ExtensionFoundation's process/connection
   surface are usable, but the modern Swift way to declare extension points and
-  generate `.appext` is not. A macOS 14 host would need a hand-authored
-  `.appext` and manual plists.
+  generate `.appexpt` is not. A macOS 14 host would need a hand-authored
+  `.appexpt` and manual plists.
 - `EXAppExtensionBrowserViewController` (enable/disable UI) and the
   default-disabled/approval behaviour apply, but there is **no documented API
   that reports whether an extension is bundled or separately installed**;
@@ -152,16 +156,35 @@ A Tier B adapter would map the same phases onto `AppExtensionProcess`
 
 ## Gating
 
-- The production app stays on Tier A until the bounded out-of-process prototype
-  supplies evidence (reported with that prototype, on its own branch/worktree).
+- The bounded macOS 26 prototype supplied the required feasibility evidence for
+  independent installation, system consent, remote SwiftUI, process isolation,
+  crash containment, reconnection, disablement, and uninstall. See
+  [`native-extension-runtime-phase-1.md`](../native-extension-runtime-phase-1.md).
+- Phase 2 contains an availability-gated Tier B adapter, hardened local package
+  ingestion, and a same-Team update rule. ADR 0003 allows any non-ad-hoc,
+  Apple-anchored signer and does not require notarization for local-developer
+  packages.
+- Shipping remains gated on Phase 2 live verification, including real signer
+  results, managed-location sandbox behavior, integrated system/app enablement,
+  install/update/uninstall, runtime teardown/recovery, and macOS 14 regression.
+- Catalog distribution still requires a separate publisher, notarization,
+  revocation, and update policy; local policy must not be generalized to it.
 - Tier B/C must not add network calls, downloads, or `ExtensionFoundation`/
-  `ExtensionKit` dependencies to the macOS 14 app until then.
+  `ExtensionKit` execution to macOS 14 paths.
 
 ## Consequences
 
-- Two manifest fields exist that the host rejects today
-  (`artifactKind: app-extension | xpc-service`), keeping the format stable.
-- A future adapter is additive: it repopulates the same registry from an
+- Tier A continues to reject out-of-process artifact kinds at compile-time
+  registration. The separate Phase 2 local adapter accepts schema-v2
+  `app-extension` packages only; `xpc-service` remains unsupported.
+- The adapter is additive: it repopulates the same registry from an
   out-of-process source rather than replacing the runtime.
-- Hand-authoring `.appext` is required for any macOS 14 ExtensionKit path; this
+- Hand-authoring `.appexpt` is required for any macOS 14 ExtensionKit path; this
   is a real cost that the prototype must weigh against an isolated XPC design.
+- The selected Tier B direction is a macOS 26+ ExtensionKit remote-scene adapter;
+  Phase 2 also supports host-rendered declarative data. No macOS 14 ExtensionKit
+  path is required.
+- See
+  [`0003-local-developer-package-install-policy.md`](0003-local-developer-package-install-policy.md)
+  and [`../native-extension-runtime-phase-2.md`](../native-extension-runtime-phase-2.md)
+  for local policy, implementation boundaries, and unpassed live gates.

@@ -12,19 +12,28 @@
 //  enablement.
 //
 
+import AppKit
+import NotchExtensionInstallation
 import NotchExtensionSDK
 import NotchExtensionRuntime
 import SwiftUI
+import UniformTypeIdentifiers
 
 /// The Extensions settings hub.
 struct ExtensionsSettingsView: View {
     @ObservedObject private var catalog = NotchKitRuntime.shared.settingsCatalog
     @ObservedObject private var presentation = NotchKitRuntime.shared.presentation
+    @ObservedObject private var localExtensions = NotchKitRuntime.shared.localExtensions
 
     /// Forwards a feature's "Keyboard Shortcuts" link to the root settings view.
     let onOpenShortcuts: (ShortcutsOwner) -> Void
 
     @State private var path: [ExtensionSettingsRoute] = []
+    @State private var packagePreview: LocalExtensionPackagePreview?
+    @State private var selectedLocalExtension: InstalledLocalExtension?
+    @State private var pendingUninstall: InstalledLocalExtension?
+    @State private var showsSystemExtensions = false
+    @State private var localOperationError: String?
 
     private var runtime: NotchKitRuntime { .shared }
 
@@ -32,6 +41,7 @@ struct ExtensionsSettingsView: View {
         NavigationStack(path: $path) {
             Form {
                 homeSection
+                localExtensionsSection
 
                 Section {
                     if catalog.entries.isEmpty {
@@ -79,11 +89,157 @@ struct ExtensionsSettingsView: View {
             .navigationDestination(for: ExtensionSettingsRoute.self) { route in
                 destination(for: route, in: catalog.entry(for: route.destinationID))
             }
+            .sheet(item: $packagePreview) { preview in
+                LocalExtensionInstallConfirmation(
+                    preview: preview,
+                    onCancel: { packagePreview = nil },
+                    onInstall: { install(preview) }
+                )
+            }
+            .sheet(item: $selectedLocalExtension) { item in
+                LocalExtensionDetailsView(item: item) {
+                    selectedLocalExtension = nil
+                    choosePackage(updating: item.id)
+                }
+            }
+            .sheet(isPresented: $showsSystemExtensions) {
+                if #available(macOS 26.0, *) {
+                    SystemExtensionBrowserView()
+                        .frame(minWidth: 620, minHeight: 480)
+                }
+            }
+            .alert("Uninstall Local Extension?", isPresented: Binding(
+                get: { pendingUninstall != nil },
+                set: { if !$0 { pendingUninstall = nil } }
+            )) {
+                Button("Cancel", role: .cancel) { pendingUninstall = nil }
+                Button("Uninstall", role: .destructive) {
+                    guard let item = pendingUninstall else { return }
+                    pendingUninstall = nil
+                    Task { await uninstall(item) }
+                }
+            } message: {
+                Text("This removes the managed provider application and all of its local contributions.")
+            }
+            .alert("Local Extension Error", isPresented: Binding(
+                get: { localOperationError != nil || localExtensions.errorMessage != nil },
+                set: { if !$0 { localOperationError = nil; localExtensions.clearError() } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(localOperationError ?? localExtensions.errorMessage ?? "Unknown error")
+            }
         }
         .onChange(of: catalog.revision) { _, _ in
             let pruned = catalog.prune(path)
             if pruned != path { path = pruned }
         }
+    }
+
+    private var localExtensionsSection: some View {
+        Section {
+            if #available(macOS 26.0, *) {
+                if localExtensions.installed.isEmpty {
+                    Text("No local extensions are installed.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(localExtensions.installed) { item in
+                        LocalExtensionRow(
+                            item: item,
+                            onSetEnabled: { localExtensions.setDesiredEnabled($0, for: item.id) },
+                            onDetails: { selectedLocalExtension = item },
+                            onRetry: { Task { await localExtensions.refresh() } },
+                            onManage: { showsSystemExtensions = true },
+                            onUpdate: { choosePackage(updating: item.id) },
+                            onUninstall: { pendingUninstall = item }
+                        )
+                    }
+                }
+                HStack {
+                    Button("Install Local Extension...") { choosePackage() }
+                    Spacer()
+                    Button("Manage System Extensions...") { showsSystemExtensions = true }
+                    Button {
+                        Task { await localExtensions.refresh() }
+                    } label: {
+                        if localExtensions.isRefreshing { ProgressView().controlSize(.small) }
+                        else { Text("Refresh") }
+                    }
+                    .disabled(localExtensions.isRefreshing)
+                }
+            } else {
+                Text("Local ExtensionKit extensions require macOS 26 or later.")
+                    .foregroundStyle(.secondary)
+                Button("Install Local Extension...") {}
+                    .disabled(true)
+            }
+        } header: {
+            Text("Installed local extensions")
+        } footer: {
+            if #available(macOS 26.0, *) {
+                Text("The switch is your desired state. macOS approval and system enablement are shown separately.")
+            }
+        }
+    }
+
+    private func choosePackage(updating expectedID: ExtensionIdentity? = nil) {
+        guard ensureManagedLocationAccess() else { return }
+        let panel = NSOpenPanel()
+        panel.title = "Choose a NotchKit Extension"
+        panel.allowsMultipleSelection = false
+        panel.canChooseDirectories = false
+        panel.allowedContentTypes = [UTType(filenameExtension: "notchkitextension") ?? .data]
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        Task {
+            do {
+                var preview = try await LocalExtensionCoordinator.previewPackage(at: url)
+                if let expectedID, preview.id != expectedID {
+                    throw LocalExtensionSelectionError.updateIdentityMismatch
+                }
+                preview.isUpdate = localExtensions.installed.contains { $0.id == preview.id }
+                packagePreview = preview
+            } catch {
+                localOperationError = error.localizedDescription
+            }
+        }
+    }
+
+    private func ensureManagedLocationAccess() -> Bool {
+        guard !localExtensions.hasManagedLocationAccess else { return true }
+        do {
+            try FileManager.default.createDirectory(
+                at: localExtensions.rootURL,
+                withIntermediateDirectories: true
+            )
+            let panel = NSOpenPanel()
+            panel.title = "Allow Local Extension Installation"
+            panel.message = "Choose this LocalExtensions folder so NotchKit can install signed executable providers."
+            panel.prompt = "Allow"
+            panel.directoryURL = localExtensions.rootURL
+            panel.allowsMultipleSelection = false
+            panel.canChooseFiles = false
+            panel.canChooseDirectories = true
+            panel.canCreateDirectories = false
+            guard panel.runModal() == .OK, let url = panel.url else { return false }
+            try localExtensions.authorizeManagedLocation(at: url)
+            return true
+        } catch {
+            localOperationError = error.localizedDescription
+            return false
+        }
+    }
+
+    private func install(_ preview: LocalExtensionPackagePreview) {
+        packagePreview = nil
+        Task {
+            do { try await localExtensions.install(preview) }
+            catch { localOperationError = error.localizedDescription }
+        }
+    }
+
+    private func uninstall(_ item: InstalledLocalExtension) async {
+        do { try await localExtensions.uninstall(item.id) }
+        catch { localOperationError = error.localizedDescription }
     }
 
     @ViewBuilder
@@ -170,6 +326,14 @@ struct ExtensionsSettingsView: View {
         runtime.requestHUDInputAccess()
         runtime.host.retry(owner)
         presentation.refreshAll()
+    }
+}
+
+private enum LocalExtensionSelectionError: LocalizedError {
+    case updateIdentityMismatch
+
+    var errorDescription: String? {
+        "The selected package is for a different extension. Choose an update with the same extension ID."
     }
 }
 
@@ -335,5 +499,167 @@ private struct UnavailableFeatureView: View {
         }
         .padding()
         .navigationTitle(featureName ?? "Unavailable")
+    }
+}
+
+@available(macOS 26.0, *)
+private struct LocalExtensionRow: View {
+    let item: InstalledLocalExtension
+    let onSetEnabled: (Bool) -> Void
+    let onDetails: () -> Void
+    let onRetry: () -> Void
+    let onManage: () -> Void
+    let onUpdate: () -> Void
+    let onUninstall: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 12) {
+                Image(systemName: item.manifest?.metadata.iconSystemName ?? "puzzlepiece.extension")
+                    .font(.title3)
+                    .frame(width: 24)
+                Button(action: onDetails) {
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(item.displayName).font(.headline)
+                        Text("Version \(item.record.extensionVersion.description) • Team \(item.record.signature.teamIdentifier)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                Toggle("Desired enabled", isOn: Binding(
+                    get: { item.record.desiredEnabled },
+                    set: onSetEnabled
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+            }
+            HStack(spacing: 8) {
+                Label(item.isDiscovered ? "Approved and available" : "Not available to NotchKit", systemImage: item.isDiscovered ? "checkmark.circle.fill" : "exclamationmark.circle")
+                    .foregroundStyle(item.isDiscovered ? .green : .secondary)
+                if let validationError = item.validationError {
+                    Text(validationError).foregroundStyle(.red)
+                }
+                Spacer()
+                if !item.isDiscovered {
+                    Button("Retry", action: onRetry).buttonStyle(.link)
+                    Button("Manage", action: onManage).buttonStyle(.link)
+                }
+                Menu {
+                    Button("Details", action: onDetails)
+                    Button("Update or Reinstall...", action: onUpdate)
+                    Divider()
+                    Button("Uninstall", role: .destructive, action: onUninstall)
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+            }
+            .font(.caption)
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+private struct LocalExtensionInstallConfirmation: View {
+    let preview: LocalExtensionPackagePreview
+    let onCancel: () -> Void
+    let onInstall: () -> Void
+
+    private var metadata: ExtensionMetadata { preview.manifest.metadata }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack(spacing: 12) {
+                Image(systemName: metadata.iconSystemName).font(.largeTitle)
+                VStack(alignment: .leading) {
+                    Text(preview.isUpdate ? "Update \(metadata.displayName)?" : "Install \(metadata.displayName)?")
+                        .font(.title2.bold())
+                    Text("Version \(metadata.extensionVersion.description) • Signed by team \(preview.signerTeamIdentifier)")
+                        .foregroundStyle(.secondary)
+                }
+            }
+            Label(
+                "This is a development/local extension. Install only packages you trust.",
+                systemImage: "exclamationmark.triangle.fill"
+            )
+            .foregroundStyle(.orange)
+
+            disclosureGroup
+
+            Text("Installing does not grant any permission or system access. macOS and NotchKit will request access separately when needed.")
+                .font(.callout.bold())
+
+            HStack {
+                Spacer()
+                Button("Cancel", action: onCancel).keyboardShortcut(.cancelAction)
+                Button(preview.isUpdate ? "Update" : "Install", action: onInstall)
+                    .buttonStyle(.borderedProminent)
+                    .keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 590)
+    }
+
+    private var disclosureGroup: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("Permissions").font(.headline)
+            if preview.manifest.permissions.isEmpty {
+                Text("None declared").foregroundStyle(.secondary)
+            } else {
+                ForEach(sortedPermissions, id: \.kind.rawValue) { permission in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(permission.kind.rawValue.replacingOccurrences(of: "-", with: " ").capitalized)
+                            .fontWeight(.medium)
+                        Text("\(permission.required ? "Required" : "Optional") • Owner: \(permission.owner.rawValue) • Usage key: \(permission.usageDescriptionKey)")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            Text("Host actions").font(.headline).padding(.top, 4)
+            Text(preview.manifest.hostActions.isEmpty
+                 ? "None declared"
+                 : preview.manifest.hostActions.map(\.rawValue).sorted().joined(separator: ", "))
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    private var sortedPermissions: [ExtensionDeclaredPermission] {
+        preview.manifest.permissions.sorted { $0.kind.rawValue < $1.kind.rawValue }
+    }
+}
+
+private struct LocalExtensionDetailsView: View {
+    @Environment(\.dismiss) private var dismiss
+    let item: InstalledLocalExtension
+    let onUpdate: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text(item.displayName).font(.title2.bold())
+            LabeledContent("Extension ID", value: item.id.rawValue)
+            LabeledContent("Version", value: item.record.extensionVersion.description)
+            LabeledContent("Provider", value: item.record.providerBundleIdentifier)
+            LabeledContent("Signer team", value: item.record.signature.teamIdentifier)
+            LabeledContent("Desired state", value: item.record.desiredEnabled ? "Enabled" : "Disabled")
+            LabeledContent("System availability", value: item.isDiscovered ? "Approved and available" : "Unavailable or awaiting approval")
+            if let summary = item.manifest?.metadata.summary {
+                Text(summary).foregroundStyle(.secondary)
+            }
+            Spacer()
+            HStack {
+                Button("Update or Reinstall...", action: onUpdate)
+                Spacer()
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            }
+        }
+        .padding(24)
+        .frame(width: 540, height: 330)
     }
 }

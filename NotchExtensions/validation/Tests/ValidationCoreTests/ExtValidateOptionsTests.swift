@@ -14,7 +14,7 @@ final class ExtValidateOptionsTests: XCTestCase {
     func testSDKDefaultUsesSharedCurrentValue() throws {
         let options = try ExtValidateOptionsParser.parse(["manifest.json"])
         XCTAssertEqual(options.sdkVersion, ExtensionAPIVersion.current)
-        XCTAssertEqual(options.sdkVersion, ExtensionAPIVersion(major: 1, minor: 1, patch: 0))
+        XCTAssertEqual(options.sdkVersion, ExtensionAPIVersion(major: 1, minor: 2, patch: 0))
     }
 
     func testHostDefaultIsUnchanged() throws {

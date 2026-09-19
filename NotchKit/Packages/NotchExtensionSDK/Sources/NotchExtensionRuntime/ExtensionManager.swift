@@ -21,6 +21,7 @@ public final class ExtensionManager {
     private let registry: ExtensionRegistry
     private let store: ExtensionStateStore
     private var snapshot: ExtensionStateSnapshot
+    private var externalEnabled: [ExtensionIdentity: Bool] = [:]
 
     /// Called when an extension's enabled state changes. Invoked on the caller's
     /// thread; the app host calls from the main thread.
@@ -55,7 +56,20 @@ public final class ExtensionManager {
     }
 
     public func isEnabled(_ id: ExtensionIdentity) -> Bool {
-        snapshot.enabled[id.rawValue] ?? false
+        if registry.definition(for: id) == nil, let enabled = externalEnabled[id] {
+            return enabled
+        }
+        return snapshot.enabled[id.rawValue] ?? false
+    }
+
+    /// Sets transient enabled state for an identity not owned by the registry.
+    public func setExternalEnabled(_ enabled: Bool, for id: ExtensionIdentity) {
+        externalEnabled[id] = enabled
+    }
+
+    /// Removes transient enabled state for an identity not owned by the registry.
+    public func removeExternalEnabledState(for id: ExtensionIdentity) {
+        externalEnabled.removeValue(forKey: id)
     }
 
     public func setEnabled(_ enabled: Bool, for id: ExtensionIdentity) {

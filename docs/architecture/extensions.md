@@ -1,6 +1,6 @@
 # NotchKit Extensions Architecture
 
-Status: Phase 1 (compile-time first-party extensions)
+Status: Phase 1 shipped architecture; Phase 2 local runtime integration in progress
 Applies to: macOS 14 deployment target
 
 ## Purpose
@@ -9,33 +9,38 @@ NotchKit replaces hard-coded rendering and routing seams with a compile-time,
 first-party extension architecture. Extensions declare UI/content and settings
 destinations. Core keeps ownership of everything privileged or structural.
 
-This document describes the Phase 1 architecture, extended by the runtime
-lifecycle. For the contract-by-contract shape of the public API, see
+This document describes the shared architecture across compile-time first-party
+extensions and the availability-gated local runtime. For the contract-by-contract
+shape of the public API, see
 [`extension-api.md`](extension-api.md). For the reasoning behind compile-time
 extensions, see
 [`adr/0001-compile-time-extensions-before-runtime-loading.md`](adr/0001-compile-time-extensions-before-runtime-loading.md).
 For the separation of compile-time, out-of-process, and catalog tiers, see
 [`adr/0002-extension-distribution-tiers.md`](adr/0002-extension-distribution-tiers.md).
+The local package policy is in
+[`adr/0003-local-developer-package-install-policy.md`](adr/0003-local-developer-package-install-policy.md),
+and the Phase 2 design/status is in
+[`native-extension-runtime-phase-2.md`](native-extension-runtime-phase-2.md).
 
 ## Repository boundaries
 
-The repository is organised into three top-level areas. Only the first is built
-and shipped today; the other two are scaffolding for declared future work.
+The repository is organised into three top-level areas.
 
 | Top-level path | Contains | Status |
 | --- | --- | --- |
 | `NotchKit/` | macOS host application, core runtime, XPC helper, local Swift package (SDK + runtime), Configuration, mediaremote-adapter, updater | Implemented (Phase 1) |
 | `NotchAPI/` | Future server for the extension catalog, distribution, submissions, and validation status | Proposed; no code, no network calls |
-| `NotchExtensions/` | Extension source, examples, manifests, and validation tooling | Proposed; docs and stubs only |
+| `NotchExtensions/` | Extension source, schemas, examples, validation tooling, and Phase 2 local installation/native runtime packages | Phase 1 content plus Phase 2 implementation; live product verification pending |
 
 The host application lives under `NotchKit/` and links the local Swift package
-at `NotchKit/Packages/NotchExtensionSDK`. Nothing under `NotchAPI/` or
-`NotchExtensions/` is compiled into the macOS app, and Phase 1 makes no network,
-catalog, distribution, or installation calls. See [Non-goals](#non-goals).
+at `NotchKit/Packages/NotchExtensionSDK`. `NotchAPI/` remains unimplemented and
+there are no catalog or download calls. Phase 2 links local runtime packages
+from `NotchExtensions/LocalRuntime` into the host behind macOS 26 availability
+checks. See [Non-goals](#non-goals).
 
 ### Implementation status
 
-- Implemented and unit-tested: `NotchExtensionSDK` contracts (metadata, version
+- Implemented and unit-tested in Phase 1: `NotchExtensionSDK` contracts (metadata, version
   ranges, entry points, definition/instance, host services, cancellation,
   compatibility), the `NotchExtensionRuntime` registry/manager/contribution
   store/lifecycle host/per-display router/closed-notch selection, and the pure
@@ -44,8 +49,17 @@ catalog, distribution, or installation calls. See [Non-goals](#non-goals).
   to NotchKit, the `com.notchkit.*` identity namespace, per-display routing, the
   disabled upstream updater UI, and a separate `NotchKitCoreOnly` app target
   that is genuinely Battery-free.
-- Proposed: the `NotchAPI/` server, `NotchExtensions/` tooling, out-of-process
-  extension loading, distribution, and signing. See ADR 0002 for the gating.
+- Implemented in the current Phase 2 worktree: schema-v2 package contracts,
+  hardened ZIP extraction, strict package/layout validation, signature-policy
+  enforcement, transactional managed installation records, ExtensionKit
+  matching, XPC sessions, declarative UI, and host integration.
+- Not yet established by Phase 2 live product evidence: real package install and
+  update through the integrated UI, the Security.framework signer matrix,
+  sandbox managed-location behavior, integrated approval/enablement, runtime
+  recovery/teardown, and macOS 14 regression verification. The Phase 1 prototype
+  evidence is not evidence for this product path.
+- Proposed: the `NotchAPI/` server, catalog distribution, publisher review,
+  revocation, and automatic updates.
 
 ## Module boundaries
 
@@ -54,6 +68,9 @@ catalog, distribution, or installation calls. See [Non-goals](#non-goals).
 | `NotchKit` | Application host + core renderer/runtime | Owns geometry, windowing, animation, permissions, persistence, privileged system actions, and the SwiftUI rendering of the notch. Links `NotchExtensionSDK` and `NotchExtensionRuntime`. |
 | `NotchExtensionSDK` | Public library (`NotchKit/Packages/NotchExtensionSDK`) | UI-facing contracts only. Defines descriptors, destinations, closed-notch contributions, regions, and the render snapshot. Must never import app internals such as `BoringViewModel`, singleton managers, or private window types. |
 | `NotchExtensionRuntime` | Library (`NotchKit/Packages/NotchExtensionSDK`) | First-party catalog and registration boundary plus runtime infrastructure (`ExtensionRegistry`, `ExtensionManager`, `ExtensionHost`, `ContributionStore`, `PresentationCoordinator`, `NotchRouter`, `ClosedNotchSelection`, `IdentityMigration`). Depends only on `NotchExtensionSDK`. |
+| `NotchExtensionWire` | Library (`NotchKit/Packages/NotchExtensionSDK`) | Bounded out-of-process handshake, render, action, invalidation, and host-action messages. |
+| `NotchExtensionInstallation` | Library (`NotchExtensions/LocalRuntime`) | Hardened package extraction, manifest/layout/signature validation, installation records, and transactional install/update/uninstall. |
+| `NotchNativeExtensionRuntime` | Library (`NotchExtensions/LocalRuntime`) | macOS 26 ExtensionKit matching, XPC transport, lifecycle, declarative sessions, and bounded reconnect. |
 
 Phase 1 does **not** move all existing features into `NotchExtensionRuntime`. The
 module establishes the boundary; migration is incremental.
@@ -62,8 +79,8 @@ module establishes the boundary; migration is incremental.
 
 `NotchExtensionSDK` is semantic-versioned.
 
-- The current API version is `1.1.0` (the `ExtensionDefinition.settings`
-  addition).
+- The current API version is `1.2.0`; `1.2.0` adds package, declarative UI, and
+  out-of-process wire contracts.
 - Compatibility is enforced by `ExtensionCompatibility.validate` through each
   manifest's `artifactKind`, `supportedHostVersions`, and `supportedSDKVersions`,
   plus capability/entry-point invariants; it is **not** major-only. Additive
@@ -154,22 +171,22 @@ independently disable-safe until the Phase 2 migration completes.
 
 ## Non-goals
 
-Phase 1 explicitly excludes:
+The architecture explicitly excludes:
 
 - a marketplace,
 - any backend or network calls,
 - remote manifests,
-- package download or installation,
+- catalog/network package download,
 - arbitrary dynamic binary loading,
-- code signing or notarization of extensions,
-- Apple `ExtensionFoundation` / `ExtensionKit`.
+- a notarization requirement for the local-developer tier,
+- ExtensionKit execution on macOS 14.
 
-## Future adapter path
+## Native adapter path
 
-A later phase may back the same contracts with an out-of-process adapter. ADR
-0002 separates three tiers (compile-time modules, independently distributed
-artifacts, and catalog/installation services) and records what macOS 14
-actually supports. In particular:
+Phase 2 backs the shared contribution contracts with an availability-gated
+out-of-process adapter. ADR 0002 separates three tiers (compile-time modules,
+independently distributed artifacts, and catalog services) and records what
+macOS 14 actually supports. In particular:
 
 - **SwiftUI view factories cannot cross a process boundary.** The previous
   wording here ("marshal descriptors and view/content factories across a
@@ -179,21 +196,21 @@ actually supports. In particular:
   rendering ownership. An ExtensionKit adapter would present an opaque remote
   scene via `EXHostViewController`; an XPC adapter would use a defined
   `NSXPCConnection`/XPC message contract.
-- `AppExtensionPoint` and programmatic `.appext` generation are macOS 26+, not
-  macOS 14; a macOS 14 ExtensionKit path would need a hand-authored `.appext`.
+- `AppExtensionPoint` and programmatic `.appexpt` generation are macOS 26+, not
+  macOS 14; a macOS 14 ExtensionKit path would need a hand-authored `.appexpt`.
 - A **bundled helper is not an independently installed extension.** Separate
   installation is only claimed once a prototype demonstrates discovery and
   enablement of an artifact outside the host bundle.
 
-The production app stays on the in-process first-party runtime until that
-prototype provides evidence. `NotchExtensionSDK` and `NotchExtensionRuntime`
-are designed so an adapter is additive rather than a rewrite.
+The Phase 1 prototype supplied platform feasibility evidence. The integrated
+Phase 2 product path remains gated by its own verification matrix; Tier A stays
+unchanged and available on macOS 14.
 
 ## Non-negotiable invariants
 
 - No visual redesign in Phase 1.
 - No network calls or backend.
 - No placeholder marketplace data.
-- No `ExtensionFoundation` / `ExtensionKit` dependency.
+- No `ExtensionFoundation` / `ExtensionKit` execution on macOS 14.
 - Core keeps ownership of geometry, windows, privileges, persistence, and
   animation.

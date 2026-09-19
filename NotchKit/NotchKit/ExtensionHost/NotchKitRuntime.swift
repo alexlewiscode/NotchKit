@@ -39,6 +39,7 @@ final class NotchKitRuntime {
     let contributions = ContributionStore()
     let presentation: PresentationCoordinator
     let host: ExtensionHost
+    let localExtensions: LocalExtensionCoordinator
 
     #if !NOTCHKIT_CORE_ONLY
     /// The app-wide battery service shared by the Battery extension and the
@@ -79,6 +80,10 @@ final class NotchKitRuntime {
                 permissions: HostPermissionService.shared
             )
         }
+        localExtensions = LocalExtensionCoordinator(
+            manager: manager,
+            contributions: contributions
+        )
         // Async activation/deactivation completes after `bootstrap`, so refresh
         // presentation whenever a phase changes.
         host.onStateChanged = { [weak presentation] in
@@ -97,6 +102,7 @@ final class NotchKitRuntime {
         ) { [weak self] _ in
             Task { @MainActor in
                 self?.reconcilePermissionGatedFeatures()
+                await self?.localExtensions.refresh()
             }
         }
     }
@@ -148,6 +154,7 @@ final class NotchKitRuntime {
             // host reconciles and activates anything.
             FeatureEnablementMigration.runIfNeeded(manager: manager)
             host.start()
+            localExtensions.start()
             presentation.refreshAll()
         } catch {
             logger.error("NotchKit bootstrap failed: \(String(describing: error), privacy: .public)")
