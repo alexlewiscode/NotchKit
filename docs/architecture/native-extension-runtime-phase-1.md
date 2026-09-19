@@ -4,7 +4,8 @@
 - Date: 2026-09-17
 - Branch: `prototype/native-extension-runtime-phase-1`
 - Base commit: `1f90af7`
-- Prototype: [`Prototype/native-extension-runtime/`](../../Prototype/native-extension-runtime/)
+- Evidence: recorded in the preceding Phase 1 evidence commit; removed from the
+  production tip because its schema-v1 directory package is superseded by Phase 2.
 
 ## Decision Supported By This Prototype
 

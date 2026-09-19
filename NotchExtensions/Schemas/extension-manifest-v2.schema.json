@@ -1,0 +1,207 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://notchkit.app/schemas/extension-manifest-v2.schema.json",
+  "title": "NotchKit extension package manifest v2",
+  "description": "Strict serialized shape of NotchExtensionSDK.ExtensionPackageManifest for local-developer app-extension packages. Cross-field identity, entry-point correspondence, version ordering, and signer checks remain validator responsibilities.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "metadata",
+    "artifact",
+    "permissions",
+    "hostActions",
+    "entryPoints"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 2 },
+    "metadata": { "$ref": "#/$defs/metadata" },
+    "artifact": { "$ref": "#/$defs/artifact" },
+    "permissions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/permission" },
+      "uniqueItems": true,
+      "allOf": [
+        { "contains": { "properties": { "kind": { "const": "accessibility" } }, "required": ["kind"] }, "minContains": 0, "maxContains": 1 },
+        { "contains": { "properties": { "kind": { "const": "media-control" } }, "required": ["kind"] }, "minContains": 0, "maxContains": 1 },
+        { "contains": { "properties": { "kind": { "const": "camera" } }, "required": ["kind"] }, "minContains": 0, "maxContains": 1 },
+        { "contains": { "properties": { "kind": { "const": "screen-recording" } }, "required": ["kind"] }, "minContains": 0, "maxContains": 1 }
+      ]
+    },
+    "hostActions": {
+      "type": "array",
+      "items": {
+        "enum": ["open-destination", "close-notch", "show-sneak-peek", "hide-sneak-peek"]
+      },
+      "uniqueItems": true
+    },
+    "entryPoints": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/packageEntryPoint" }
+    }
+  },
+  "$defs": {
+    "semanticVersion": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"
+    },
+    "minimumMacOS26Version": {
+      "type": "string",
+      "description": "App-extension packages require macOS 26.0.0 or newer.",
+      "pattern": "^(?:2[6-9]|[3-9][0-9]|[1-9][0-9]{2,})\\.[0-9]+\\.[0-9]+$"
+    },
+    "versionRange": {
+      "type": "string",
+      "description": "Canonical inclusive-minimum and optional exclusive-maximum range emitted by ExtensionVersionRange.",
+      "pattern": "^>=[0-9]+\\.[0-9]+\\.[0-9]+(?: <[0-9]+\\.[0-9]+\\.[0-9]+)?$"
+    },
+    "extensionID": {
+      "type": "string",
+      "description": "ExtensionIdentity: at least three dot-separated alphanumeric-or-hyphen components, with no leading or trailing hyphen.",
+      "pattern": "^[\\p{L}\\p{N}](?:[\\p{L}\\p{N}-]*[\\p{L}\\p{N}])?(?:\\.[\\p{L}\\p{N}](?:[\\p{L}\\p{N}-]*[\\p{L}\\p{N}])?){2,}$"
+    },
+    "bundleID": {
+      "type": "string",
+      "description": "Package validator identifier: at least two dot-separated ASCII alphanumeric-or-hyphen components, with no leading or trailing hyphen.",
+      "pattern": "^[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?(?:\\.[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?)*$"
+    },
+    "entryPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "kind"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": {
+          "enum": ["open-destination", "closed-notch-contribution", "settings-destination"]
+        },
+        "sceneName": { "type": "string" },
+        "metadata": {
+          "type": "object",
+          "patternProperties": {
+            "^": { "type": "string" }
+          },
+          "additionalProperties": false
+        }
+      }
+    },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "displayName",
+        "iconSystemName",
+        "extensionVersion",
+        "apiVersion",
+        "supportedHostVersions",
+        "supportedSDKVersions",
+        "capabilities",
+        "artifactKind",
+        "entryPoints",
+        "defaultEnabled",
+        "source"
+      ],
+      "properties": {
+        "id": { "$ref": "#/$defs/extensionID" },
+        "displayName": { "type": "string" },
+        "summary": { "type": "string" },
+        "iconSystemName": { "type": "string" },
+        "extensionVersion": { "$ref": "#/$defs/semanticVersion" },
+        "apiVersion": { "$ref": "#/$defs/semanticVersion" },
+        "supportedHostVersions": { "$ref": "#/$defs/versionRange" },
+        "supportedSDKVersions": { "$ref": "#/$defs/versionRange" },
+        "capabilities": {
+          "type": "array",
+          "description": "ExtensionCapability is an open raw-string type.",
+          "items": { "type": "string" },
+          "uniqueItems": true
+        },
+        "artifactKind": { "const": "app-extension" },
+        "entryPoints": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/entryPoint" }
+        },
+        "defaultEnabled": { "type": "boolean" },
+        "source": { "const": "localDeveloper" }
+      }
+    },
+    "protocolVersionRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["minimum", "maximum"],
+      "properties": {
+        "minimum": { "type": "integer", "minimum": 1 },
+        "maximum": { "type": "integer", "minimum": 1 }
+      }
+    },
+    "appExtensionArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "providerBundleIdentifier",
+        "extensionBundleIdentifier",
+        "extensionPointIdentifier",
+        "minimumMacOSVersion",
+        "protocolVersions",
+        "architectures"
+      ],
+      "properties": {
+        "providerBundleIdentifier": { "$ref": "#/$defs/bundleID" },
+        "extensionBundleIdentifier": { "$ref": "#/$defs/bundleID" },
+        "extensionPointIdentifier": { "$ref": "#/$defs/bundleID" },
+        "minimumMacOSVersion": { "$ref": "#/$defs/minimumMacOS26Version" },
+        "protocolVersions": { "$ref": "#/$defs/protocolVersionRange" },
+        "architectures": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "enum": ["arm64", "x86_64"] },
+          "uniqueItems": true
+        }
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "appExtension"],
+      "properties": {
+        "kind": { "const": "app-extension" },
+        "appExtension": { "$ref": "#/$defs/appExtensionArtifact" }
+      }
+    },
+    "permission": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "required", "owner", "usageDescriptionKey"],
+      "properties": {
+        "kind": {
+          "enum": ["accessibility", "media-control", "camera", "screen-recording"]
+        },
+        "required": { "type": "boolean" },
+        "owner": { "enum": ["host", "extension"] },
+        "usageDescriptionKey": { "type": "string", "minLength": 1 }
+      }
+    },
+    "packageEntryPoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["entryPoint", "presentationMode"],
+      "properties": {
+        "entryPoint": { "$ref": "#/$defs/entryPoint" },
+        "presentationMode": { "enum": ["remote-scene", "declarative"] },
+        "sceneName": { "type": "string", "minLength": 1 }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "presentationMode": { "const": "remote-scene" } },
+            "required": ["presentationMode"]
+          },
+          "then": { "required": ["sceneName"] },
+          "else": { "not": { "required": ["sceneName"] } }
+        }
+      ]
+    }
+  }
+}

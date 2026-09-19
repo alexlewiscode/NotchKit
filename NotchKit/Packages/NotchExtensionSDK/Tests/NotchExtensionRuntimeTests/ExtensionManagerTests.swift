@@ -82,4 +82,83 @@ final class ExtensionManagerTests: XCTestCase {
         XCTAssertEqual(changes.first?.0, id)
         XCTAssertEqual(changes.first?.1, false)
     }
+
+    func testExternalEnabledStateCanEnableAndDisableUnregisteredIdentity() throws {
+        let id = try TestFactory.identity("com.notchkit.external")
+        let manager = ExtensionManager(
+            registry: TestFactory.registry(),
+            store: InMemoryExtensionStateStore()
+        )
+
+        manager.setExternalEnabled(true, for: id)
+        XCTAssertTrue(manager.isEnabled(id))
+
+        manager.setExternalEnabled(false, for: id)
+        XCTAssertFalse(manager.isEnabled(id))
+    }
+
+    func testPersistedStateRemainsVisibleBeforeRegistration() throws {
+        let id = try TestFactory.identity("com.notchkit.pending-registration")
+        let manager = ExtensionManager(
+            registry: TestFactory.registry(),
+            store: InMemoryExtensionStateStore(
+                snapshot: ExtensionStateSnapshot(enabled: [id.rawValue: true])
+            )
+        )
+
+        XCTAssertTrue(manager.isEnabled(id))
+    }
+
+    func testExternalEnabledStateIsNotPersisted() throws {
+        let id = try TestFactory.identity("com.notchkit.external")
+        let registry = TestFactory.registry()
+        let store = InMemoryExtensionStateStore()
+        let manager = ExtensionManager(registry: registry, store: store)
+
+        manager.setExternalEnabled(true, for: id)
+
+        XCTAssertNil(store.snapshot)
+        XCTAssertFalse(ExtensionManager(registry: registry, store: store).isEnabled(id))
+    }
+
+    func testRegisteredStateTakesPrecedenceOverCollidingExternalState() throws {
+        let id = try TestFactory.identity("com.notchkit.alpha")
+        let registry = TestFactory.registry()
+        try registry.register(TestFactory.definition(id: id, defaultEnabled: false))
+        let manager = ExtensionManager(registry: registry, store: InMemoryExtensionStateStore())
+        manager.reconcile()
+
+        manager.setExternalEnabled(true, for: id)
+
+        XCTAssertFalse(manager.isEnabled(id))
+    }
+
+    func testRemovingExternalEnabledStateRestoresDefaultDisabledState() throws {
+        let id = try TestFactory.identity("com.notchkit.external")
+        let manager = ExtensionManager(
+            registry: TestFactory.registry(),
+            store: InMemoryExtensionStateStore()
+        )
+        manager.setExternalEnabled(true, for: id)
+
+        manager.removeExternalEnabledState(for: id)
+
+        XCTAssertFalse(manager.isEnabled(id))
+    }
+
+    func testReconcilePreservesExternalEnabledStateWithoutPersistingIt() throws {
+        let registeredID = try TestFactory.identity("com.notchkit.alpha")
+        let externalID = try TestFactory.identity("com.notchkit.external")
+        let registry = TestFactory.registry()
+        try registry.register(TestFactory.definition(id: registeredID))
+        let store = InMemoryExtensionStateStore()
+        let manager = ExtensionManager(registry: registry, store: store)
+        manager.setExternalEnabled(true, for: externalID)
+
+        manager.reconcile()
+
+        XCTAssertTrue(manager.isEnabled(externalID))
+        XCTAssertNil(manager.state.enabled[externalID.rawValue])
+        XCTAssertNil(store.snapshot?.enabled[externalID.rawValue])
+    }
 }

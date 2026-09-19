@@ -12,6 +12,8 @@ import Foundation
 public enum ExtensionSource: String, Hashable, Codable, Sendable {
     /// An extension compiled into the app.
     case firstParty
+    /// An unpackaged extension installed directly by a local developer.
+    case localDeveloper
 }
 
 /// The complete, runtime-free description of an extension.
