@@ -25,6 +25,20 @@ final class ExtensionPackageManifestValidatorTests: XCTestCase {
         )
     }
 
+    func testMarketplaceSourceRequiresMarketplaceValidationContext() throws {
+        let marketplace = try manifest { root in
+            Self.object(&root, "metadata")["source"] = "marketplace"
+        }
+
+        assertError(
+            marketplace,
+            .invalidSource(.marketplace)
+        )
+        XCTAssertNoThrow(
+            try ExtensionPackageManifestValidator.validate(marketplace, context: .marketplace)
+        )
+    }
+
     func testRequiresAppExtensionMetadataOnlyForAppExtensions() throws {
         assertError(
             try manifest { root in Self.object(&root, "artifact").removeObject(forKey: "appExtension") },

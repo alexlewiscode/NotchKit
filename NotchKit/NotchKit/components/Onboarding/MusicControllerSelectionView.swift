@@ -23,69 +23,110 @@ struct MusicControllerSelectionView: View {
     }
     
     @State private var selectedMediaController: MediaControllerType = Defaults[.mediaController]
+    @FocusState private var focusedController: MediaControllerType?
+    @FocusState private var isContinueFocused: Bool
     
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 0) {
+            HStack {
+                OnboardingBrandMark(size: 34)
+                Spacer()
+                Text("MUSIC")
+                    .font(.caption2.weight(.semibold))
+                    .foregroundStyle(.secondary)
+                    .tracking(1.3)
+            }
+            .padding(.horizontal, 30)
+            .padding(.top, 28)
+
             Text("Choose a Music Source")
-                .font(.title)
-                .fontWeight(.bold)
-                .padding(.top, 24)
+                .font(.system(size: 27, weight: .bold, design: .rounded))
+                .padding(.top, 20)
 
             Text("Select the music source you want to use. You can change this later in the app settings.")
                 .multilineTextAlignment(.center)
                 .font(.body)
-                .foregroundColor(.secondary)
-                .padding(.horizontal)
+                .foregroundStyle(.secondary)
+                .lineSpacing(2)
+                .padding(.horizontal, 34)
+                .padding(.top, 8)
 
             ScrollView {
                 VStack(spacing: 12) {
                     ForEach(availableMediaControllers) { controller in
-                        ControllerOptionView(
-                            controller: controller,
-                            isSelected: self.selectedMediaController == controller
-                        )
-                        .onTapGesture {
-                            self.selectedMediaController = controller
+                        Button {
+                            selectedMediaController = controller
+                        } label: {
+                            ControllerOptionView(
+                                controller: controller,
+                                isSelected: selectedMediaController == controller
+                            )
                         }
+                        .buttonStyle(.plain)
+                        .focused($focusedController, equals: controller)
+                        .accessibilityLabel(controller.rawValue)
+                        .accessibilityValue(selectedMediaController == controller ? "Selected" : "Not selected")
+                        .accessibilityHint(controller.description)
                     }
                 }
-                .padding()
+                .padding(.horizontal, 26)
+                .padding(.vertical, 20)
             }
-            //Disable scroll if there are 4 or fewer to avoid unnecessary scroll behavior
             .scrollDisabled(availableMediaControllers.count <= 4)
 
-//            Spacer()
+            if selectedMediaController == .youtubeMusic,
+               let url = URL(string: "https://github.com/pear-devs/pear-desktop") {
+                Link("Learn about the required third-party client", destination: url)
+                    .font(.caption)
+                    .padding(.bottom, 10)
+            }
 
-            Button("Continue", action: {
-                self.mediaController = self.selectedMediaController
+            Button("Continue") {
+                mediaController = selectedMediaController
                 NotificationCenter.default.post(
                     name: Notification.Name.mediaControllerChanged,
                     object: nil
                 )
                 onContinue()
-            })
-                .buttonStyle(.borderedProminent)
-                .controlSize(.large)
-                .padding(.bottom, 24)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .keyboardShortcut(.defaultAction)
+            .focused($isContinueFocused)
+            .padding(.bottom, 28)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(
-            VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-        )
+        .onAppear {
+            if !availableMediaControllers.contains(selectedMediaController),
+               let firstController = availableMediaControllers.first {
+                selectedMediaController = firstController
+            }
+            focusedController = selectedMediaController
+        }
+        .onMoveCommand(perform: moveSelection)
+    }
+
+    private func moveSelection(_ direction: MoveCommandDirection) {
+        guard direction == .up || direction == .down,
+              let currentIndex = availableMediaControllers.firstIndex(of: selectedMediaController) else { return }
+        let offset = direction == .up ? -1 : 1
+        let nextIndex = min(max(currentIndex + offset, 0), availableMediaControllers.count - 1)
+        selectedMediaController = availableMediaControllers[nextIndex]
+        focusedController = selectedMediaController
     }
 }
 
 struct ControllerOptionView: View {
     let controller: MediaControllerType
     let isSelected: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 16) {
             Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                 .font(.title2)
                 .foregroundColor(isSelected ? .effectiveAccent : .secondary.opacity(0.5))
-                .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
+                .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.6), value: isSelected)
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(controller.rawValue)
@@ -96,11 +137,6 @@ struct ControllerOptionView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
                 
-                if controller == .youtubeMusic, let url = URL(string: "https://github.com/pear-devs/pear-desktop") {
-                    Link("View on GitHub: pear-devs/pear-desktop", destination: url)
-                        .font(.subheadline)
-                        .padding(.top, 2)
-                }
             }
             
             Spacer()
@@ -108,13 +144,14 @@ struct ControllerOptionView: View {
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
-                .fill(isSelected ? Color.effectiveAccent.opacity(0.15) : Color.clear)
+                .fill(isSelected ? Color.effectiveAccent.opacity(0.14) : Color.primary.opacity(0.035))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 12, style: .continuous)
                 .stroke(isSelected ? Color.effectiveAccent : Color.secondary.opacity(0.3), lineWidth: 1.5)
         )
         .contentShape(Rectangle())
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.18), value: isSelected)
     }
 }
 

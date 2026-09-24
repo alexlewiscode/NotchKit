@@ -8,11 +8,13 @@
 import SwiftUI
 import AppKit
 
-class SparkleNSView: NSView {
+final class SparkleNSView: NSView {
     private var emitterLayer: CAEmitterLayer?
+    private var isEnabled: Bool
     
-    override init(frame frameRect: NSRect) {
-        super.init(frame: frameRect)
+    init(isEnabled: Bool) {
+        self.isEnabled = isEnabled
+        super.init(frame: .zero)
         self.wantsLayer = true
         setupEmitterLayer()
     }
@@ -29,7 +31,7 @@ class SparkleNSView: NSView {
         
         let cell = CAEmitterCell()
         cell.contents = NSImage(named: "sparkle")?.cgImage(forProposedRect: nil, context: nil, hints: nil)
-        cell.birthRate = 50
+        cell.birthRate = isEnabled ? 20 : 0
         cell.lifetime = 5
         cell.velocity = 10
         cell.velocityRange = 5
@@ -37,7 +39,7 @@ class SparkleNSView: NSView {
         cell.scale = 0.2
         cell.scaleRange = 0.1
         cell.alphaSpeed = -0.5
-        cell.yAcceleration = 10 // Add a slight downward motion
+        cell.yAcceleration = 10
         
         emitterLayer.emitterCells = [cell]
         
@@ -54,23 +56,30 @@ class SparkleNSView: NSView {
         emitterLayer.emitterSize = self.bounds.size
         emitterLayer.emitterPosition = CGPoint(x: bounds.width / 2, y: bounds.height / 2)
         
-        // Adjust birth rate based on view size
-        let area = bounds.width * bounds.height
-        let baseBirthRate: Float = 50
-        let adjustedBirthRate = 20 // Assuming 200x200 as base size
-        emitterLayer.emitterCells?.first?.birthRate = Float(adjustedBirthRate)
+        emitterLayer.emitterCells?.first?.birthRate = isEnabled ? 20 : 0
     }
     
     override func setFrameSize(_ newSize: NSSize) {
         super.setFrameSize(newSize)
         updateEmitterForCurrentBounds()
     }
+
+    func setParticlesEnabled(_ isEnabled: Bool) {
+        guard self.isEnabled != isEnabled else { return }
+        self.isEnabled = isEnabled
+        emitterLayer?.emitterCells?.first?.birthRate = isEnabled ? 20 : 0
+    }
 }
 
 struct SparkleView: NSViewRepresentable {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var isEnabled = true
+
     func makeNSView(context: Context) -> SparkleNSView {
-        return SparkleNSView()
+        SparkleNSView(isEnabled: isEnabled && !reduceMotion)
     }
     
-    func updateNSView(_ nsView: SparkleNSView, context: Context) {}
+    func updateNSView(_ nsView: SparkleNSView, context: Context) {
+        nsView.setParticlesEnabled(isEnabled && !reduceMotion)
+    }
 }

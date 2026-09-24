@@ -6,77 +6,66 @@
 //
 
 import SwiftUI
-import SwiftUIIntrospect
 
 struct WelcomeView: View {
     var onGetStarted: (() -> Void)? = nil
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @FocusState private var isGetStartedFocused: Bool
+
     var body: some View {
-        ZStack(alignment: .top) {
+        VStack(spacing: 0) {
+            Spacer(minLength: 54)
+
             ZStack {
-                Image("spotlight")
-                    .resizable()
-                    .aspectRatio(contentMode: .fit)
-                    .padding(.bottom)
-                    .blur(radius: 3)
-                    .offset(y: -5)
-                    .background(SparkleView().opacity(0.6))
-                VStack(spacing: 8) {
-                    Image("logo2")
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .frame(width: 100, height: 100)
-                        .padding(.bottom, 8)
-                    Text("Boring Notch")
-                        .font(.system(.largeTitle, design: .default))
-                        .fontWeight(.semibold)
-                    Text("Welcome")
-                        .font(.title)
-                        .foregroundStyle(.secondary)
-                        .padding(.bottom, 30)
-                    if false {
-                        Text("PRO")
-                            .font(.system(size: 18, design: .rounded))
-                            .fontWeight(.bold)
-                            .foregroundStyle(.white)
-                            .padding(.horizontal, 12)
-                            .padding(.vertical, 3)
-                            .background(
-                                Capsule()
-                                    .fill(LinearGradient(colors: [.white.opacity(0.7), .white.opacity(0.3)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                    .strokeBorder(LinearGradient(stops: [.init(color: .white.opacity(0.7), location: 0.3), .init(color: .clear, location: 0.6)], startPoint: .topLeading, endPoint: .bottomTrailing))
-                                    .blendMode(.overlay)
-                            )
-                            .padding(.bottom, 30)
-                    }
+                Circle()
+                    .fill(Color.effectiveAccent.opacity(0.16))
+                    .frame(width: 210, height: 210)
+                    .blur(radius: 36)
 
-
-                    Button {
-                        onGetStarted?()
-                    } label: {
-                        Text("Get started")
-                            .padding(.horizontal, 20)
-                            .padding(.vertical, 6)
-                    }
-                    .buttonStyle(BorderedProminentButtonStyle())
+                if !reduceMotion {
+                    SparkleView(isEnabled: true)
+                        .frame(width: 260, height: 230)
+                        .opacity(0.45)
+                        .allowsHitTesting(false)
+                        .accessibilityHidden(true)
                 }
-                .padding(.top)
+
+                OnboardingBrandMark(size: 108)
+                    .shadow(color: .black.opacity(0.16), radius: 18, y: 10)
             }
-            
-            Image("theboringteam")
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(height: 22)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottom)
-                .padding()
-                .padding(.bottom, 36)
-                .blendMode(.overlay)
+            .frame(height: 220)
+
+            Text("Welcome to NotchKit")
+                .font(.system(size: 32, weight: .bold, design: .rounded))
+                .multilineTextAlignment(.center)
+
+            Text("Make more of your notch with focused controls, useful glanceable information, and a workspace that feels at home on your Mac.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .lineSpacing(3)
+                .padding(.top, 12)
+                .padding(.horizontal, 36)
+
+            Spacer(minLength: 36)
+
+            Button("Get Started") {
+                onGetStarted?()
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .keyboardShortcut(.defaultAction)
+            .focused($isGetStartedFocused)
+            .accessibilityHint("Begins setup")
+
+            Text("Setup takes about a minute")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.top, 12)
+                .padding(.bottom, 34)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-        .ignoresSafeArea()
-        .background {
-            VisualEffectView(material: .hudWindow, blendingMode: .behindWindow)
-                .ignoresSafeArea()
-        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { isGetStartedFocused = true }
     }
 }
 

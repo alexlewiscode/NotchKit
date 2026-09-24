@@ -6,17 +6,19 @@
 //
 
 import AppKit
-import SwiftUI
 import Defaults
 import Sparkle
+import SwiftUI
 
+@MainActor
 class SettingsWindowController: NSWindowController {
     static let shared = SettingsWindowController()
     private var updaterController: SPUStandardUpdaterController?
+    private var initialSection: SettingsSection = .general
     
     private init() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 780, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 1040, height: 720),
             styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
             backing: .buffered,
             defer: false
@@ -41,14 +43,16 @@ class SettingsWindowController: NSWindowController {
         guard let window = window else { return }
         
         window.title = "NotchKit Settings"
-        window.titlebarAppearsTransparent = false
-        window.titleVisibility = .visible
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
         window.toolbarStyle = .unified
         window.isMovableByWindowBackground = true
         // `contentMinSize` is the content-based minimum; AppKit derives the
         // frame minimum (which includes the title bar) from it. Setting
         // `minSize` as well would compare unlike frame/content values.
-        window.contentMinSize = NSSize(width: 760, height: 560)
+        window.contentMinSize = NSSize(width: 820, height: 600)
+        window.setFrameAutosaveName("NotchKitSettingsWindowFrame")
+        window.tabbingMode = .disallowed
         
         // Make it behave like a regular app window with proper Spaces support
         window.collectionBehavior = [.managed, .participatesInCycle, .fullScreenAuxiliary]
@@ -62,7 +66,10 @@ class SettingsWindowController: NSWindowController {
         window.identifier = NSUserInterfaceItemIdentifier("BoringNotchSettingsWindow")
         
         // Create the SwiftUI content
-        let settingsView = SettingsView(updaterController: updaterController)
+        let settingsView = SettingsView(
+            updaterController: updaterController,
+            initialSection: initialSection
+        )
         let hostingView = NSHostingView(rootView: settingsView)
         window.contentView = hostingView
         
@@ -70,7 +77,11 @@ class SettingsWindowController: NSWindowController {
         window.delegate = self
     }
     
-    func showWindow() {
+    func showWindow(section: SettingsSection? = nil) {
+        if let section {
+            initialSection = section
+            setupWindow()
+        }
         // Set app to regular mode first
         NSApp.setActivationPolicy(.regular)
         

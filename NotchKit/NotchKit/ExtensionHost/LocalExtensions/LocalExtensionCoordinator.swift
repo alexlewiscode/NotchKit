@@ -227,6 +227,30 @@ final class LocalExtensionCoordinator: ObservableObject {
         await refresh()
     }
 
+    func installMarketplace(
+        archiveURL: URL,
+        receipt: MarketplaceReleaseReceipt,
+        operation: ExtensionInstallOperation
+    ) async throws {
+        guard hasManagedLocationAccess else {
+            throw LocalExtensionManagedLocationError.accessRequired
+        }
+        _ = try await installer.install(ExtensionInstallRequest(
+            archiveURL: archiveURL,
+            operation: operation,
+            trustPolicy: .marketplace(receipt: receipt)
+        ))
+        await refresh()
+    }
+
+    func rollback(
+        _ id: ExtensionIdentity,
+        marketplaceReceipt: MarketplaceReleaseReceipt? = nil
+    ) async throws {
+        _ = try await installer.rollback(id: id, marketplaceReceipt: marketplaceReceipt)
+        await refresh()
+    }
+
     func uninstall(_ id: ExtensionIdentity) async throws {
         try await installer.uninstall(id: id)
         contributions.removeContributions(for: id)
@@ -243,6 +267,29 @@ final class LocalExtensionCoordinator: ObservableObject {
             try store.save(snapshot)
             refreshInventory()
             reconcilePublishedContributions()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func applyMarketplaceRevocations(_ revokedDigests: Set<String>) {
+        do {
+            var snapshot = try store.load()
+            for index in snapshot.records.indices where snapshot.records[index].origin == .marketplace {
+                let digest = snapshot.records[index].marketplaceReceipt?.archiveSHA256
+                if snapshot.records[index].marketplaceRevocationStatus != .revoked {
+                    snapshot.records[index].marketplaceRevocationStatus = digest.map {
+                        revokedDigests.contains($0) ? .revoked : .notRevoked
+                    } ?? .unknown
+                }
+            }
+            try store.save(snapshot)
+            refreshInventory()
+            if #available(macOS 26.0, *), let runtime = nativeRuntime as? LocalExtensionNativeRuntime {
+                runtime.reconcileInstalledExtensions()
+            } else {
+                reconcilePublishedContributions()
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -287,7 +334,13 @@ final class LocalExtensionCoordinator: ObservableObject {
         }
         do {
             let path = rootURL.appendingPathComponent(expected, isDirectory: true)
-            let package = try DefaultExtractedPackageValidator().validate(packageRootURL: path)
+            let context: ExtensionPackageValidationContext = record.origin == .marketplace
+                ? .marketplace
+                : .localDeveloper
+            let package = try DefaultExtractedPackageValidator().validate(
+                packageRootURL: path,
+                context: context
+            )
             guard package.manifest.id == record.id,
                   package.providerBundleIdentifier == record.providerBundleIdentifier,
                   Set(package.extensionBundleIdentifiers) == Set(record.extensionBundleIdentifiers),
@@ -339,7 +392,10 @@ final class LocalExtensionCoordinator: ObservableObject {
 
     private func reconcilePublishedContributions() {
         let valid = installed.filter {
-            $0.manifest != nil && $0.record.desiredEnabled && $0.isDiscovered
+            $0.manifest != nil
+                && $0.record.desiredEnabled
+                && $0.isDiscovered
+                && $0.record.marketplaceRevocationStatus != .revoked
         }
         let validIDs = Set(valid.map(\.id))
         for id in publishedIDs.subtracting(validIDs) {

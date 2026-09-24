@@ -10,6 +10,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct MusicSlotConfigurationView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Default(.musicControlSlots) private var musicControlSlots
     @ObservedObject private var musicManager = MusicManager.shared
     @State private var draggedSlot: MusicControlButton?
@@ -17,28 +18,30 @@ struct MusicSlotConfigurationView: View {
     private let fixedSlotCount: Int = 5
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            // Slot configuration (fixed 5)
+        VStack(alignment: .leading, spacing: 16) {
             slotConfigurationSection
 
-            // Reset button
-            HStack {
+            HStack(spacing: 8) {
+                Text("Changes are saved automatically.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
                 Spacer()
                 Button("Reset to Defaults") {
-                    withAnimation {
+                    withAnimation(reduceMotion ? nil : .default) {
                         musicControlSlots = MusicControlButton.defaultLayout
                     }
                 }
-                .buttonStyle(.borderless)
+                .accessibilityHint("Restores all five media control slots")
             }
         }
+        .padding(16)
         .onAppear {
             ensureSlotCapacity(fixedSlotCount)
         }
     }
 
     private var previewSection: some View {
-        HStack(alignment: .top, spacing: 12) {
+        HStack(alignment: .center, spacing: 12) {
             HStack(spacing: 6) {
                 ForEach(0..<fixedSlotCount, id: \.self) { index in
                     let slot = slotValue(at: index)
@@ -47,18 +50,16 @@ struct MusicSlotConfigurationView: View {
                             slotPreview(for: slot)
                                 .frame(maxWidth: 44)
                                 .onDrag {
-                                    // remember what's being dragged for UX
                                     DispatchQueue.main.async { draggedSlot = slot }
                                     return NSItemProvider(object: NSString(string: "slot:\(index)"))
                                 }
                                 .onDrop(of: [UTType.plainText.identifier], isTargeted: nil) { providers in
                                     let handled = handleDrop(providers, toIndex: index)
-                                    // clear drag state
                                     DispatchQueue.main.async { draggedSlot = nil }
                                     return handled
                                 }
+                                .accessibilityLabel("Slot \(index + 1), \(slot.label)")
                         } else {
-                            // empty slot: allow drops but do not allow dragging
                             slotPreview(for: slot)
                                 .frame(maxWidth: 44)
                                 .onDrop(of: [UTType.plainText.identifier], isTargeted: nil) { providers in
@@ -66,6 +67,7 @@ struct MusicSlotConfigurationView: View {
                                     DispatchQueue.main.async { draggedSlot = nil }
                                     return handled
                                 }
+                                .accessibilityLabel("Slot \(index + 1), empty")
                         }
                     }
                 }
@@ -74,7 +76,7 @@ struct MusicSlotConfigurationView: View {
             .background(Color(NSColor.controlBackgroundColor))
             .cornerRadius(8)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 5) {
                 ZStack {
                     RoundedRectangle(cornerRadius: 10)
                         .fill(Color(NSColor.controlBackgroundColor))
@@ -89,6 +91,7 @@ struct MusicSlotConfigurationView: View {
                 .onDrop(of: [UTType.plainText.identifier], isTargeted: nil) { providers in
                     return handleDropOnTrash(providers)
                 }
+                .accessibilityHidden(true)
 
                 Text("Clear slot")
                     .font(.caption2)
@@ -101,22 +104,29 @@ struct MusicSlotConfigurationView: View {
     }
 
     private var slotConfigurationSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Layout Preview")
-                    .font(.headline)
-                    .foregroundStyle(.secondary)
-                Spacer()
-                Text("Drag items in the preview to reorder or drop from the palette")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-            }
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Layout Preview")
+                .font(.subheadline.weight(.semibold))
             previewSection
 
             Divider()
 
+            VStack(spacing: 0) {
+                ForEach(0..<fixedSlotCount, id: \.self) { index in
+                    accessibleSlotRow(for: index)
+                    if index < fixedSlotCount - 1 {
+                        Divider().padding(.leading, 34)
+                    }
+                }
+            }
+            .background(Color(nsColor: .windowBackgroundColor).opacity(0.55), in: RoundedRectangle(cornerRadius: 8))
+
+            Divider()
+
             VStack(alignment: .leading, spacing: 6) {
-                Text("Drag a control onto a slot")
+                Text("Control Palette")
+                    .font(.subheadline.weight(.semibold))
+                Text("Click a control to fill the first empty slot, or drag it to a specific slot.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
 
@@ -142,12 +152,9 @@ struct MusicSlotConfigurationView: View {
                                     return NSItemProvider(object: NSString(string: "control:\(control.rawValue)"))
                                 }
                                 .onTapGesture {
-                                    if let idx = musicControlSlots.firstIndex(of: .none) {
-                                        updateSlot(control, at: idx)
-                                    } else {
-                                        withAnimation { updateSlot(control, at: 0) }
-                                    }
+                                    addControlFromPalette(control)
                                 }
+                                .accessibilityHidden(true)
 
                                 Text(control.label)
                                     .font(.caption2)
@@ -155,6 +162,13 @@ struct MusicSlotConfigurationView: View {
                                     .frame(width: 60)
                                     .multilineTextAlignment(.center)
                                     .lineLimit(2)
+                            }
+                            .accessibilityElement(children: .combine)
+                            .accessibilityLabel("Add \(control.label)")
+                            .accessibilityHint("Fills the first empty slot, or replaces slot one")
+                            .accessibilityAddTraits(.isButton)
+                            .accessibilityAction {
+                                addControlFromPalette(control)
                             }
                         }
                     }
@@ -165,45 +179,61 @@ struct MusicSlotConfigurationView: View {
         }
     }
 
-    private func slotConfigRow(for index: Int) -> some View {
+    private func accessibleSlotRow(for index: Int) -> some View {
         let currentSlot = slotValue(at: index)
 
-        return HStack(spacing: 12) {
+        return HStack(spacing: 10) {
             Text("\(index + 1)")
-                .font(.system(size: 14, weight: .medium, design: .monospaced))
+                .font(.body.monospacedDigit().weight(.medium))
                 .foregroundStyle(.secondary)
                 .frame(width: 20)
 
-            Group {
-                if currentSlot != .none {
-                    slotPreview(for: currentSlot)
-                        .frame(height: 32)
-                        .onDrag {
-                            DispatchQueue.main.async { draggedSlot = currentSlot }
-                            return NSItemProvider(object: NSString(string: "slot:\(index)"))
-                        }
-                        .onDrop(of: [UTType.plainText.identifier], isTargeted: nil) { providers in
-                            let handled = handleDrop(providers, toIndex: index)
-                            DispatchQueue.main.async { draggedSlot = nil }
-                            return handled
-                        }
-                } else {
-                    // empty slot: allow drops but not dragging
-                    slotPreview(for: currentSlot)
-                        .frame(height: 32)
-                        .onDrop(of: [UTType.plainText.identifier], isTargeted: nil) { providers in
-                            let handled = handleDrop(providers, toIndex: index)
-                            DispatchQueue.main.async { draggedSlot = nil }
-                            return handled
-                        }
+            Image(systemName: currentSlot == .none ? "square.dashed" : currentSlot.iconName)
+                .frame(width: 20)
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+
+            Picker("Slot \(index + 1)", selection: slotBinding(for: index)) {
+                ForEach([.none] + MusicControlButton.pickerOptions, id: \.self) { control in
+                    Label(control.label, systemImage: control == .none ? "square.dashed" : control.iconName)
+                        .tag(control)
                 }
             }
+            .labelsHidden()
+            .frame(maxWidth: 210)
 
             Spacer()
+
+            Button {
+                moveSlot(from: index, to: index - 1)
+            } label: {
+                Image(systemName: "arrow.left")
+            }
+            .disabled(index == 0)
+            .help("Move slot \(index + 1) left")
+            .accessibilityLabel("Move slot \(index + 1) left")
+
+            Button {
+                moveSlot(from: index, to: index + 1)
+            } label: {
+                Image(systemName: "arrow.right")
+            }
+            .disabled(index == fixedSlotCount - 1)
+            .help("Move slot \(index + 1) right")
+            .accessibilityLabel("Move slot \(index + 1) right")
+
+            Button {
+                updateSlot(.none, at: index)
+            } label: {
+                Image(systemName: "xmark")
+            }
+            .disabled(currentSlot == .none)
+            .help("Clear slot \(index + 1)")
+            .accessibilityLabel("Clear slot \(index + 1)")
         }
-        .padding(8)
-        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
-        .cornerRadius(6)
+        .buttonStyle(.borderless)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 8)
     }
 
     @ViewBuilder
@@ -253,8 +283,41 @@ struct MusicSlotConfigurationView: View {
     private func slotBinding(for index: Int) -> Binding<MusicControlButton> {
         Binding(
             get: { slotValue(at: index) },
-            set: { newValue in updateSlot(newValue, at: index) }
+            set: { newValue in assignControl(newValue, to: index) }
         )
+    }
+
+    private func moveSlot(from source: Int, to destination: Int) {
+        guard source != destination,
+              (0..<fixedSlotCount).contains(source),
+              (0..<fixedSlotCount).contains(destination) else { return }
+        withAnimation(reduceMotion ? nil : .default) {
+            var slots = musicControlSlots
+            slots.swapAt(source, destination)
+            musicControlSlots = slots
+        }
+    }
+
+    private func assignControl(_ control: MusicControlButton, to index: Int) {
+        var slots = musicControlSlots
+        if control != .none, let existing = slots.firstIndex(of: control), existing != index {
+            slots[existing] = .none
+        }
+        if index >= slots.count {
+            slots.append(contentsOf: Array(repeating: .none, count: index - slots.count + 1))
+        }
+        slots[index] = control
+        musicControlSlots = slots
+    }
+
+    private func addControlFromPalette(_ control: MusicControlButton) {
+        if let index = musicControlSlots.firstIndex(of: .none) {
+            updateSlot(control, at: index)
+        } else {
+            withAnimation(reduceMotion ? nil : .default) {
+                updateSlot(control, at: 0)
+            }
+        }
     }
 
     private func slotValue(at index: Int) -> MusicControlButton {

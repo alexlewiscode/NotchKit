@@ -24,15 +24,16 @@ struct OnboardingView: View {
     @State var step: OnboardingStep = .welcome
     let onFinish: () -> Void
     let onOpenSettings: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ZStack {
+            OnboardingBackground()
+
             switch step {
             case .welcome:
                 WelcomeView {
-                    withAnimation(.easeInOut(duration: 0.6)) {
-                        step = .cameraPermission
-                    }
+                    advance(to: .cameraPermission)
                 }
                 .transition(.opacity)
 
@@ -40,20 +41,16 @@ struct OnboardingView: View {
                 PermissionRequestView(
                     icon: Image(systemName: "camera.fill"),
                     title: "Enable Camera Access",
-                    description: "Boring Notch includes a mirror feature that lets you quickly check your appearance using your camera, right from the notch. Camera access is required only to show this live preview. You can turn the mirror feature on or off at any time in the app.",
+                    description: "NotchKit includes a mirror that lets you quickly check your appearance right from the notch. Camera access is used only to show this live preview, and you can turn the feature off at any time.",
                     privacyNote: "Your camera is never used without your consent, and nothing is recorded or stored.",
                     onAllow: {
                         Task {
                             await requestCameraPermission()
-                            withAnimation(.easeInOut(duration: 0.6)) {
-                                step = .calendarPermission
-                            }
+                            advance(to: .calendarPermission)
                         }
                     },
                     onSkip: {
-                        withAnimation(.easeInOut(duration: 0.6)) {
-                            step = .calendarPermission
-                        }
+                        advance(to: .calendarPermission)
                     }
                 )
                 .transition(.opacity)
@@ -62,64 +59,52 @@ struct OnboardingView: View {
                 PermissionRequestView(
                     icon: Image(systemName: "calendar"),
                     title: "Enable Calendar Access",
-                    description: "Boring Notch can show all your upcoming events in one place. Access to your calendar is needed to display your schedule.",
+                    description: "NotchKit can show your upcoming events in one place. Calendar access is needed to display your schedule.",
                     privacyNote: "Your calendar data is only used to show your events and is never shared.",
                     onAllow: {
                         Task {
-                                await requestCalendarPermission()
-                                withAnimation(.easeInOut(duration: 0.6)) {
-                                    step = .remindersPermission
-                                }
+                            await requestCalendarPermission()
+                            advance(to: .remindersPermission)
                         }
                     },
                     onSkip: {
-                            withAnimation(.easeInOut(duration: 0.6)) {
-                                step = .remindersPermission
-                            }
+                        advance(to: .remindersPermission)
                     }
                 )
                 .transition(.opacity)
 
-                case .remindersPermission:
-                    PermissionRequestView(
-                        icon: Image(systemName: "checklist"),
-                        title: "Enable Reminders Access",
-                        description: "Boring Notch can show your scheduled reminders alongside your calendar events. Access to Reminders is needed to display your reminders.",
-                        privacyNote: "Your reminders data is only used to show your reminders and is never shared.",
-                        onAllow: {
-                            Task {
-                                await requestRemindersPermission()
-                                withAnimation(.easeInOut(duration: 0.6)) {
-                                    step = .accessibilityPermission
-                                }
-                            }
-                        },
-                        onSkip: {
-                            withAnimation(.easeInOut(duration: 0.6)) {
-                                step = .accessibilityPermission
-                            }
+            case .remindersPermission:
+                PermissionRequestView(
+                    icon: Image(systemName: "checklist"),
+                    title: "Enable Reminders Access",
+                    description: "NotchKit can show scheduled reminders alongside calendar events. Reminders access is needed to display them.",
+                    privacyNote: "Your reminders data is only used to show your reminders and is never shared.",
+                    onAllow: {
+                        Task {
+                            await requestRemindersPermission()
+                            advance(to: .accessibilityPermission)
                         }
-                    )
-                    .transition(.opacity)
+                    },
+                    onSkip: {
+                        advance(to: .accessibilityPermission)
+                    }
+                )
+                .transition(.opacity)
                 
             case .accessibilityPermission:
                 PermissionRequestView(
                     icon: Image(systemName: "hand.raised.fill"),
                     title: "Enable Accessibility Access",
-                    description: "Accessibility access is required to replace system notifications with the Boring Notch HUD. This allows the app to intercept media and brightness events to display custom HUD overlays.",
+                    description: "Accessibility access lets NotchKit replace system media and brightness notifications with custom HUD overlays.",
                     privacyNote: "Accessibility access is used only to improve media and brightness notifications. No data is collected or shared.",
                     onAllow: {
                         Task {
                             await requestAccessibilityPermission()
-                            withAnimation(.easeInOut(duration: 0.6)) {
-                                step = .musicPermission
-                            }
+                            advance(to: .musicPermission)
                         }
                     },
                     onSkip: {
-                        withAnimation(.easeInOut(duration: 0.6)) {
-                            step = .musicPermission
-                        }
+                        advance(to: .musicPermission)
                     }
                 )
                 .transition(.opacity)
@@ -127,10 +112,8 @@ struct OnboardingView: View {
             case .musicPermission:
                 MusicControllerSelectionView(
                     onContinue: {
-                        withAnimation(.easeInOut(duration: 0.6)) {
-                            BoringViewCoordinator.shared.firstLaunch = false
-                            step = .finished
-                        }
+                        BoringViewCoordinator.shared.firstLaunch = false
+                        advance(to: .finished)
                     }
                 )
                 .transition(.opacity)
@@ -140,6 +123,13 @@ struct OnboardingView: View {
             }
         }
         .frame(width: 400, height: 600)
+        .tint(.effectiveAccent)
+    }
+
+    private func advance(to nextStep: OnboardingStep) {
+        withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.35)) {
+            step = nextStep
+        }
     }
 
     // MARK: - Permission Request Logic
@@ -161,5 +151,34 @@ struct OnboardingView: View {
         await MainActor.run {
             HostPermissionService.shared.requestHUDInputAccess()
         }
+    }
+}
+
+struct OnboardingBackground: View {
+    var body: some View {
+        ZStack {
+            VisualEffectView(material: .underWindowBackground, blendingMode: .behindWindow)
+                .ignoresSafeArea()
+
+            LinearGradient(
+                colors: [Color.effectiveAccent.opacity(0.12), .clear, Color.black.opacity(0.08)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .ignoresSafeArea()
+        }
+        .accessibilityHidden(true)
+    }
+}
+
+struct OnboardingBrandMark: View {
+    var size: CGFloat = 54
+
+    var body: some View {
+        Image("NotchKitBrand")
+            .resizable()
+            .scaledToFit()
+            .frame(width: size, height: size)
+            .accessibilityLabel("NotchKit")
     }
 }

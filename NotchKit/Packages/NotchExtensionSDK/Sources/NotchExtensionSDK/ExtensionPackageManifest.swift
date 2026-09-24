@@ -268,17 +268,44 @@ public enum ExtensionPackageManifestValidationError: Error, Equatable, Localized
     }
 }
 
+/// Selects the package origin permitted by an installation policy. A manifest's
+/// source is a declaration; callers must still verify the source-specific trust
+/// evidence before installing executable code.
+public enum ExtensionPackageValidationContext: Sendable {
+    case localDeveloper
+    case marketplace
+
+    var expectedSource: ExtensionSource {
+        switch self {
+        case .localDeveloper: .localDeveloper
+        case .marketplace: .marketplace
+        }
+    }
+}
+
 /// Pure validation for package metadata. It performs no discovery, file I/O,
 /// framework loading, or wire-target lookup.
 public enum ExtensionPackageManifestValidator {
+    /// Validates a user-selected local-developer package for backwards
+    /// compatibility with the Phase 2 installer.
     public static func validate(_ manifest: ExtensionPackageManifest) throws {
+        try validate(manifest, context: .localDeveloper)
+    }
+
+    /// Validates the common package contract plus the expected distribution
+    /// declaration. This does not establish marketplace approval or signing
+    /// policy; those checks belong to the installation trust policy.
+    public static func validate(
+        _ manifest: ExtensionPackageManifest,
+        context: ExtensionPackageValidationContext
+    ) throws {
         guard manifest.schemaVersion == ExtensionPackageManifest.currentSchemaVersion else {
             throw ExtensionPackageManifestValidationError.unsupportedSchemaVersion(manifest.schemaVersion)
         }
         guard manifest.metadata.artifactKind == manifest.artifact.kind else {
             throw ExtensionPackageManifestValidationError.artifactKindMismatch
         }
-        guard manifest.metadata.source == .localDeveloper else {
+        guard manifest.metadata.source == context.expectedSource else {
             throw ExtensionPackageManifestValidationError.invalidSource(manifest.metadata.source)
         }
 

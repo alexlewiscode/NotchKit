@@ -40,6 +40,9 @@ final class NotchKitRuntime {
     let presentation: PresentationCoordinator
     let host: ExtensionHost
     let localExtensions: LocalExtensionCoordinator
+    /// Tier C catalog state. It performs no network activity until the user
+    /// explicitly refreshes Discover on macOS 26 or later.
+    let marketplace: MarketplaceCatalogCoordinator
 
     #if !NOTCHKIT_CORE_ONLY
     /// The app-wide battery service shared by the Battery extension and the
@@ -80,10 +83,14 @@ final class NotchKitRuntime {
                 permissions: HostPermissionService.shared
             )
         }
-        localExtensions = LocalExtensionCoordinator(
+        let localExtensionCoordinator = LocalExtensionCoordinator(
             manager: manager,
             contributions: contributions
         )
+        localExtensions = localExtensionCoordinator
+        marketplace = MarketplaceCatalogCoordinator { [weak localExtensionCoordinator] revokedDigests in
+            localExtensionCoordinator?.applyMarketplaceRevocations(revokedDigests)
+        }
         // Async activation/deactivation completes after `bootstrap`, so refresh
         // presentation whenever a phase changes.
         host.onStateChanged = { [weak presentation] in

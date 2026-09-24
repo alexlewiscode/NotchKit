@@ -124,7 +124,10 @@
           "items": { "$ref": "#/$defs/entryPoint" }
         },
         "defaultEnabled": { "type": "boolean" },
-        "source": { "const": "localDeveloper" }
+        "source": {
+          "enum": ["localDeveloper", "marketplace"],
+          "description": "The installer validates this declaration against its distribution policy. It is not proof of marketplace approval."
+        }
       }
     },
     "protocolVersionRange": {

@@ -87,11 +87,13 @@ public struct BatteryView: View {
 
 /// The press feedback used by the battery button.
 public struct ScaleButtonStyle: ButtonStyle {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     public init() {}
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.95 : 1.0)
-            .animation(.easeInOut(duration: 0.2), value: configuration.isPressed)
+            .scaleEffect(configuration.isPressed && !reduceMotion ? 0.95 : 1.0)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: configuration.isPressed)
     }
 }
 
@@ -186,6 +188,7 @@ public struct BatteryMenuView: View {
 /// notification. Popover state is owned by the caller, so the view has no host
 /// dependency.
 public struct BoringBatteryView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var batteryWidth: CGFloat
     public var isCharging: Bool
     public var isInLowPowerMode: Bool
@@ -225,7 +228,7 @@ public struct BoringBatteryView: View {
 
     public var body: some View {
         Button(action: {
-            withAnimation { showPopupMenu.toggle() }
+            withAnimation(reduceMotion ? nil : .default) { showPopupMenu.toggle() }
         }) {
             HStack {
                 if BatterySettings.showBatteryPercentage {
@@ -244,6 +247,9 @@ public struct BoringBatteryView: View {
             }
         }
         .buttonStyle(ScaleButtonStyle())
+        .accessibilityLabel("Battery, \(Int(levelBattery)) percent")
+        .accessibilityValue(batteryAccessibilityStatus)
+        .accessibilityHint("Shows battery details")
         .popover(isPresented: $showPopupMenu, arrowEdge: .bottom) {
             BatteryMenuView(
                 isPluggedIn: isPluggedIn,
@@ -279,8 +285,15 @@ public struct BoringBatteryView: View {
         hideTask = Task {
             try? await Task.sleep(for: .milliseconds(350))
             guard !Task.isCancelled else { return }
-            await MainActor.run { withAnimation { showPopupMenu = false } }
+            await MainActor.run { withAnimation(reduceMotion ? nil : .default) { showPopupMenu = false } }
         }
+    }
+
+    private var batteryAccessibilityStatus: String {
+        if isCharging { return "Charging" }
+        if isPluggedIn { return "Plugged in" }
+        if isInLowPowerMode { return "Low Power Mode" }
+        return "On battery power"
     }
 }
 
@@ -336,35 +349,55 @@ public struct BatterySettingsView: View {
     public init() {}
 
     public var body: some View {
-        Form {
-            Section {
-                toggle(
-                    "Show battery indicator",
-                    get: { BatterySettings.showBatteryIndicator },
-                    set: { BatterySettings.showBatteryIndicator = $0 }
-                )
-                toggle(
-                    "Show power status notifications",
-                    get: { BatterySettings.showPowerStatusNotifications },
-                    set: { BatterySettings.showPowerStatusNotifications = $0 }
-                )
-            } header: {
-                Text("General")
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                BatterySettingsCard(
+                    "Display",
+                    systemImage: "battery.100percent",
+                    description: "Choose when battery status appears around the notch."
+                ) {
+                    BatterySettingsRow("Show battery indicator", detail: "Keeps the current charge visible in the open notch.") {
+                        toggle(
+                            "Show battery indicator",
+                            get: { BatterySettings.showBatteryIndicator },
+                            set: { BatterySettings.showBatteryIndicator = $0 }
+                        )
+                    }
+                    Divider().padding(.leading, 16)
+                    BatterySettingsRow("Power status notifications", detail: "Shows changes such as charging, unplugged, and fully charged.") {
+                        toggle(
+                            "Show power status notifications",
+                            get: { BatterySettings.showPowerStatusNotifications },
+                            set: { BatterySettings.showPowerStatusNotifications = $0 }
+                        )
+                    }
+                }
+
+                BatterySettingsCard(
+                    "Battery Information",
+                    systemImage: "info.circle",
+                    description: "Control the details included with the battery indicator."
+                ) {
+                    BatterySettingsRow("Show battery percentage") {
+                        toggle(
+                            "Show battery percentage",
+                            get: { BatterySettings.showBatteryPercentage },
+                            set: { BatterySettings.showBatteryPercentage = $0 }
+                        )
+                    }
+                    Divider().padding(.leading, 16)
+                    BatterySettingsRow("Show power status icons") {
+                        toggle(
+                            "Show power status icons",
+                            get: { BatterySettings.showPowerStatusIcons },
+                            set: { BatterySettings.showPowerStatusIcons = $0 }
+                        )
+                    }
+                }
             }
-            Section {
-                toggle(
-                    "Show battery percentage",
-                    get: { BatterySettings.showBatteryPercentage },
-                    set: { BatterySettings.showBatteryPercentage = $0 }
-                )
-                toggle(
-                    "Show power status icons",
-                    get: { BatterySettings.showPowerStatusIcons },
-                    set: { BatterySettings.showPowerStatusIcons = $0 }
-                )
-            } header: {
-                Text("Battery Information")
-            }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(24)
+            .frame(maxWidth: .infinity)
         }
     }
 
@@ -374,5 +407,94 @@ public struct BatterySettingsView: View {
         set: @escaping (Bool) -> Void
     ) -> some View {
         Toggle(title, isOn: Binding(get: get, set: set))
+            .labelsHidden()
+            .accessibilityLabel(title)
+    }
+}
+
+private struct BatterySettingsCard<Content: View>: View {
+    let title: String
+    let systemImage: String
+    let description: String
+    let content: Content
+
+    init(
+        _ title: String,
+        systemImage: String,
+        description: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self.description = description
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(.tint)
+                    .frame(width: 24)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.headline)
+                    Text(description)
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+            .padding(16)
+            Divider()
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(.separator.opacity(0.7), lineWidth: 1)
+        }
+    }
+}
+
+private struct BatterySettingsRow<Control: View>: View {
+    let title: String
+    var detail: String? = nil
+    let control: Control
+
+    init(_ title: String, detail: String? = nil, @ViewBuilder control: () -> Control) {
+        self.title = title
+        self.detail = detail
+        self.control = control()
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) {
+                label
+                Spacer(minLength: 24)
+                control
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                label
+                control
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private var label: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+            if let detail {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 }

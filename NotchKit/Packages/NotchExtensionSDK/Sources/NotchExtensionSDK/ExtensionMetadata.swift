@@ -14,6 +14,10 @@ public enum ExtensionSource: String, Hashable, Codable, Sendable {
     case firstParty
     /// An unpackaged extension installed directly by a local developer.
     case localDeveloper
+    /// A separately distributed package approved by the NotchKit Hub. The
+    /// declaration alone is not proof of Hub approval; installation requires a
+    /// separately verified Hub release receipt.
+    case marketplace
 }
 
 /// The complete, runtime-free description of an extension.

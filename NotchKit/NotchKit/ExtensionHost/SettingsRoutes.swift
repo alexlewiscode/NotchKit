@@ -15,12 +15,13 @@ import NotchExtensionRuntime
 import NotchExtensionSDK
 import SwiftUI
 
-/// The six sections of the Settings sidebar.
+/// The sections of the Settings sidebar.
 enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
     case general
     case appearance
     case interaction
     case extensions
+    case marketplace
     case shortcuts
     case about
 
@@ -28,12 +29,13 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .general: return "General"
-        case .appearance: return "Appearance"
-        case .interaction: return "Interaction"
-        case .extensions: return "Extensions"
-        case .shortcuts: return "Shortcuts"
-        case .about: return "About"
+        case .general: return String(localized: "General")
+        case .appearance: return String(localized: "Appearance")
+        case .interaction: return String(localized: "Interaction")
+        case .extensions: return String(localized: "Extensions")
+        case .marketplace: return String(localized: "Marketplace")
+        case .shortcuts: return String(localized: "Shortcuts")
+        case .about: return String(localized: "About")
         }
     }
 
@@ -43,6 +45,7 @@ enum SettingsSection: String, CaseIterable, Identifiable, Hashable {
         case .appearance: return "eye"
         case .interaction: return "hand.tap"
         case .extensions: return "puzzlepiece.extension"
+        case .marketplace: return "storefront"
         case .shortcuts: return "keyboard"
         case .about: return "info.circle"
         }
@@ -58,9 +61,16 @@ enum ShortcutsOwner: String, CaseIterable, Identifiable, Hashable {
 
     var title: String {
         switch self {
-        case .notch: return "Notch"
-        case .media: return "Media"
+        case .notch: return String(localized: "Notch")
+        case .media: return String(localized: "Media")
         }
+    }
+
+    /// Places a deep-linked shortcut group first without changing the stable
+    /// declaration order used by ordinary sidebar navigation.
+    static func ordered(focused owner: ShortcutsOwner?) -> [ShortcutsOwner] {
+        guard let owner else { return allCases }
+        return [owner] + allCases.filter { $0 != owner }
     }
 }
 
@@ -96,5 +106,17 @@ extension EnvironmentValues {
     var openShortcuts: OpenShortcutsAction {
         get { self[OpenShortcutsActionKey.self] }
         set { self[OpenShortcutsActionKey.self] = newValue }
+    }
+}
+
+enum SettingsBehavior {
+    static func gestureSensitivityLabel(for value: CGFloat) -> String {
+        if value <= 100 { return String(localized: "High") }
+        if value <= 200 { return String(localized: "Medium") }
+        return String(localized: "Low")
+    }
+
+    static func gesturesMustRemainEnabled(openNotchOnHover: Bool) -> Bool {
+        !openNotchOnHover
     }
 }

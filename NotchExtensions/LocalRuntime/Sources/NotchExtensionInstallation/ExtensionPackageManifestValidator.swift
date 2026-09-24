@@ -12,7 +12,10 @@ public enum StrictExtensionPackageManifestError: Error, Equatable {
 public struct StrictExtensionPackageManifestValidator: Sendable {
     public init() {}
 
-    public func decodeAndValidate(data: Data) throws -> ExtensionPackageManifest {
+    public func decodeAndValidate(
+        data: Data,
+        context: ExtensionPackageValidationContext = .localDeveloper
+    ) throws -> ExtensionPackageManifest {
         guard let root = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw StrictExtensionPackageManifestError.invalidJSON
         }
@@ -35,7 +38,7 @@ public struct StrictExtensionPackageManifestValidator: Sendable {
         let manifest: ExtensionPackageManifest
         do { manifest = try JSONDecoder().decode(ExtensionPackageManifest.self, from: data) }
         catch { throw StrictExtensionPackageManifestError.decodeFailed }
-        try NotchExtensionSDK.ExtensionPackageManifestValidator.validate(manifest)
+        try NotchExtensionSDK.ExtensionPackageManifestValidator.validate(manifest, context: context)
         return manifest
     }
 

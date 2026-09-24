@@ -42,6 +42,10 @@ final class LocalExtensionNativeRuntime {
         await start()
     }
 
+    func reconcileInstalledExtensions() {
+        reconcile()
+    }
+
     func view(
         for entryPoint: ExtensionPackageEntryPoint,
         manifest: ExtensionPackageManifest,
@@ -77,7 +81,9 @@ final class LocalExtensionNativeRuntime {
     private func reconcile() {
         guard let coordinator else { return }
         let candidates = coordinator.installed.compactMap { item -> NativeExtensionInstallCandidate? in
-            guard let manifest = item.manifest else { return nil }
+            guard let manifest = item.manifest,
+                  item.record.marketplaceRevocationStatus != .revoked
+            else { return nil }
             return NativeExtensionInstallCandidate(record: item.record, manifest: manifest)
         }
         let identities = monitor.identities

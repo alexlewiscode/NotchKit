@@ -4,10 +4,16 @@ import Security
 public struct CodeSignatureInfo: Equatable, Sendable {
     public let teamIdentifier: String
     public let designatedRequirement: String
+    public let isDeveloperID: Bool
 
-    public init(teamIdentifier: String, designatedRequirement: String) {
+    public init(
+        teamIdentifier: String,
+        designatedRequirement: String,
+        isDeveloperID: Bool = true
+    ) {
         self.teamIdentifier = teamIdentifier
         self.designatedRequirement = designatedRequirement
+        self.isDeveloperID = isDeveloperID
     }
 }
 
@@ -78,6 +84,24 @@ public struct SecurityCodeSignatureValidator: CodeSignatureValidating, Sendable 
         guard textStatus == errSecSuccess, let requirementText else {
             throw CodeSignatureValidationError.missingDesignatedRequirement(textStatus)
         }
-        return CodeSignatureInfo(teamIdentifier: teamID, designatedRequirement: requirementText as String)
+        var developerIDRequirement: SecRequirement?
+        let developerIDStatus = SecRequirementCreateWithString(
+            "anchor apple generic and certificate leaf[field.1.2.840.113635.100.6.1.13] exists" as CFString,
+            [],
+            &developerIDRequirement
+        )
+        let isDeveloperID = developerIDStatus == errSecSuccess
+            && developerIDRequirement.map {
+                SecStaticCodeCheckValidity(
+                    staticCode,
+                    SecCSFlags(rawValue: kSecCSStrictValidate | kSecCSCheckAllArchitectures),
+                    $0
+                ) == errSecSuccess
+            } == true
+        return CodeSignatureInfo(
+            teamIdentifier: teamID,
+            designatedRequirement: requirementText as String,
+            isDeveloperID: isDeveloperID
+        )
     }
 }

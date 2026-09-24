@@ -2,41 +2,39 @@
 //  SettingsView.swift
 //  NotchKit
 //
-//  Six-section Settings window: General, Appearance, Interaction, Extensions,
-//  Shortcuts, and About. Feature configuration lives under Extensions via the
+//  Settings window for General, Appearance, Interaction, Extensions,
+//  Marketplace, Shortcuts, and About. Feature configuration lives under Extensions via the
 //  authoritative settings catalog; `Advanced` no longer exists.
 //
 
 import Defaults
 import KeyboardShortcuts
 import LaunchAtLogin
+import NotchExtensionSDK
 import Sparkle
 import SwiftUI
 
 struct SettingsView: View {
-    @State private var selectedSection: SettingsSection? = .general
+    @State private var selectedSection: SettingsSection?
     @State private var shortcutsOwner: ShortcutsOwner? = nil
+    @State private var marketplaceSelection: ExtensionIdentity?
     @State private var accentColorUpdateTrigger = UUID()
 
     let updaterController: SPUStandardUpdaterController?
 
-    init(updaterController: SPUStandardUpdaterController? = nil) {
+    init(
+        updaterController: SPUStandardUpdaterController? = nil,
+        initialSection: SettingsSection = .general
+    ) {
         self.updaterController = updaterController
+        _selectedSection = State(initialValue: initialSection)
     }
 
     var body: some View {
         NavigationSplitView {
-            List(selection: sidebarSelection) {
-                ForEach(SettingsSection.allCases) { section in
-                    NavigationLink(value: section) {
-                        Label(section.title, systemImage: section.systemImage)
-                    }
-                }
-            }
-            .listStyle(SidebarListStyle())
-            .tint(.effectiveAccent)
+            SettingsSidebar(selection: sidebarSelection)
             .toolbar(removing: .sidebarToggle)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
+            .navigationSplitViewColumnWidth(min: 210, ideal: 226, max: 250)
         } detail: {
             Group {
                 switch selectedSection ?? .general {
@@ -47,10 +45,18 @@ struct SettingsView: View {
                 case .interaction:
                     InteractionSettings()
                 case .extensions:
-                    ExtensionsSettingsView { owner in
-                        shortcutsOwner = owner
-                        selectedSection = .shortcuts
-                    }
+                    ExtensionsSettingsView(
+                        onOpenShortcuts: { owner in
+                            shortcutsOwner = owner
+                            selectedSection = .shortcuts
+                        },
+                        onOpenMarketplace: { extensionID in
+                            marketplaceSelection = extensionID
+                            selectedSection = .marketplace
+                        }
+                    )
+                case .marketplace:
+                    MarketplaceSettingsHost(initialSelection: marketplaceSelection)
                 case .shortcuts:
                     ShortcutsSettings(owner: shortcutsOwner)
                 case .about:
@@ -98,10 +104,265 @@ struct SettingsView: View {
                 if newValue == .shortcuts {
                     shortcutsOwner = nil
                 }
+                if newValue == .marketplace {
+                    marketplaceSelection = nil
+                }
                 selectedSection = newValue
             }
         )
     }
+}
+
+private struct SettingsSidebar: View {
+    @Binding var selection: SettingsSection?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 14) {
+                Image("NotchKitBrand")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 48, height: 48)
+                    .accessibilityHidden(true)
+
+                Text("NotchKit")
+                    .font(.title2.bold())
+            }
+            .padding(.horizontal, 18)
+            .padding(.top, 20)
+            .padding(.bottom, 28)
+
+            VStack(spacing: 6) {
+                ForEach(SettingsSection.allCases) { section in
+                    Button {
+                        withAnimation(reduceMotion ? nil : .easeOut(duration: 0.16)) {
+                            selection = section
+                        }
+                    } label: {
+                        HStack(spacing: 13) {
+                            Image(systemName: section.systemImage)
+                                .font(.body.weight(.medium))
+                                .frame(width: 24)
+                            Text(section.title)
+                                .font(.body.weight(.medium))
+                            Spacer(minLength: 0)
+                        }
+                        .foregroundStyle(selection == section ? Color.white : Color.primary)
+                        .padding(.horizontal, 14)
+                        .frame(height: 42)
+                        .background {
+                            if selection == section {
+                                RoundedRectangle(cornerRadius: 9, style: .continuous)
+                                    .fill(Color.effectiveAccent.gradient)
+                            }
+                        }
+                        .contentShape(RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("settings.sidebar.\(section.rawValue)")
+                    .accessibilityValue(selection == section ? "Selected" : "")
+                }
+            }
+            .padding(.horizontal, 12)
+
+            Spacer(minLength: 24)
+
+            Divider()
+                .padding(.horizontal, 18)
+
+            Text("Make more of your notch.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 18)
+        }
+        .background(.ultraThinMaterial)
+        .accessibilityIdentifier("settings.sidebar")
+    }
+}
+
+private struct MarketplaceSettingsHost: View {
+    let initialSelection: ExtensionIdentity?
+    @ObservedObject private var localExtensions = NotchKitRuntime.shared.localExtensions
+    @ObservedObject private var marketplace = NotchKitRuntime.shared.marketplace
+    @State private var operationError: String?
+
+    private var installedVersions: [ExtensionIdentity: ExtensionVersion] {
+        Dictionary(uniqueKeysWithValues: localExtensions.installed.map {
+            ($0.id, $0.record.extensionVersion)
+        })
+    }
+
+    private var environment: MarketplaceHostEnvironment {
+        let rawVersion = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String
+        let hostVersion = rawVersion.flatMap(ExtensionVersion.init)
+            ?? ExtensionVersion(major: 1, minor: 0, patch: 0)
+        return .current(hostVersion: hostVersion)
+    }
+
+    var body: some View {
+        MarketplaceSettingsView(
+            marketplace: marketplace,
+            installedVersions: installedVersions,
+            environment: environment,
+            initialSelection: initialSelection,
+            onInstall: install
+        )
+        .navigationTitle("Marketplace")
+        .alert("Marketplace Error", isPresented: Binding(
+            get: { operationError != nil },
+            set: { if !$0 { operationError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(operationError ?? "Unknown error")
+        }
+    }
+
+    private func install(_ entry: MarketplaceCatalogEntry) {
+        guard authorizeManagedLocationIfNeeded() else { return }
+        guard #available(macOS 26.0, *) else { return }
+        Task {
+            do {
+                try await marketplace.install(
+                    entry,
+                    environment: environment,
+                    localExtensions: localExtensions
+                )
+            } catch {
+                operationError = error.localizedDescription
+            }
+        }
+    }
+
+    private func authorizeManagedLocationIfNeeded() -> Bool {
+        guard !localExtensions.hasManagedLocationAccess else { return true }
+        let panel = NSOpenPanel()
+        panel.title = "Allow Extension Installation"
+        panel.message = "Choose this LocalExtensions folder so NotchKit can install signed extensions."
+        panel.prompt = "Allow"
+        panel.directoryURL = localExtensions.rootURL
+        panel.allowsMultipleSelection = false
+        panel.canChooseFiles = false
+        panel.canChooseDirectories = true
+        panel.canCreateDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url else { return false }
+        do {
+            try localExtensions.authorizeManagedLocation(at: url)
+            return true
+        } catch {
+            operationError = error.localizedDescription
+            return false
+        }
+    }
+}
+
+// MARK: - Shared shell
+
+private struct SettingsPage<Content: View>: View {
+    let title: String
+    let subtitle: String
+    let content: Content
+
+    init(_ title: String, subtitle: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.subtitle = subtitle
+        self.content = content()
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text(title)
+                        .font(.largeTitle.bold())
+                    Text(subtitle)
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityElement(children: .combine)
+
+                content
+            }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(.horizontal, 32)
+            .padding(.top, 30)
+            .padding(.bottom, 40)
+            .frame(maxWidth: .infinity)
+        }
+        .background(SettingsPalette.canvas.ignoresSafeArea())
+        .navigationTitle(title)
+    }
+}
+
+private struct SettingsCard<Content: View>: View {
+    let title: String
+    let subtitle: String?
+    let systemImage: String
+    let content: Content
+
+    init(
+        _ title: String,
+        subtitle: String? = nil,
+        systemImage: String,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.systemImage = systemImage
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.title3.weight(.semibold))
+                    .foregroundStyle(Color.effectiveAccent)
+                    .frame(width: 28, height: 28)
+                    .background(Color.effectiveAccent.opacity(0.12), in: RoundedRectangle(cornerRadius: 8))
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(title).font(.headline)
+                    if let subtitle {
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
+            .padding(18)
+
+            Divider()
+            VStack(alignment: .leading, spacing: 14) {
+                content
+            }
+            .padding(18)
+        }
+        .background(SettingsPalette.card, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .stroke(SettingsPalette.border, lineWidth: 1)
+        }
+        .accessibilityElement(children: .contain)
+    }
+}
+
+private enum SettingsPalette {
+    static let canvas = Color(
+        nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                ? NSColor(srgbRed: 0.075, green: 0.082, blue: 0.09, alpha: 1)
+                : NSColor(srgbRed: 0.945, green: 0.958, blue: 0.97, alpha: 1)
+        })
+    static let card = Color(
+        nsColor: NSColor(name: nil) { appearance in
+            appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                ? NSColor(srgbRed: 0.115, green: 0.122, blue: 0.13, alpha: 1)
+                : NSColor(srgbRed: 0.99, green: 0.995, blue: 1, alpha: 1)
+        })
+    static let border = Color.primary.opacity(0.11)
 }
 
 // MARK: - General
@@ -117,8 +378,15 @@ struct GeneralSettings: View {
     @Default(.automaticallySwitchDisplay) var automaticallySwitchDisplay
 
     var body: some View {
-        Form {
-            Section {
+        SettingsPage(
+            String(localized: "General"),
+            subtitle: String(localized: "Choose how NotchKit starts and where it appears.")
+        ) {
+            SettingsCard(
+                String(localized: "System features"),
+                subtitle: String(localized: "Startup, menu bar, and display preferences."),
+                systemImage: "macwindow"
+            ) {
                 Toggle(isOn: Binding(
                     get: { Defaults[.menubarIcon] },
                     set: { Defaults[.menubarIcon] = $0 }
@@ -134,6 +402,7 @@ struct GeneralSettings: View {
                     NotificationCenter.default.post(
                         name: Notification.Name.showOnAllDisplaysChanged, object: nil)
                 }
+                Divider()
                 Picker("Preferred display", selection: $coordinator.preferredScreenUUID) {
                     ForEach(screens, id: \.uuid) { screen in
                         Text(screen.name).tag(screen.uuid as String?)
@@ -148,6 +417,7 @@ struct GeneralSettings: View {
                 .disabled(showOnAllDisplays)
                 .accessibilityLabel("Preferred display")
 
+                Divider()
                 Defaults.Toggle(key: .automaticallySwitchDisplay) {
                     Text("Automatically switch displays")
                 }
@@ -156,8 +426,6 @@ struct GeneralSettings: View {
                         name: Notification.Name.automaticallySwitchDisplayChanged, object: nil)
                 }
                 .disabled(showOnAllDisplays)
-            } header: {
-                Text("System features")
             }
         }
         .toolbar {
@@ -166,8 +434,7 @@ struct GeneralSettings: View {
             }
             .controlSize(.extraLarge)
         }
-        .accentColor(.effectiveAccent)
-        .navigationTitle("General")
+        .tint(.effectiveAccent)
     }
 }
 
@@ -183,8 +450,15 @@ struct InteractionSettings: View {
     @Default(.enableGestures) var enableGestures
 
     var body: some View {
-        Form {
-            Section {
+        SettingsPage(
+            String(localized: "Interaction"),
+            subtitle: String(localized: "Tune how the notch responds to your pointer and gestures.")
+        ) {
+            SettingsCard(
+                String(localized: "Notch behavior"),
+                subtitle: String(localized: "Control automatic opening and feedback."),
+                systemImage: "hand.point.up.left"
+            ) {
                 Defaults.Toggle(key: .openNotchOnHover) {
                     Text("Open notch on hover")
                 }
@@ -196,27 +470,26 @@ struct InteractionSettings: View {
                     Text("Extend hover area")
                 }
                 if openNotchOnHover {
-                    Slider(value: $minimumHoverDuration, in: 0...1, step: 0.1) {
+                    VStack(spacing: 8) {
                         HStack {
                             Text("Hover delay")
                             Spacer()
                             Text("\(minimumHoverDuration, specifier: "%.1f")s")
                                 .foregroundStyle(.secondary)
                         }
+                        Slider(value: $minimumHoverDuration, in: 0...1, step: 0.1)
+                            .labelsHidden()
                     }
                     .onChange(of: minimumHoverDuration) {
                         NotificationCenter.default.post(
                             name: Notification.Name.notchHeightChanged, object: nil)
                     }
                 }
-            } header: {
-                Text("Notch behavior")
             }
 
             gestureControls
         }
-        .accentColor(.effectiveAccent)
-        .navigationTitle("Interaction")
+        .tint(.effectiveAccent)
         .onChange(of: openNotchOnHover) {
             if !openNotchOnHover {
                 enableGestures = true
@@ -226,7 +499,11 @@ struct InteractionSettings: View {
 
     @ViewBuilder
     private var gestureControls: some View {
-        Section {
+        SettingsCard(
+            String(localized: "Gesture control"),
+            subtitle: String(localized: "Use two-finger gestures directly over the notch."),
+            systemImage: "hand.draw"
+        ) {
             Defaults.Toggle(key: .enableGestures) {
                 Text("Enable gestures")
             }
@@ -237,28 +514,26 @@ struct InteractionSettings: View {
                 Defaults.Toggle(key: .closeGestureEnabled) {
                     Text("Close gesture")
                 }
-                Slider(value: $gestureSensitivity, in: 100...300, step: 100) {
+                VStack(spacing: 8) {
                     HStack {
                         Text("Gesture sensitivity")
                         Spacer()
                         Text(
-                            Defaults[.gestureSensitivity] == 100
-                                ? "High" : Defaults[.gestureSensitivity] == 200 ? "Medium" : "Low"
+                            SettingsBehavior.gestureSensitivityLabel(for: gestureSensitivity)
                         )
                         .foregroundStyle(.secondary)
                     }
+                    Slider(value: $gestureSensitivity, in: 100...300, step: 100)
+                        .labelsHidden()
                 }
             }
-        } header: {
             HStack {
-                Text("Gesture control")
                 customBadge(text: "Beta")
+                Spacer()
             }
-        } footer: {
             Text(
                 "Two-finger swipe up on notch to close, two-finger swipe down on notch to open when **Open notch on hover** option is disabled"
             )
-            .multilineTextAlignment(.trailing)
             .foregroundStyle(.secondary)
             .font(.caption)
         }
@@ -282,8 +557,6 @@ struct AppearanceSettings: View {
 
     @State private var customAccentColor: Color = .accentColor
     @State private var selectedPresetColor: PresetAccentColor? = nil
-    let icons: [String] = ["logo2"]
-    @State private var selectedIcon: String = "logo2"
 
     enum PresetAccentColor: String, CaseIterable, Identifiable {
         case blue = "Blue"
@@ -312,17 +585,22 @@ struct AppearanceSettings: View {
     }
 
     var body: some View {
-        Form {
-            Section {
+        SettingsPage(
+            String(localized: "Appearance"),
+            subtitle: String(localized: "Shape the notch and make NotchKit feel at home on your Mac.")
+        ) {
+            SettingsCard(String(localized: "Interface"), systemImage: "rectangle.3.group") {
                 Toggle("Always show tabs", isOn: $coordinator.alwaysShowTabs)
                 Defaults.Toggle(key: .settingsIconInNotch) {
                     Text("Show settings icon in notch")
                 }
-            } header: {
-                Text("General")
             }
 
-            Section {
+            SettingsCard(
+                String(localized: "Notch sizing"),
+                subtitle: String(localized: "Set the closed height for each display type."),
+                systemImage: "arrow.up.and.down"
+            ) {
                 Picker(
                     selection: $notchHeightMode,
                     label: Text("Notch height on notch displays")
@@ -369,35 +647,29 @@ struct AppearanceSettings: View {
                     }
                     .onChange(of: nonNotchHeight) {
                         NotificationCenter.default.post(
-                            name: Notification.Name.notchHeightChanged, object: nil)
+                        name: Notification.Name.notchHeightChanged, object: nil)
                     }
                 }
-            } header: {
-                Text("Notch sizing")
             }
 
-            Section {
+            SettingsCard(String(localized: "Animations"), systemImage: "sparkles") {
                 Defaults.Toggle(key: .showNotHumanFace) {
                     Text("Show cool face animation while inactive")
                 }
-            } header: {
-                Text("Animations")
             }
 
             accentColorSection
 
-            Section {
+            SettingsCard(String(localized: "Window appearance"), systemImage: "macwindow") {
                 Defaults.Toggle(key: .enableShadow) {
                     Text("Enable window shadow")
                 }
                 Defaults.Toggle(key: .cornerRadiusScaling) {
                     Text("Corner radius scaling")
                 }
-            } header: {
-                Text("Window Appearance")
             }
 
-            Section {
+            SettingsCard(String(localized: "Window behavior"), systemImage: "lock.shield") {
                 Defaults.Toggle(key: .hideTitleBar) {
                     Text("Hide title bar")
                 }
@@ -407,14 +679,10 @@ struct AppearanceSettings: View {
                 Defaults.Toggle(key: .hideFromScreenRecording) {
                     Text("Hide from screen recording")
                 }
-            } header: {
-                Text("Window Behavior")
             }
 
-            appIconSection
         }
-        .accentColor(.effectiveAccent)
-        .navigationTitle("Appearance")
+        .tint(.effectiveAccent)
         .onAppear {
             loadCustomColor()
         }
@@ -422,7 +690,11 @@ struct AppearanceSettings: View {
 
     @ViewBuilder
     private var accentColorSection: some View {
-        Section {
+        SettingsCard(
+            String(localized: "Accent color"),
+            subtitle: String(localized: "Use the macOS accent or choose a NotchKit color."),
+            systemImage: "paintpalette"
+        ) {
             VStack(alignment: .leading, spacing: 16) {
                 Picker("Accent color", selection: $useCustomAccentColor) {
                     Text("System").tag(false)
@@ -435,7 +707,8 @@ struct AppearanceSettings: View {
                         AccentCircleButton(
                             isSelected: true,
                             color: .accentColor,
-                            isSystemDefault: true
+                            isSystemDefault: true,
+                            accessibilityName: "System accent color"
                         ) {}
                         VStack(alignment: .leading, spacing: 2) {
                             Text("Using System Accent").font(.body)
@@ -456,7 +729,7 @@ struct AppearanceSettings: View {
                                 AccentCircleButton(
                                     isSelected: selectedPresetColor == preset,
                                     color: preset.color,
-                                    isMulticolor: false
+                                    accessibilityName: "\(preset.rawValue) accent color"
                                 ) {
                                     selectedPresetColor = preset
                                     customAccentColor = preset.color
@@ -499,56 +772,6 @@ struct AppearanceSettings: View {
                 }
             }
             .padding(.vertical, 4)
-        } header: {
-            Text("Accent color")
-        } footer: {
-            Text("Choose between your system accent color or customize it with your own selection.")
-                .multilineTextAlignment(.trailing)
-                .foregroundStyle(.secondary)
-                .font(.caption)
-        }
-    }
-
-    @ViewBuilder
-    private var appIconSection: some View {
-        Section {
-            HStack {
-                ForEach(icons, id: \.self) { icon in
-                    Spacer()
-                    VStack {
-                        Image(icon)
-                            .resizable()
-                            .frame(width: 80, height: 80)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20, style: .circular)
-                                    .strokeBorder(
-                                        icon == selectedIcon ? Color.effectiveAccent : .clear,
-                                        lineWidth: 2.5
-                                    )
-                            )
-                        Text("Default")
-                            .fontWeight(.medium)
-                            .font(.caption)
-                            .foregroundStyle(icon == selectedIcon ? .white : .secondary)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 3)
-                            .background(
-                                Capsule().fill(icon == selectedIcon ? Color.effectiveAccent : .clear)
-                            )
-                    }
-                    .onTapGesture {
-                        withAnimation { selectedIcon = icon }
-                        NSApp.applicationIconImage = NSImage(named: icon)
-                    }
-                    Spacer()
-                }
-            }
-            .disabled(true)
-        } header: {
-            HStack {
-                Text("App icon")
-                customBadge(text: "Coming soon")
-            }
         }
     }
 
@@ -596,71 +819,93 @@ struct AppearanceSettings: View {
 struct About: View {
     @State private var showBuildNumber: Bool = false
     let updaterController: SPUStandardUpdaterController
-    @Environment(\.openWindow) var openWindow
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     var body: some View {
-        VStack {
-            Form {
-                Section {
-                    HStack {
-                        Text("Release name")
-                        Spacer()
-                        Text(Defaults[.releaseName])
-                            .foregroundStyle(.secondary)
-                    }
+        SettingsPage(
+            String(localized: "About"),
+            subtitle: String(localized: "NotchKit makes the space around your notch more useful.")
+        ) {
+            HStack(spacing: 18) {
+                Image("NotchKitBrand")
+                    .resizable()
+                    .scaledToFit()
+                    .frame(width: 72, height: 72)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text("NotchKit")
+                        .font(.title.bold())
+                    Text("Make more of your notch.")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .padding(.horizontal, 4)
+
+            SettingsCard(String(localized: "Version info"), systemImage: "info.circle") {
+                HStack {
+                    Text("Release name")
+                    Spacer()
+                    Text(Defaults[.releaseName])
+                        .foregroundStyle(.secondary)
+                }
+                Divider()
+                Button {
+                    withAnimation(reduceMotion ? nil : .default) { showBuildNumber.toggle() }
+                } label: {
                     HStack {
                         Text("Version")
                         Spacer()
-                        if showBuildNumber {
-                            Text("(\(Bundle.main.buildVersionNumber ?? ""))")
-                                .foregroundStyle(.secondary)
-                        }
-                        Text(Bundle.main.releaseVersionNumber ?? "unkown")
+                        Text(versionDescription)
                             .foregroundStyle(.secondary)
                     }
-                    .onTapGesture {
-                        withAnimation { showBuildNumber.toggle() }
-                    }
-                } header: {
-                    Text("Version info")
+                    .contentShape(Rectangle())
                 }
-
-                UpdaterSettingsView(updater: updaterController.updater)
-
-                HStack(spacing: 30) {
-                    Spacer(minLength: 0)
-                    Button {
-                        if let url = URL(string: "https://github.com/TheBoredTeam/boring.notch") {
-                            NSWorkspace.shared.open(url)
-                        }
-                    } label: {
-                        VStack(spacing: 5) {
-                            Image("Github")
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
-                                .frame(width: 18)
-                            Text("GitHub")
-                        }
-                        .contentShape(Rectangle())
-                    }
-                    Spacer(minLength: 0)
-                }
-                .buttonStyle(PlainButtonStyle())
+                .buttonStyle(.plain)
+                .accessibilityHint("Shows or hides the build number")
             }
-            VStack(spacing: 0) {
-                Divider()
-                Text("Made with 🫶🏻 by not so boring not.people")
+
+            SettingsCard(
+                String(localized: "Software updates"),
+                subtitle: String(localized: "Update delivery is not configured for this build."),
+                systemImage: "arrow.triangle.2.circlepath"
+            ) {
+                Text("Automatic updates are disabled until a NotchKit update feed and signing key are configured.")
+                    .font(.callout)
                     .foregroundStyle(.secondary)
-                    .padding(.top, 5)
-                    .padding(.bottom, 7)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 10)
+                Toggle("Automatically check for updates", isOn: .constant(false))
+                    .disabled(true)
+                Toggle("Automatically download updates", isOn: .constant(false))
+                    .disabled(true)
             }
-            .frame(maxWidth: .infinity, alignment: .center)
+
+            SettingsCard(String(localized: "Community"), systemImage: "person.3") {
+                Button {
+                    if let url = URL(string: "https://github.com/TheBoredTeam/boring.notch") {
+                        NSWorkspace.shared.open(url)
+                    }
+                } label: {
+                    Label("Open NotchKit on GitHub", systemImage: "arrow.up.right.square")
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens GitHub in your default browser")
+            }
+
+            Text("Made with care by not so boring not.people")
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity)
         }
         .toolbar {
             CheckForUpdatesView(updater: updaterController.updater)
         }
-        .navigationTitle("About")
+    }
+
+    private var versionDescription: String {
+        let version = Bundle.main.releaseVersionNumber ?? "unknown"
+        guard showBuildNumber else { return version }
+        return "\(version) (\(Bundle.main.buildVersionNumber ?? "unknown"))"
     }
 }
 
@@ -669,12 +914,22 @@ struct About: View {
 struct ShortcutsSettings: View {
     /// When set, the owner's group is scrolled into view and marked.
     let owner: ShortcutsOwner?
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         ScrollViewReader { proxy in
-            Form {
-                ForEach(orderedOwners, id: \.self) { sectionOwner in
-                    Section {
+            SettingsPage(
+                String(localized: "Shortcuts"),
+                subtitle: String(localized: "Keep your most-used NotchKit actions within reach.")
+            ) {
+                ForEach(ShortcutsOwner.ordered(focused: owner), id: \.self) { sectionOwner in
+                    SettingsCard(
+                        sectionOwner.title,
+                        subtitle: sectionOwner == .media
+                            ? String(localized: "Control media without opening the notch.")
+                            : String(localized: "Open or close NotchKit from anywhere."),
+                        systemImage: sectionOwner == .media ? "music.note" : "rectangle.topthird.inset.filled"
+                    ) {
                         switch sectionOwner {
                         case .media:
                             KeyboardShortcuts.Recorder(
@@ -683,17 +938,14 @@ struct ShortcutsSettings: View {
                             KeyboardShortcuts.Recorder(
                                 "Toggle Notch Open:", name: .toggleNotchOpen)
                         }
-                    } header: {
-                        HStack {
-                            Text(sectionOwner.title)
-                            if owner == sectionOwner {
+                        if owner == sectionOwner {
+                            HStack {
                                 customBadge(text: "Focused")
+                                Spacer()
                             }
                         }
-                    } footer: {
                         if sectionOwner == .media {
                             Text("Sneak Peek shows the media title and artist under the notch for a few seconds.")
-                                .multilineTextAlignment(.trailing)
                                 .foregroundStyle(.secondary)
                                 .font(.caption)
                         }
@@ -704,19 +956,15 @@ struct ShortcutsSettings: View {
             .onAppear {
                 guard let owner else { return }
                 DispatchQueue.main.async {
-                    withAnimation { proxy.scrollTo(owner, anchor: .top) }
+                    withAnimation(reduceMotion ? nil : .default) {
+                        proxy.scrollTo(owner, anchor: .top)
+                    }
                 }
             }
         }
-        .accentColor(.effectiveAccent)
-        .navigationTitle("Shortcuts")
+        .tint(.effectiveAccent)
     }
 
-    /// Focused owner first, then the remaining owners in declaration order.
-    private var orderedOwners: [ShortcutsOwner] {
-        guard let owner else { return ShortcutsOwner.allCases }
-        return [owner] + ShortcutsOwner.allCases.filter { $0 != owner }
-    }
 }
 
 // MARK: - Components
@@ -726,6 +974,7 @@ struct AccentCircleButton: View {
     let color: Color
     var isSystemDefault: Bool = false
     var isMulticolor: Bool = false
+    var accessibilityName: String = "Accent color"
     let action: () -> Void
 
     var body: some View {
@@ -744,6 +993,8 @@ struct AccentCircleButton: View {
         }
         .buttonStyle(.plain)
         .help(isSystemDefault ? "Use your macOS system accent color" : "")
+        .accessibilityLabel(accessibilityName)
+        .accessibilityValue(isSelected ? "Selected" : "")
     }
 }
 
@@ -786,7 +1037,7 @@ func comingSoonTag() -> some View {
         .clipShape(.capsule)
 }
 
-func customBadge(text: String) -> some View {
+func customBadge(text: LocalizedStringKey) -> some View {
     Text(text)
         .foregroundStyle(.secondary)
         .font(.footnote.bold())

@@ -24,7 +24,11 @@ func makeArchive(at url: URL, entries: [(String, Data)], compression: Compressio
     }
 }
 
-func metadata(id: String = "com.example.feature.timer", version: String = "1.2.3") throws -> ExtensionMetadata {
+func metadata(
+    id: String = "com.example.feature.timer",
+    version: String = "1.2.3",
+    source: ExtensionSource = .localDeveloper
+) throws -> ExtensionMetadata {
     ExtensionMetadata(
         id: try ExtensionIdentity(id),
         displayName: "Example",
@@ -36,12 +40,16 @@ func metadata(id: String = "com.example.feature.timer", version: String = "1.2.3
         artifactKind: .appExtension,
         entryPoints: [ExtensionEntryPoint(id: "example.main", kind: .openDestination)],
         defaultEnabled: false,
-        source: .localDeveloper
+        source: source
     )
 }
 
-func packageManifest(id: String = "com.example.feature.timer", version: String = "1.2.3") throws -> ExtensionPackageManifest {
-    let metadata = try metadata(id: id, version: version)
+func packageManifest(
+    id: String = "com.example.feature.timer",
+    version: String = "1.2.3",
+    source: ExtensionSource = .localDeveloper
+) throws -> ExtensionPackageManifest {
+    let metadata = try metadata(id: id, version: version, source: source)
     return ExtensionPackageManifest(
         metadata: metadata,
         artifact: ExtensionPackageArtifact(
@@ -65,8 +73,13 @@ func packageManifest(id: String = "com.example.feature.timer", version: String =
     )
 }
 
-func makeExtractedPackage(at root: URL, embeddedData: Data? = nil) throws -> Data {
-    let manifest = try JSONEncoder().encode(packageManifest())
+func makeExtractedPackage(
+    at root: URL,
+    embeddedData: Data? = nil,
+    version: String = "1.2.3",
+    source: ExtensionSource = .localDeveloper
+) throws -> Data {
+    let manifest = try JSONEncoder().encode(packageManifest(version: version, source: source))
     let provider = root.appendingPathComponent("payload/Provider.app/Contents", isDirectory: true)
     let extensionURL = provider.appendingPathComponent("Extensions/TimerExtension.appex/Contents", isDirectory: true)
     let resource = provider.appendingPathComponent("Resources/NotchKitExtension", isDirectory: true)
@@ -76,11 +89,11 @@ func makeExtractedPackage(at root: URL, embeddedData: Data? = nil) throws -> Dat
     try (embeddedData ?? manifest).write(to: resource.appendingPathComponent("manifest.json"))
     try writePlist([
         "CFBundleIdentifier": "com.example.provider",
-        "CFBundleShortVersionString": "1.2.3",
+        "CFBundleShortVersionString": version,
     ], to: provider.appendingPathComponent("Info.plist"))
     try writePlist([
         "CFBundleIdentifier": "com.example.provider.TimerExtension",
-        "CFBundleShortVersionString": "1.2.3",
+        "CFBundleShortVersionString": version,
         "EXAppExtensionAttributes": [
             "EXExtensionPointIdentifier": "com.example.extension-point",
         ],
@@ -96,10 +109,15 @@ func writePlist(_ value: [String: Any], to url: URL) throws {
 struct FakeSignatureValidator: CodeSignatureValidating {
     let team: String
     var extensionTeam: String?
+    var isDeveloperID = true
 
     func validateCode(at url: URL) throws -> CodeSignatureInfo {
         let selected = url.pathExtension == "appex" ? (extensionTeam ?? team) : team
-        return CodeSignatureInfo(teamIdentifier: selected, designatedRequirement: "anchor \(selected) \(url.lastPathComponent)")
+        return CodeSignatureInfo(
+            teamIdentifier: selected,
+            designatedRequirement: "anchor \(selected) \(url.lastPathComponent)",
+            isDeveloperID: isDeveloperID
+        )
     }
 }
 

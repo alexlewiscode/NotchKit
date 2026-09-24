@@ -34,6 +34,24 @@ public enum ExtractedPackageError: Error, Equatable {
 
 public protocol ExtractedPackageValidating: Sendable {
     func validate(packageRootURL: URL) throws -> ValidatedPackage
+    func validate(
+        packageRootURL: URL,
+        context: ExtensionPackageValidationContext
+    ) throws -> ValidatedPackage
+}
+
+public extension ExtractedPackageValidating {
+    func validate(
+        packageRootURL: URL,
+        context: ExtensionPackageValidationContext
+    ) throws -> ValidatedPackage {
+        let package = try validate(packageRootURL: packageRootURL)
+        try NotchExtensionSDK.ExtensionPackageManifestValidator.validate(
+            package.packageManifest,
+            context: context
+        )
+        return package
+    }
 }
 
 public struct DefaultExtractedPackageValidator: ExtractedPackageValidating, Sendable {
@@ -44,12 +62,19 @@ public struct DefaultExtractedPackageValidator: ExtractedPackageValidating, Send
     }
 
     public func validate(packageRootURL: URL) throws -> ValidatedPackage {
+        try validate(packageRootURL: packageRootURL, context: .localDeveloper)
+    }
+
+    public func validate(
+        packageRootURL: URL,
+        context: ExtensionPackageValidationContext
+    ) throws -> ValidatedPackage {
         let manifestURL = packageRootURL.appendingPathComponent("manifest.json")
         guard let manifestData = try? Data(contentsOf: manifestURL) else {
             throw ExtractedPackageError.missingManifest
         }
         let packageManifest: ExtensionPackageManifest
-        do { packageManifest = try manifestValidator.decodeAndValidate(data: manifestData) }
+        do { packageManifest = try manifestValidator.decodeAndValidate(data: manifestData, context: context) }
         catch { throw ExtractedPackageError.invalidManifest }
         guard packageManifest.artifact.kind == .appExtension,
               let artifact = packageManifest.artifact.appExtension

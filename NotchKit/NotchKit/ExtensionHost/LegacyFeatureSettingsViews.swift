@@ -16,6 +16,126 @@ import EventKit
 import NotchExtensionRuntime
 import SwiftUI
 
+// MARK: - Settings layout
+
+private struct FeatureSettingsPage<Content: View>: View {
+    let content: Content
+
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 18) {
+                content
+            }
+            .frame(maxWidth: 760, alignment: .leading)
+            .padding(24)
+            .frame(maxWidth: .infinity)
+        }
+    }
+}
+
+private struct FeatureSettingsCard<Content: View>: View {
+    let title: String
+    let systemImage: String
+    var description: String? = nil
+    let content: Content
+
+    init(
+        _ title: String,
+        systemImage: String,
+        description: String? = nil,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.title = title
+        self.systemImage = systemImage
+        self.description = description
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(alignment: .top, spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.system(size: 18, weight: .medium))
+                    .foregroundStyle(Color.effectiveAccent)
+                    .frame(width: 24)
+                    .accessibilityHidden(true)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title).font(.headline)
+                    if let description {
+                        Text(description)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+                }
+            }
+            .padding(16)
+
+            Divider()
+            content
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Color(nsColor: .controlBackgroundColor), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        .overlay {
+            RoundedRectangle(cornerRadius: 12, style: .continuous)
+                .stroke(Color(nsColor: .separatorColor).opacity(0.7), lineWidth: 1)
+        }
+    }
+}
+
+private struct FeatureSettingsRow<Control: View>: View {
+    let title: String
+    var detail: String? = nil
+    let control: Control
+
+    init(_ title: String, detail: String? = nil, @ViewBuilder control: () -> Control) {
+        self.title = title
+        self.detail = detail
+        self.control = control()
+    }
+
+    var body: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 16) {
+                label
+                Spacer(minLength: 24)
+                control
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                label
+                control
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+    }
+
+    private var label: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+            if let detail {
+                Text(detail)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
+    }
+}
+
+private extension View {
+    func featureRowDivider() -> some View {
+        overlay(alignment: .bottom) {
+            Divider().padding(.leading, 16)
+        }
+    }
+}
+
 // MARK: - Calendar & Reminders
 
 struct CalendarSettingsPage: View {
@@ -27,30 +147,27 @@ struct CalendarSettingsPage: View {
     @Default(.showFullEventTitles) var showFullEventTitles
 
     var body: some View {
-        Form {
-            Defaults.Toggle(key: .hideCompletedReminders) {
-                Text("Hide completed reminders")
-            }
-            Defaults.Toggle(key: .hideAllDayEvents) {
-                Text("Hide all-day events")
-            }
-            Defaults.Toggle(key: .autoScrollToNextEvent) {
-                Text("Auto-scroll to next event")
-            }
-            Defaults.Toggle(key: .showFullEventTitles) {
-                Text("Always show full event titles")
+        FeatureSettingsPage {
+            FeatureSettingsCard("Display", systemImage: "calendar.badge.clock") {
+                FeatureSettingsRow("Hide completed reminders") {
+                    Defaults.Toggle("Hide completed reminders", key: .hideCompletedReminders).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Hide all-day events") {
+                    Defaults.Toggle("Hide all-day events", key: .hideAllDayEvents).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Auto-scroll to next event") {
+                    Defaults.Toggle("Auto-scroll to next event", key: .autoScrollToNextEvent).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Always show full event titles") {
+                    Defaults.Toggle("Always show full event titles", key: .showFullEventTitles).labelsHidden()
+                }
             }
 
-            Section {
+            FeatureSettingsCard("Calendars", systemImage: "calendar") {
                 calendarListSection
-            } header: {
-                Text("Calendars")
             }
-
-            Section {
+            FeatureSettingsCard("Reminders", systemImage: "checklist") {
                 reminderListSection
-            } header: {
-                Text("Reminders")
             }
         }
         .accentColor(.effectiveAccent)
@@ -114,27 +231,28 @@ struct CalendarSettingsPage: View {
                 }
             }
         }
-        .padding(.vertical, 4)
+        .padding(16)
     }
 
     @ViewBuilder
     private func listContent(_ calendars: [CalendarModel], emptyMessage: String) -> some View {
         if data.isLoading && calendars.isEmpty {
-            ProgressView().controlSize(.small)
+            ProgressView().controlSize(.small).padding(16)
         } else if calendars.isEmpty {
             Text(emptyMessage)
                 .foregroundStyle(.secondary)
+                .padding(16)
         } else {
             ForEach(calendars, id: \.id) { calendar in
-                Toggle(
-                    isOn: Binding(
+                FeatureSettingsRow(calendar.title) {
+                    Toggle(calendar.title, isOn: Binding(
                         get: { data.isSelected(calendar) },
                         set: { data.setSelected(calendar, isSelected: $0) }
-                    )
-                ) {
-                    Text(calendar.title)
+                    ))
+                    .labelsHidden()
+                    .tint(lighterColor(from: calendar.color))
                 }
-                .accentColor(lighterColor(from: calendar.color))
+                .featureRowDivider()
             }
         }
     }
@@ -154,13 +272,17 @@ struct ShelfSettingsPage: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                Defaults.Toggle(key: .openShelfByDefault) {
-                    Text("Open shelf by default if items are present")
-                }
-                Defaults.Toggle(key: .expandedDragDetection) {
-                    Text("Expanded drag detection area")
+        FeatureSettingsPage {
+            FeatureSettingsCard(
+                "Shelf Behavior",
+                systemImage: "tray.full",
+                description: "Items remain on the Shelf when the extension is turned off."
+            ) {
+                FeatureSettingsRow("Open shelf by default", detail: "Opens automatically when items are present.") {
+                    Defaults.Toggle("Open shelf by default", key: .openShelfByDefault).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Expanded drag detection", detail: "Uses a larger drop target around the notch.") {
+                    Defaults.Toggle("Expanded drag detection", key: .expandedDragDetection).labelsHidden()
                 }
                 .onChange(of: expandedDragDetection) {
                     NotificationCenter.default.post(
@@ -168,42 +290,46 @@ struct ShelfSettingsPage: View {
                         object: nil
                     )
                 }
-                Defaults.Toggle(key: .copyOnDrag) {
-                    Text("Copy items on drag")
+                .featureRowDivider()
+                FeatureSettingsRow("Copy items on drag") {
+                    Defaults.Toggle("Copy items on drag", key: .copyOnDrag).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Remove after dragging") {
+                    Defaults.Toggle("Remove after dragging", key: .autoRemoveShelfItems).labelsHidden()
                 }
-                Defaults.Toggle(key: .autoRemoveShelfItems) {
-                    Text("Remove from shelf after dragging")
-                }
-            } header: {
-                Text("General")
-            } footer: {
-                Text("Use the switch on the Extensions page to turn the Shelf on or off. Items already on the Shelf are kept while it is off.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
 
-            Section {
-                Picker("Quick Share Service", selection: $quickShareProvider) {
-                    ForEach(shareData.providersIncludingSelected(id: quickShareProvider), id: \.id) { provider in
-                        providerLabel(provider)
-                            .tag(provider.id)
-                    }
-                }
-                .pickerStyle(.menu)
-
-                if let selectedProvider {
-                    HStack {
-                        providerIcon(selectedProvider)
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text("Currently selected: \(selectedProvider.id)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text("Files dropped on the shelf will be shared via this service")
-                                .font(.caption2)
-                                .foregroundColor(.secondary)
+            FeatureSettingsCard(
+                "Quick Share",
+                systemImage: "square.and.arrow.up",
+                description: "Choose the service used for files selected from or dropped onto the Shelf."
+            ) {
+                FeatureSettingsRow("Sharing service") {
+                    Picker("Sharing service", selection: $quickShareProvider) {
+                        ForEach(shareData.providersIncludingSelected(id: quickShareProvider), id: \.id) { provider in
+                            providerLabel(provider)
+                                .tag(provider.id)
                         }
                     }
-                    .padding(.vertical, 4)
+                    .labelsHidden()
+                    .pickerStyle(.menu)
+                    .frame(minWidth: 180)
+                }
+                .featureRowDivider()
+
+                if let selectedProvider {
+                    HStack(spacing: 10) {
+                        providerIcon(selectedProvider)
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(selectedProvider.id).font(.subheadline.weight(.medium))
+                            Text("Files dropped on the shelf will be shared via this service")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .padding(16)
+                    .accessibilityElement(children: .combine)
+                    .accessibilityLabel("Current Quick Share service: \(selectedProvider.id)")
                 }
 
                 if shareData.isLoading {
@@ -212,18 +338,13 @@ struct ShelfSettingsPage: View {
                         Text("Discovering available services…")
                             .font(.caption)
                             .foregroundStyle(.secondary)
-                    }
+                    }.padding(16)
                 } else if shareData.didLoad && shareData.providers.isEmpty {
                     Text("No sharing services were discovered.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
+                        .padding(16)
                 }
-            } header: {
-                Text("Quick Share")
-            } footer: {
-                Text("Choose which service to use when sharing files from the shelf. Click the shelf button to select files, or drag files onto it to share immediately.")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
             }
         }
         .accentColor(.effectiveAccent)
@@ -264,6 +385,7 @@ struct ShelfSettingsPage: View {
 
 struct MediaSettingsPage: View {
     @Environment(\.openShortcuts) private var openShortcuts
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @Default(.waitInterval) var waitInterval
     @Default(.mediaController) var mediaController
@@ -286,121 +408,127 @@ struct MediaSettingsPage: View {
     @State private var speed: CGFloat = 1.0
 
     var body: some View {
-        Form {
-            Section {
-                Picker("Music Source", selection: $mediaController) {
-                    ForEach(availableMediaControllers) { controller in
-                        Text(controller.rawValue).tag(controller)
+        FeatureSettingsPage {
+            FeatureSettingsCard("Media Source", systemImage: "music.note") {
+                FeatureSettingsRow("Music source") {
+                    Picker("Music source", selection: $mediaController) {
+                        ForEach(availableMediaControllers) { controller in
+                            Text(controller.rawValue).tag(controller)
+                        }
                     }
+                    .labelsHidden()
+                    .frame(minWidth: 180)
                 }
                 .onChange(of: mediaController) { _, _ in
                     NotificationCenter.default.post(
                         name: Notification.Name.mediaControllerChanged,
                         object: nil
                     )
-                }
-            } header: {
-                Text("Media Source")
-            } footer: {
+                }.featureRowDivider()
                 if MusicManager.shared.isNowPlayingDeprecated {
-                    HStack {
-                        Text("YouTube Music requires this third-party app to be installed: ")
-                            .foregroundStyle(.secondary)
-                            .font(.caption)
+                    HStack(spacing: 4) {
+                        Text("YouTube Music requires Pear Desktop.")
                         Link(
-                            "https://github.com/pear-devs/pear-desktop",
+                            "Learn more",
                             destination: URL(string: "https://github.com/pear-devs/pear-desktop")!
                         )
-                        .font(.caption)
-                        .foregroundColor(.blue)
                     }
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(16)
                 } else {
                     Text("'Now Playing' was the only option on previous versions and works with all media apps.")
                         .foregroundStyle(.secondary)
                         .font(.caption)
+                        .padding(16)
                 }
             }
 
-            Section {
-                Toggle(
-                    "Show music live activity",
-                    isOn: $coordinator.musicLiveActivityEnabled.animation()
-                )
-                Toggle("Show sneak peek on playback changes", isOn: $enableSneakPeek)
-                Picker("Sneak Peek Style", selection: $sneakPeekStyles) {
-                    ForEach(SneakPeekStyle.allCases) { style in
-                        Text(style.rawValue).tag(style)
-                    }
-                }
-                Stepper(value: $waitInterval, in: 0...10, step: 1) {
-                    HStack {
-                        Text("Media inactivity timeout")
-                        Spacer()
-                        Text("\(Defaults[.waitInterval], specifier: "%.0f") seconds")
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Picker(
-                    selection: $hideNotchOption,
-                    label:
-                        HStack {
-                            Text("Full screen behavior")
-                            customBadge(text: "Beta")
+            FeatureSettingsCard("Playback", systemImage: "play.circle", description: "Control when and how media appears around the notch.") {
+                FeatureSettingsRow("Show music live activity") {
+                    Toggle("Show music live activity", isOn: reduceMotion
+                        ? $coordinator.musicLiveActivityEnabled
+                        : $coordinator.musicLiveActivityEnabled.animation())
+                        .labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Show sneak peek", detail: "Appears when playback changes.") {
+                    Toggle("Show sneak peek", isOn: $enableSneakPeek).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Sneak Peek style") {
+                    Picker("Sneak Peek style", selection: $sneakPeekStyles) {
+                        ForEach(SneakPeekStyle.allCases) { style in
+                            Text(style.rawValue).tag(style)
                         }
-                ) {
-                    Text("Hide for all apps").tag(HideNotchOption.always)
-                    Text("Hide for media app only").tag(HideNotchOption.nowPlayingOnly)
-                    Text("Never hide").tag(HideNotchOption.never)
-                }
-            } header: {
-                Text("Media playback live activity")
-            }
-
-            Section {
-                Defaults.Toggle(key: .coloredSpectrogram) {
-                    Text("Colored spectrogram")
-                }
-                Defaults.Toggle("Player tinting", key: .playerColorTinting)
-                Defaults.Toggle(key: .lightingEffect) {
-                    Text("Enable blur effect behind album art")
-                }
-                Picker("Slider color", selection: $sliderColor) {
-                    ForEach(SliderColorEnum.allCases, id: \.self) { option in
-                        Text(option.rawValue)
                     }
+                    .labelsHidden()
+                    .frame(minWidth: 150)
                 }
-            } header: {
-                Text("Appearance")
-            }
-
-            Section {
-                MusicSlotConfigurationView()
-                Defaults.Toggle(key: .enableLyrics) {
-                    HStack {
-                        Text("Show lyrics below artist name")
+                .featureRowDivider()
+                FeatureSettingsRow("Inactivity timeout", detail: waitIntervalDescription) {
+                    Stepper("Inactivity timeout", value: $waitInterval, in: 0...10, step: 1)
+                        .labelsHidden()
+                        .accessibilityValue(waitIntervalDescription)
+                }.featureRowDivider()
+                FeatureSettingsRow("Full screen behavior") {
+                    HStack(spacing: 8) {
                         customBadge(text: "Beta")
+                        Picker("Full screen behavior", selection: $hideNotchOption) {
+                            Text("Hide for all apps").tag(HideNotchOption.always)
+                            Text("Hide for media app only").tag(HideNotchOption.nowPlayingOnly)
+                            Text("Never hide").tag(HideNotchOption.never)
+                        }
+                        .labelsHidden()
                     }
                 }
-            } header: {
-                Text("Media controls")
-            } footer: {
-                Text("Customize which controls appear in the music player. Volume expands when active.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            }
+
+            FeatureSettingsCard("Appearance", systemImage: "paintpalette") {
+                FeatureSettingsRow("Colored spectrogram") {
+                    Defaults.Toggle("Colored spectrogram", key: .coloredSpectrogram).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Player tinting") {
+                    Defaults.Toggle("Player tinting", key: .playerColorTinting).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Album art blur") {
+                    Defaults.Toggle("Album art blur", key: .lightingEffect).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Slider color") {
+                    Picker("Slider color", selection: $sliderColor) {
+                        ForEach(SliderColorEnum.allCases, id: \.self) { option in
+                            Text(option.rawValue)
+                        }
+                    }
+                    .labelsHidden()
+                }
+            }
+
+            FeatureSettingsCard("Media Controls", systemImage: "slider.horizontal.3", description: "Choose and arrange the five controls shown in the player. Volume expands when active.") {
+                MusicSlotConfigurationView()
+                Divider()
+                FeatureSettingsRow("Show lyrics below artist name") {
+                    HStack(spacing: 8) {
+                        customBadge(text: "Beta")
+                        Defaults.Toggle("Show lyrics below artist name", key: .enableLyrics).labelsHidden()
+                    }
+                }
             }
 
             visualizerSection
 
-            Section {
+            FeatureSettingsCard("Keyboard", systemImage: "keyboard", description: "Configure the media shortcut in the central Shortcuts page.") {
                 Button {
                     openShortcuts(.media)
                 } label: {
-                    Label("Keyboard Shortcuts", systemImage: "keyboard")
+                    HStack {
+                        Text("Open Keyboard Shortcuts")
+                        Spacer()
+                        Image(systemName: "arrow.right")
+                    }
+                    .padding(16)
+                    .contentShape(Rectangle())
                 }
-            } footer: {
-                Text("Configure the media shortcut in the central Shortcuts page.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                .buttonStyle(.plain)
+                .accessibilityHint("Opens the Shortcuts settings page focused on Media")
             }
         }
         .accentColor(.effectiveAccent)
@@ -409,64 +537,73 @@ struct MediaSettingsPage: View {
 
     @ViewBuilder
     private var visualizerSection: some View {
-        Section {
-            Toggle("Use music visualizer spectrogram", isOn: $useMusicVisualizer.animation())
-                .disabled(true)
+        FeatureSettingsCard(
+            "Live Activity Animation",
+            systemImage: "waveform",
+            description: "Custom music live activity animations are coming soon."
+        ) {
+            FeatureSettingsRow("Use music visualizer spectrogram") {
+                HStack(spacing: 8) {
+                    customBadge(text: "Coming soon")
+                    Toggle("Use music visualizer spectrogram", isOn: reduceMotion
+                        ? $useMusicVisualizer
+                        : $useMusicVisualizer.animation())
+                        .labelsHidden()
+                        .disabled(true)
+                }
+            }
+            .featureRowDivider()
             if !useMusicVisualizer {
                 if customVisualizers.count > 0 {
-                    Picker("Selected animation", selection: $selectedVisualizer) {
-                        ForEach(customVisualizers, id: \.self) { visualizer in
-                            Text(visualizer.name).tag(visualizer)
+                    FeatureSettingsRow("Selected animation") {
+                        Picker("Selected animation", selection: $selectedVisualizer) {
+                            ForEach(customVisualizers, id: \.self) { visualizer in
+                                Text(visualizer.name).tag(visualizer)
+                            }
                         }
+                        .labelsHidden()
                     }
                 } else {
-                    HStack {
-                        Text("Selected animation")
-                        Spacer()
+                    FeatureSettingsRow("Selected animation") {
                         Text("No custom animation available")
                             .foregroundStyle(.secondary)
                     }
                 }
             }
-        } header: {
-            HStack {
-                Text("Custom music live activity animation")
-                customBadge(text: "Coming soon")
-            }
         }
 
-        Section {
+        FeatureSettingsCard("Custom Visualizers", systemImage: "sparkles", description: "Add Lottie animations from a JSON URL.") {
             List {
                 ForEach(customVisualizers, id: \.self) { visualizer in
-                    HStack {
-                        LottieView(url: visualizer.url, speed: visualizer.speed, loopMode: .loop)
-                            .frame(width: 30, height: 30, alignment: .center)
-                        Text(visualizer.name)
-                        Spacer(minLength: 0)
-                        if selectedVisualizer == visualizer {
-                            Text("selected")
-                                .font(.caption)
-                                .fontWeight(.medium)
-                                .foregroundStyle(.secondary)
-                                .padding(.trailing, 8)
+                    Button {
+                        selectedListVisualizer = selectedListVisualizer == visualizer ? nil : visualizer
+                    } label: {
+                        HStack {
+                            LottieView(url: visualizer.url, speed: visualizer.speed, loopMode: .loop)
+                                .frame(width: 30, height: 30, alignment: .center)
+                                .accessibilityHidden(true)
+                            Text(visualizer.name)
+                            Spacer(minLength: 0)
+                            if selectedVisualizer == visualizer {
+                                Text("Selected")
+                                    .font(.caption.weight(.medium))
+                                    .foregroundStyle(.secondary)
+                                    .padding(.trailing, 8)
+                            }
                         }
+                        .padding(.vertical, 2)
+                        .contentShape(Rectangle())
                     }
-                    .buttonStyle(PlainButtonStyle())
-                    .padding(.vertical, 2)
+                    .buttonStyle(.plain)
                     .background(
                         selectedListVisualizer != nil
                             ? selectedListVisualizer == visualizer
-                                ? Color.effectiveAccent : Color.clear : Color.clear,
+                                ? Color.effectiveAccent.opacity(0.22) : Color.clear : Color.clear,
                         in: RoundedRectangle(cornerRadius: 5)
                     )
-                    .contentShape(Rectangle())
-                    .onTapGesture {
-                        if selectedListVisualizer == visualizer {
-                            selectedListVisualizer = nil
-                            return
-                        }
-                        selectedListVisualizer = visualizer
-                    }
+                    .accessibilityLabel(visualizer.name)
+                    .accessibilityValue(selectedVisualizer == visualizer ? "Current animation" : "")
+                    .accessibilityAddTraits(selectedListVisualizer == visualizer ? .isSelected : [])
                 }
             }
             .safeAreaPadding(EdgeInsets(top: 5, leading: 0, bottom: 5, trailing: 0))
@@ -483,6 +620,7 @@ struct MediaSettingsPage: View {
                             .foregroundStyle(.secondary)
                             .contentShape(Rectangle())
                     }
+                    .accessibilityLabel("Add visualizer")
                     Divider()
                     Button {
                         if let visualizer = selectedListVisualizer {
@@ -497,6 +635,8 @@ struct MediaSettingsPage: View {
                             .foregroundStyle(.secondary)
                             .contentShape(Rectangle())
                     }
+                    .disabled(selectedListVisualizer == nil)
+                    .accessibilityLabel("Remove selected visualizer")
                 }
             }
             .controlSize(.small)
@@ -509,27 +649,38 @@ struct MediaSettingsPage: View {
                 }
             }
             .sheet(isPresented: $isPresented) {
-                VStack(alignment: .leading) {
-                    Text("Add new visualizer")
-                        .font(.largeTitle.bold())
-                        .padding(.vertical)
-                    TextField("Name", text: $name)
-                    TextField("Lottie JSON URL", text: $url)
-                    HStack {
-                        Text("Speed")
-                        Spacer(minLength: 80)
-                        Text("\(speed, specifier: "%.1f")s")
-                            .multilineTextAlignment(.trailing)
-                            .foregroundStyle(.secondary)
-                        Slider(value: $speed, in: 0...2, step: 0.1)
+                VStack(alignment: .leading, spacing: 20) {
+                    Label("Add Visualizer", systemImage: "waveform.badge.plus")
+                        .font(.title2.bold())
+                    Grid(alignment: .leading, horizontalSpacing: 16, verticalSpacing: 12) {
+                        GridRow {
+                            Text("Name")
+                            TextField("Visualizer name", text: $name)
+                        }
+                        GridRow {
+                            Text("Lottie JSON URL")
+                            TextField("https://example.com/animation.json", text: $url)
+                        }
+                        GridRow {
+                            Text("Speed")
+                            HStack {
+                                Slider(value: $speed, in: 0...2, step: 0.1)
+                                Text("\(speed, specifier: "%.1f")x")
+                                    .monospacedDigit()
+                                    .foregroundStyle(.secondary)
+                                    .frame(width: 38, alignment: .trailing)
+                            }
+                        }
                     }
-                    .padding(.vertical)
+                    Divider()
                     HStack {
+                        Spacer()
                         Button {
                             isPresented.toggle()
                         } label: {
-                            Text("Cancel").frame(maxWidth: .infinity, alignment: .center)
+                            Text("Cancel")
                         }
+                        .keyboardShortcut(.cancelAction)
                         Button {
                             if let parsedURL = URL(string: url) {
                                 let visualizer = CustomVisualizer(
@@ -544,22 +695,15 @@ struct MediaSettingsPage: View {
                             }
                             isPresented.toggle()
                         } label: {
-                            Text("Add").frame(maxWidth: .infinity, alignment: .center)
+                            Text("Add")
                         }
-                        .buttonStyle(BorderedProminentButtonStyle())
+                        .buttonStyle(.borderedProminent)
+                        .keyboardShortcut(.defaultAction)
                     }
                 }
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-                .controlSize(.extraLarge)
-                .padding()
-            }
-        } header: {
-            HStack(spacing: 0) {
-                Text("Custom vizualizers (Lottie)")
-                if !Defaults[.customVisualizers].isEmpty {
-                    Text(" – \(Defaults[.customVisualizers].count)")
-                        .foregroundStyle(.secondary)
-                }
+                .textFieldStyle(.roundedBorder)
+                .padding(24)
+                .frame(width: 520)
             }
         }
     }
@@ -571,11 +715,16 @@ struct MediaSettingsPage: View {
             return MediaControllerType.allCases
         }
     }
+
+    private var waitIntervalDescription: String {
+        String(format: "%.0f seconds", Defaults[.waitInterval])
+    }
 }
 
 // MARK: - HUD
 
 struct HUDSettingsPage: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Default(.inlineHUD) var inlineHUD
     @Default(.enableGradient) var enableGradient
     @Default(.optionKeyAction) var optionKeyAction
@@ -586,96 +735,81 @@ struct HUDSettingsPage: View {
     }
 
     var body: some View {
-        Form {
-            Section {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("Replace system HUD")
-                        .font(.headline)
-                    Text("Replaces the standard macOS volume, display brightness, and keyboard brightness HUDs with a custom design. Use the switch on the Extensions page to turn the HUD on or off.")
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                HStack(spacing: 12) {
-                    Image(systemName: inputAccessPresentation.symbolName)
-                        .foregroundStyle(status.hasInputAccess ? Color.green : Color.secondary)
-                    Text(inputAccessPresentation.message)
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                    Spacer(minLength: 0)
-                    if inputAccessPresentation.showsRequestButton {
-                        Button("Request Accessibility") {
-                            NotchKitRuntime.shared.requestHUDInputAccess()
-                        }
-                        .buttonStyle(.borderedProminent)
+        FeatureSettingsPage {
+            FeatureSettingsCard(
+                "System Access",
+                systemImage: "hand.raised",
+                description: "The HUD needs Accessibility access to replace the standard macOS volume and brightness indicators."
+            ) {
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 12) {
+                        accessStatus
+                        Spacer(minLength: 16)
+                        accessActions
                     }
-                    Button("Refresh Status") {
-                        Task {
-                            await status.refresh()
-                            // Re-drive the runtime from the same app-side source
-                            // so a granted, still-enabled HUD can activate
-                            // without a second click.
-                            NotchKitRuntime.shared.reconcilePermissionGatedFeatures()
-                        }
+                    VStack(alignment: .leading, spacing: 12) {
+                        accessStatus
+                        accessActions
                     }
                 }
-                .padding(.top, 6)
+                .padding(16)
             }
 
-            Section {
-                Picker("Option key behaviour", selection: $optionKeyAction) {
-                    ForEach(OptionKeyAction.allCases) { opt in
-                        Text(opt.rawValue).tag(opt)
+            FeatureSettingsCard("Behavior", systemImage: "switch.2") {
+                FeatureSettingsRow("Option key behavior") {
+                    Picker("Option key behavior", selection: $optionKeyAction) {
+                        ForEach(OptionKeyAction.allCases) { opt in
+                            Text(opt.rawValue).tag(opt)
+                        }
                     }
+                    .labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Progress bar style") {
+                    Picker("Progress bar style", selection: $enableGradient) {
+                        Text("Hierarchical").tag(false)
+                        Text("Gradient").tag(true)
+                    }
+                    .labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Glowing effect") {
+                    Defaults.Toggle("Glowing effect", key: .systemEventIndicatorShadow).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Use accent color") {
+                    Defaults.Toggle("Use accent color", key: .systemEventIndicatorUseAccent).labelsHidden()
                 }
-                Picker("Progress bar style", selection: $enableGradient) {
-                    Text("Hierarchical").tag(false)
-                    Text("Gradient").tag(true)
-                }
-                Defaults.Toggle(key: .systemEventIndicatorShadow) {
-                    Text("Enable glowing effect")
-                }
-                Defaults.Toggle(key: .systemEventIndicatorUseAccent) {
-                    Text("Tint progress bar with accent color")
-                }
-            } header: {
-                Text("General")
             }
 
-            Section {
-                Defaults.Toggle(key: .showOpenNotchHUD) {
-                    Text("Show HUD in open notch")
-                }
-                Defaults.Toggle(key: .showOpenNotchHUDPercentage) {
-                    Text("Show percentage")
+            FeatureSettingsCard("Open Notch", systemImage: "rectangle.topthird.inset.filled") {
+                FeatureSettingsRow("Show HUD in open notch") {
+                    customBadge(text: "Beta")
+                    Defaults.Toggle("Show HUD in open notch", key: .showOpenNotchHUD).labelsHidden()
+                }.featureRowDivider()
+                FeatureSettingsRow("Show percentage") {
+                    Defaults.Toggle("Show percentage", key: .showOpenNotchHUDPercentage).labelsHidden()
                 }
                 .disabled(!Defaults[.showOpenNotchHUD])
-            } header: {
-                HStack {
-                    Text("Open Notch")
-                    customBadge(text: "Beta")
-                }
             }
 
-            Section {
-                Picker("HUD style", selection: $inlineHUD) {
-                    Text("Default").tag(false)
-                    Text("Inline").tag(true)
+            FeatureSettingsCard("Closed Notch", systemImage: "rectangle.topthird.inset") {
+                FeatureSettingsRow("HUD style") {
+                    Picker("HUD style", selection: $inlineHUD) {
+                        Text("Default").tag(false)
+                        Text("Inline").tag(true)
+                    }
+                    .labelsHidden()
                 }
                 .onChange(of: Defaults[.inlineHUD]) {
                     if Defaults[.inlineHUD] {
-                        withAnimation {
+                        withAnimation(reduceMotion ? nil : .default) {
                             Defaults[.systemEventIndicatorShadow] = false
                             Defaults[.enableGradient] = false
                         }
                     }
                 }
-                Defaults.Toggle(key: .showClosedNotchHUDPercentage) {
-                    Text("Show percentage")
+                .featureRowDivider()
+                FeatureSettingsRow("Show percentage") {
+                    Defaults.Toggle("Show percentage", key: .showClosedNotchHUDPercentage).labelsHidden()
                 }
-            } header: {
-                Text("Closed Notch")
             }
         }
         .accentColor(.effectiveAccent)
@@ -693,6 +827,30 @@ struct HUDSettingsPage: View {
             }
         }
     }
+
+    private var accessStatus: some View {
+        Label(inputAccessPresentation.message, systemImage: inputAccessPresentation.symbolName)
+            .font(.subheadline)
+            .foregroundStyle(status.hasInputAccess ? Color.green : Color.secondary)
+            .accessibilityLabel("Accessibility status: \(inputAccessPresentation.message)")
+    }
+
+    private var accessActions: some View {
+        HStack(spacing: 8) {
+            if inputAccessPresentation.showsRequestButton {
+                Button("Request Accessibility") {
+                    NotchKitRuntime.shared.requestHUDInputAccess()
+                }
+                .buttonStyle(.borderedProminent)
+            }
+            Button("Refresh Status") {
+                Task {
+                    await status.refresh()
+                    NotchKitRuntime.shared.reconcilePermissionGatedFeatures()
+                }
+            }
+        }
+    }
 }
 
 // MARK: - Camera Mirror
@@ -701,23 +859,28 @@ struct CameraMirrorSettingsPage: View {
     @Default(.mirrorShape) var mirrorShape
 
     var body: some View {
-        Form {
-            Section {
-                Picker("Mirror shape", selection: $mirrorShape) {
-                    Text("Circle").tag(MirrorShapeEnum.circle)
-                    Text("Square").tag(MirrorShapeEnum.rectangle)
+        FeatureSettingsPage {
+            FeatureSettingsCard(
+                "Camera Mirror",
+                systemImage: "web.camera",
+                description: "Camera access is requested only when the mirror is opened, never while configuring it here."
+            ) {
+                FeatureSettingsRow("Mirror shape") {
+                    Picker("Mirror shape", selection: $mirrorShape) {
+                        Text("Circle").tag(MirrorShapeEnum.circle)
+                        Text("Square").tag(MirrorShapeEnum.rectangle)
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.segmented)
+                    .frame(width: 180)
                 }
                 if !isCameraInputAvailable() {
-                    Text("No camera input was detected on this Mac.")
-                        .font(.caption)
+                    Divider()
+                    Label("No camera input was detected on this Mac.", systemImage: "web.camera.fill.badge.exclamationmark")
+                        .font(.subheadline)
                         .foregroundStyle(.secondary)
+                        .padding(16)
                 }
-            } header: {
-                Text("Camera Mirror")
-            } footer: {
-                Text("Use the switch on the Extensions page to turn the Camera Mirror on or off. Camera access is requested the first time the mirror is opened, not while configuring it here.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
             }
         }
         .accentColor(.effectiveAccent)

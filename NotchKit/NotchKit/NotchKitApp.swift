@@ -34,7 +34,7 @@ struct NotchKitApp: App {
     }
 
     var body: some Scene {
-        MenuBarExtra("NotchKit", systemImage: "sparkle", isInserted: $showMenuBarIcon) {
+        MenuBarExtra(isInserted: $showMenuBarIcon) {
             Button("Settings") {
                 DispatchQueue.main.async {
                     SettingsWindowController.shared.showWindow()
@@ -50,13 +50,19 @@ struct NotchKitApp: App {
                 NSApplication.shared.terminate(self)
             }
             .keyboardShortcut(KeyEquivalent("Q"), modifiers: .command)
+        } label: {
+            Label {
+                Text("NotchKit")
+            } icon: {
+                Image("NotchKitMenuBar")
+                    .renderingMode(.template)
+            }
         }
     }
 }
 
 @MainActor
 class AppDelegate: NSObject, NSApplicationDelegate {
-    var statusItem: NSStatusItem?
     var windows: [String: NSWindow] = [:] // UUID -> NSWindow
     var viewModels: [String: BoringViewModel] = [:] // UUID -> BoringViewModel
     var window: NSWindow?
@@ -458,6 +464,26 @@ class AppDelegate: NSObject, NSApplicationDelegate {
 
         setupDragDetectors()
 
+#if DEBUG
+        if let rawSection = ProcessInfo.processInfo.environment["NOTCHKIT_SETTINGS_SECTION"],
+           let section = SettingsSection(rawValue: rawSection)
+        {
+            switch ProcessInfo.processInfo.environment["NOTCHKIT_APPEARANCE"] {
+            case "light":
+                NSApp.appearance = NSAppearance(named: .aqua)
+            case "dark":
+                NSApp.appearance = NSAppearance(named: .darkAqua)
+            default:
+                break
+            }
+            DispatchQueue.main.async {
+                SettingsWindowController.shared.showWindow(section: section)
+            }
+            previousScreens = NSScreen.screens
+            return
+        }
+#endif
+
         if coordinator.firstLaunch {
             DispatchQueue.main.async {
                 self.showOnboardingWindow()
@@ -591,10 +617,6 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         } else {
             window?.orderFrontRegardless()
         }
-    }
-
-    @objc func showMenu() {
-        statusItem?.menu?.popUp(positioning: nil, at: NSEvent.mouseLocation, in: nil)
     }
 
     @objc func quitAction() {
