@@ -1,9 +1,10 @@
 import Foundation
+import NotchExtensionSDK
 
 public enum ExtensionToolCommand: Equatable, Sendable {
     case validate(archiveURL: URL)
     case inspect(archiveURL: URL, json: Bool)
-    case package(providerURL: URL, outputURL: URL)
+    case package(providerURL: URL, outputURL: URL, context: ExtensionPackageValidationContext)
 }
 
 public enum ExtensionToolUsageError: Error, Equatable {
@@ -15,7 +16,7 @@ public enum ExtensionToolCommandParser {
     Usage:
       notchkit-extension validate <archive>
       notchkit-extension inspect <archive> [--json]
-      notchkit-extension package <provider.app> --output <file.notchkitextension>
+      notchkit-extension package <provider.app> --output <file.notchkitextension> [--marketplace]
     """
 
     public static func parse(_ arguments: [String], currentDirectoryURL: URL) throws -> ExtensionToolCommand {
@@ -33,7 +34,11 @@ public enum ExtensionToolCommandParser {
             return .inspect(archiveURL: url(arguments[1]), json: true)
         }
         if arguments.count == 4, arguments[0] == "package", arguments[2] == "--output" {
-            return .package(providerURL: url(arguments[1]), outputURL: url(arguments[3]))
+            return .package(providerURL: url(arguments[1]), outputURL: url(arguments[3]), context: .localDeveloper)
+        }
+        if arguments.count == 5, arguments[0] == "package", arguments[2] == "--output",
+           arguments[4] == "--marketplace" {
+            return .package(providerURL: url(arguments[1]), outputURL: url(arguments[3]), context: .marketplace)
         }
         throw ExtensionToolUsageError.invalidArguments
     }

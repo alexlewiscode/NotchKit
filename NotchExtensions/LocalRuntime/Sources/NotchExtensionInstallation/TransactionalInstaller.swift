@@ -28,7 +28,6 @@ public enum ExtensionInstallerError: Error, Equatable {
     case incompatibleMarketplaceRelease
     case revokedMarketplaceRelease
     case staleMarketplaceEvidence
-    case developerIDRequired
     case originTransitionNotAllowed
 }
 
@@ -160,7 +159,7 @@ public final class TransactionalExtensionInstaller: @unchecked Sendable {
 
         try archiveValidator.validateAndExtract(archiveURL: archiveURL, to: extracted)
         let package = try packageValidator.validate(packageRootURL: extracted, context: context)
-        let signature = try signatureEvidence(for: package, requiresDeveloperID: receipt != nil)
+        let signature = try signatureEvidence(for: package)
         if let receipt { try validate(package: package, signature: signature, against: receipt) }
 
         let existingIndex = snapshot.records.firstIndex { $0.id == package.manifest.id }
@@ -219,10 +218,7 @@ public final class TransactionalExtensionInstaller: @unchecked Sendable {
             guard installedPackage.packageManifest == package.packageManifest,
                   installedPackage.manifestData == package.manifestData
             else { throw ExtensionInstallerError.installedCopyMismatch }
-            let installedSignature = try signatureEvidence(
-                for: installedPackage,
-                requiresDeveloperID: receipt != nil
-            )
+            let installedSignature = try signatureEvidence(for: installedPackage)
             guard installedSignature == signature else { throw ExtensionInstallerError.installedCopyMismatch }
             if let receipt { try validate(package: installedPackage, signature: installedSignature, against: receipt) }
 
@@ -366,10 +362,7 @@ public final class TransactionalExtensionInstaller: @unchecked Sendable {
                 packageRootURL: destination,
                 context: previous.origin == .marketplace ? .marketplace : .localDeveloper
             )
-            let signature = try signatureEvidence(
-                for: package,
-                requiresDeveloperID: previous.origin == .marketplace
-            )
+            let signature = try signatureEvidence(for: package)
             guard package.manifest.id == id,
                   package.manifest.extensionVersion == previous.extensionVersion,
                   package.providerBundleIdentifier == previous.providerBundleIdentifier,
@@ -535,22 +528,13 @@ public final class TransactionalExtensionInstaller: @unchecked Sendable {
         return apps[0]
     }
 
-    private func signatureEvidence(
-        for package: ValidatedPackage,
-        requiresDeveloperID: Bool = false
-    ) throws -> InstalledCodeSignature {
+    private func signatureEvidence(for package: ValidatedPackage) throws -> InstalledCodeSignature {
         let provider = try signatureValidator.validateCode(at: package.providerURL)
-        guard !requiresDeveloperID || provider.isDeveloperID else {
-            throw ExtensionInstallerError.developerIDRequired
-        }
         var extensionRequirements: [String: String] = [:]
         for (url, identifier) in zip(package.extensionURLs, package.extensionBundleIdentifiers) {
             let signature = try signatureValidator.validateCode(at: url)
             guard signature.teamIdentifier == provider.teamIdentifier else {
                 throw ExtensionInstallerError.teamMismatch
-            }
-            guard !requiresDeveloperID || signature.isDeveloperID else {
-                throw ExtensionInstallerError.developerIDRequired
             }
             extensionRequirements[identifier] = signature.designatedRequirement
         }

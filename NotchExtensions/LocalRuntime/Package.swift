@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "NotchExtensionInstallation", targets: ["NotchExtensionInstallation"]),
         .library(name: "NotchNativeExtensionRuntime", targets: ["NotchNativeExtensionRuntime"]),
         .executable(name: "notchkit-extension", targets: ["NotchExtensionTool"]),
+        .executable(name: "notchkit-hub-validator", targets: ["HubArtifactValidator"]),
     ],
     dependencies: [
         .package(path: "../../NotchKit/Packages/NotchExtensionSDK"),
@@ -41,6 +42,13 @@ let package = Package(
         .executableTarget(
             name: "NotchExtensionTool",
             dependencies: ["NotchExtensionToolSupport"]
+        ),
+        .executableTarget(
+            name: "HubArtifactValidator",
+            dependencies: [
+                "NotchExtensionInstallation",
+                .product(name: "NotchExtensionSDK", package: "NotchExtensionSDK"),
+            ]
         ),
         .testTarget(
             name: "NotchExtensionInstallationTests",

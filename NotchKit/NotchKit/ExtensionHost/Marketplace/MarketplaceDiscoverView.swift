@@ -519,13 +519,11 @@ private struct MarketplacePublisherLabel: View {
     var body: some View {
         Label(
             publisher.displayName,
-            systemImage: publisher.verified ? "checkmark.seal.fill" : "person.crop.circle.badge.questionmark"
+            systemImage: "person.crop.circle"
         )
         .font(.caption)
         .foregroundStyle(.secondary)
-        .accessibilityLabel(publisher.verified
-            ? "Verified publisher, \(publisher.displayName)"
-            : "Unverified publisher, \(publisher.displayName)")
+        .accessibilityLabel("Publisher, \(publisher.displayName)")
     }
 }
 
@@ -734,7 +732,9 @@ struct MarketplaceCatalogDetailsView: View {
                     name: entry.displayName,
                     summary: entry.summary,
                     publisher: entry.publisher.displayName,
-                    badge: entry.publisher.verified ? "VERIFIED PUBLISHER" : "PUBLISHER"
+                    badge: entry.latest.trustBadges.contains(.notchkitTeam)
+                        ? "NOTCHKIT TEAM"
+                        : entry.latest.trustBadges.contains(.appleDeveloper) ? "APPLE DEVELOPER" : "REVIEWED SAFE"
                 ) {
                     MarketplaceActionButton(
                         entry: entry,
@@ -781,11 +781,20 @@ struct MarketplaceCatalogDetailsView: View {
                 Text("Trust").font(.headline)
                 switch trust {
                 case .trusted:
-                    Label("Verified publisher and release", systemImage: "checkmark.shield.fill")
+                    Label("Reviewed safe by NotchKit", systemImage: "checkmark.shield.fill")
                         .foregroundStyle(.green)
                 case let .untrusted(reason):
                     Label(reason, systemImage: "exclamationmark.shield.fill")
                         .foregroundStyle(.orange)
+                }
+                ForEach(entry.latest.trustBadges.sorted(by: { $0.rawValue < $1.rawValue }), id: \.self) { badge in
+                    Label(Self.badgeTitle(for: badge), systemImage: "seal.fill")
+                        .font(.caption)
+                }
+                if !entry.latest.notarized {
+                    Text("Not notarized. Safety status comes from NotchKit’s manual review.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                 }
             }
             Divider()
@@ -813,6 +822,7 @@ struct MarketplaceCatalogDetailsView: View {
                 LabeledContent("Version", value: entry.latest.version.description)
                 LabeledContent("Minimum macOS", value: entry.latest.compatibility.minimumMacOSVersion.description)
                 LabeledContent("Signing team", value: entry.latest.teamIdentifier)
+                LabeledContent("Code signing", value: entry.latest.signerType == .developerID ? "Developer ID" : "Apple Development")
                 LabeledContent(
                     "Architectures",
                     value: entry.latest.compatibility.supportedArchitectures.map(\.rawValue).sorted().joined(separator: ", ")
@@ -824,6 +834,14 @@ struct MarketplaceCatalogDetailsView: View {
             .font(.callout)
         }
         .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private static func badgeTitle(for badge: MarketplaceTrustBadge) -> String {
+        switch badge {
+        case .notchkitTeam: "NotchKit Team"
+        case .appleDeveloper: "Apple Developer"
+        case .reviewedSafe: "Reviewed Safe"
+        }
     }
 
     private var permissionDetails: some View {
@@ -1046,7 +1064,7 @@ struct MarketplaceInstallConfirmation: View {
             Text("Version \(entry.latest.version.description) by \(entry.publisher.displayName)")
                 .foregroundStyle(.secondary)
             Label(
-                "Verified publisher, Developer ID signature, notarization, and stapled ticket are required.",
+                "This release was reviewed by NotchKit. macOS may still ask you to approve the extension.",
                 systemImage: "checkmark.shield"
             )
             if !entry.latest.permissions.isEmpty {

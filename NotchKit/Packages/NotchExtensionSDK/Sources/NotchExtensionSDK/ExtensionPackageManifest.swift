@@ -271,7 +271,7 @@ public enum ExtensionPackageManifestValidationError: Error, Equatable, Localized
 /// Selects the package origin permitted by an installation policy. A manifest's
 /// source is a declaration; callers must still verify the source-specific trust
 /// evidence before installing executable code.
-public enum ExtensionPackageValidationContext: Sendable {
+public enum ExtensionPackageValidationContext: Equatable, Sendable {
     case localDeveloper
     case marketplace
 

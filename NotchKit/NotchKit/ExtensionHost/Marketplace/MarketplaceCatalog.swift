@@ -72,6 +72,8 @@ struct MarketplaceRelease: Decodable, Hashable, Sendable {
     let teamIdentifier: String
     let notarized: Bool
     let stapled: Bool
+    let signerType: MarketplaceSignerType
+    let trustBadges: Set<MarketplaceTrustBadge>
     let artifactKind: String
     let providerBundleIdentifier: String
     let extensionBundleIdentifier: String
@@ -83,6 +85,17 @@ struct MarketplaceRelease: Decodable, Hashable, Sendable {
     let compatibility: MarketplaceCompatibility
     let publishedAt: Date
     let downloadPath: String
+}
+
+enum MarketplaceSignerType: String, Decodable, Hashable, Sendable {
+    case appleDevelopment
+    case developerID
+}
+
+enum MarketplaceTrustBadge: String, Decodable, Hashable, Sendable {
+    case notchkitTeam
+    case appleDeveloper
+    case reviewedSafe
 }
 
 struct MarketplaceCompatibility: Decodable, Hashable, Sendable {

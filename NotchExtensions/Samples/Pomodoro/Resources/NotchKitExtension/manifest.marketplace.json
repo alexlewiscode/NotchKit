@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 2,
+  "metadata": {
+    "id": "com.notchkit.samples.pomodoro",
+    "displayName": "Pomodoro Focus",
+    "summary": "A focused Pomodoro timer for the open and closed notch.",
+    "iconSystemName": "timer.circle.fill",
+    "extensionVersion": "1.0.0",
+    "apiVersion": "1.2.0",
+    "supportedHostVersions": ">=1.0.0",
+    "supportedSDKVersions": ">=1.2.0 <2.0.0",
+    "capabilities": ["open-destination", "closed-notch-contribution"],
+    "artifactKind": "app-extension",
+    "entryPoints": [
+      { "id": "main", "kind": "open-destination" },
+      { "id": "compact", "kind": "open-destination" },
+      { "id": "closed", "kind": "closed-notch-contribution" }
+    ],
+    "defaultEnabled": false,
+    "source": "marketplace"
+  },
+  "artifact": {
+    "kind": "app-extension",
+    "appExtension": {
+      "providerBundleIdentifier": "com.notchkit.samples.pomodoro.provider",
+      "extensionBundleIdentifier": "com.notchkit.samples.pomodoro.provider.extension",
+      "extensionPointIdentifier": "com.notchkit.app.native-ui",
+      "minimumMacOSVersion": "26.0.0",
+      "protocolVersions": { "minimum": 1, "maximum": 1 },
+      "architectures": ["arm64"]
+    }
+  },
+  "permissions": [],
+  "hostActions": ["open-destination"],
+  "entryPoints": [
+    { "entryPoint": { "id": "main", "kind": "open-destination" }, "presentationMode": "remote-scene", "sceneName": "main" },
+    { "entryPoint": { "id": "compact", "kind": "open-destination" }, "presentationMode": "declarative" },
+    { "entryPoint": { "id": "closed", "kind": "closed-notch-contribution" }, "presentationMode": "declarative" }
+  ]
+}

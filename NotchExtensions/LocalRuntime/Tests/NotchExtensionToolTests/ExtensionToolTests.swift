@@ -22,7 +22,19 @@ final class ExtensionToolTests: XCTestCase {
             ),
             .package(
                 providerURL: URL(fileURLWithPath: "/tmp/work/Provider.app"),
-                outputURL: URL(fileURLWithPath: "/tmp/work/out.notchkitextension")
+                outputURL: URL(fileURLWithPath: "/tmp/work/out.notchkitextension"),
+                context: .localDeveloper
+            )
+        )
+        XCTAssertEqual(
+            try ExtensionToolCommandParser.parse(
+                ["package", "Provider.app", "--output", "marketplace.notchkitextension", "--marketplace"],
+                currentDirectoryURL: current
+            ),
+            .package(
+                providerURL: URL(fileURLWithPath: "/tmp/work/Provider.app"),
+                outputURL: URL(fileURLWithPath: "/tmp/work/marketplace.notchkitextension"),
+                context: .marketplace
             )
         )
     }

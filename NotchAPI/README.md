@@ -1,7 +1,7 @@
 # NotchAPI
 
-Status: proposed. This directory is scaffolding only. There is no server, no
-build target, and no network code here.
+Status: implemented in the sibling `notchkit-hub` repository. This directory
+documents the app-side Tier C boundary; it is not a server build target.
 
 `NotchAPI` is the future server-side boundary for the extension ecosystem:
 
@@ -24,18 +24,20 @@ A future catalog entry is expected to carry at least:
 - artifact `url`, `sha256`, `size`, `signature`, `notarizationStatus`;
 - `validationStatus` and `submissionState`.
 
-None of these fields exist in the app. They describe the future Tier C boundary
-from ADR 0002. The app must not fetch, cache, or trust any of them until a
-separately-installed (not bundled) artifact has been demonstrated by the
-prototype and explicit approval is given.
+The app consumes only a pinned-key, signed catalog envelope on macOS 26 or
+later. It verifies the exact signed payload before interpreting catalog data,
+then independently verifies downloaded artifact bytes and package code before
+installation. Unsigned HTTP metadata and a manifest declaration alone are not
+marketplace trust evidence.
 
 See `docs/architecture/adr/0002-extension-distribution-tiers.md` for the tier
 separation and macOS 14 platform constraints.
 
 ## Boundary rules
 
-- Nothing in this directory is compiled into or called by the macOS app. The app
-  makes no network calls.
+- Nothing in this directory is compiled into the macOS app. The app-side Hub
+  adapter lives under `ExtensionHost/Marketplace` and is created without making
+  a request; it fetches only after a macOS-26 user explicitly opens Discover.
 - The app-facing contracts live in the Swift `NotchExtensionSDK` module
   (`NotchKit/Packages/NotchExtensionSDK/Sources/NotchExtensionSDK`). A future
   server must translate to and from that contract rather than inventing a
@@ -45,8 +47,9 @@ separation and macOS 14 platform constraints.
 - Statically linked, compile-time extensions are **not** downloadable artifacts.
   Distribution only becomes meaningful once a runtime adapter exists (see
   `docs/architecture/extensions.md`, "Future adapter path").
-- No server implementation is in scope until a later phase explicitly approves
-  it.
+- The Hub server implementation lives at
+  `/Users/alexanderlewis/Documents/Code/notchkit-hub`. Its contracts must remain
+  aligned with the canonical SDK manifest and ADR 0004.
 
 See `docs/architecture/extensions.md` for the repository boundary map,
 `docs/architecture/extension-api.md` for the current public contract, and

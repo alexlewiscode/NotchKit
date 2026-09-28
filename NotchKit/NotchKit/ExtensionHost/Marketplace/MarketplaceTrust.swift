@@ -65,14 +65,14 @@ enum MarketplaceReleaseEvaluator {
     }
 
     static func trust(of entry: MarketplaceCatalogEntry) -> MarketplaceTrustState {
-        guard entry.publisher.verified else {
-            return .untrusted("Publisher verification is incomplete.")
-        }
-        guard entry.latest.notarized, entry.latest.stapled else {
-            return .untrusted("This release is not notarized with a stapled ticket.")
+        guard entry.latest.trustBadges.contains(.reviewedSafe) else {
+            return .untrusted("This release has not been reviewed and marked safe by NotchKit.")
         }
         guard !entry.latest.teamIdentifier.isEmpty else {
             return .untrusted("The release has no trusted signing team.")
+        }
+        if entry.latest.trustBadges.contains(.appleDeveloper), entry.latest.signerType != .developerID {
+            return .untrusted("The Apple Developer badge does not match the release signer.")
         }
         return .trusted
     }

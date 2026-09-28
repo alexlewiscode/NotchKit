@@ -31,8 +31,8 @@ public struct ExtensionToolRunner {
                 } else {
                     output(inspection.humanReadable())
                 }
-            case let .package(providerURL, outputURL):
-                _ = try service.package(providerURL: providerURL, outputURL: outputURL)
+            case let .package(providerURL, outputURL, context):
+                _ = try service.package(providerURL: providerURL, outputURL: outputURL, context: context)
                 output(outputURL.path)
             }
             return 0

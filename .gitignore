@@ -56,3 +56,8 @@ build/
 
 # Track the committed shared test scheme so host tests are reproducible.
 !NotchKit/NotchKit.xcodeproj/xcshareddata/xcschemes/NotchKitTests.xcscheme
+
+DesignAssets/
+
+# Local implementation handover; intentionally not committed.
+/handover.md

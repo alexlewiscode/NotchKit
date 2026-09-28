@@ -231,7 +231,7 @@ final class InstallerTests: XCTestCase {
         } catch { XCTAssertEqual(error as? ExtensionInstallerError, .archiveDigestMismatch) }
     }
 
-    func testMarketplaceInstallRequiresDeveloperIDSignature() async throws {
+    func testMarketplaceInstallAllowsAppleDevelopmentSignatureAfterHubReview() async throws {
         let workspace = try temporaryDirectory()
         defer { try? FileManager.default.removeItem(at: workspace) }
         let source = workspace.appendingPathComponent("source")
@@ -249,19 +249,16 @@ final class InstallerTests: XCTestCase {
             store: FailingStore(),
             now: { timestamp }
         )
-        do {
-            _ = try await installer.install(.init(
-                archiveURL: archive,
-                operation: .install,
-                trustPolicy: .marketplace(receipt: try marketplaceReceipt(
-                    archiveData: archiveData,
-                    timestamp: timestamp
-                ))
+        let installed = try await installer.install(.init(
+            archiveURL: archive,
+            operation: .install,
+            trustPolicy: .marketplace(receipt: try marketplaceReceipt(
+                archiveData: archiveData,
+                timestamp: timestamp
             ))
-            XCTFail("Expected Developer ID policy rejection")
-        } catch {
-            XCTAssertEqual(error as? ExtensionInstallerError, .developerIDRequired)
-        }
+        ))
+        XCTAssertEqual(installed.origin, .marketplace)
+        XCTAssertEqual(installed.signature.teamIdentifier, "TEAM")
     }
 
     func testUpdateRetainsPreviousReleaseAndManualRollbackSwapsReleases() async throws {

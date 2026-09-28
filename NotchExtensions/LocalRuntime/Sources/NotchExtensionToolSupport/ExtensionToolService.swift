@@ -70,11 +70,17 @@ public struct ExtensionToolService {
         self.fileManager = fileManager
     }
 
-    public func validate(archiveURL: URL) throws {
-        _ = try inspect(archiveURL: archiveURL)
+    public func validate(
+        archiveURL: URL,
+        context: ExtensionPackageValidationContext = .localDeveloper
+    ) throws {
+        _ = try inspect(archiveURL: archiveURL, context: context)
     }
 
-    public func inspect(archiveURL: URL) throws -> ExtensionToolInspection {
+    public func inspect(
+        archiveURL: URL,
+        context: ExtensionPackageValidationContext = .localDeveloper
+    ) throws -> ExtensionToolInspection {
         guard fileManager.fileExists(atPath: archiveURL.path) else {
             throw ExtensionToolError.io("Archive does not exist: \(archiveURL.path)")
         }
@@ -82,7 +88,7 @@ public struct ExtensionToolService {
         defer { try? fileManager.removeItem(at: root) }
         do {
             try archiveValidator.validateAndExtract(archiveURL: archiveURL, to: root)
-            let package = try packageValidator.validate(packageRootURL: root)
+            let package = try packageValidator.validate(packageRootURL: root, context: context)
             let signature = try validateSignatures(package)
             return inspection(package: package, signature: signature)
         } catch let error as ExtensionToolError {
@@ -93,7 +99,11 @@ public struct ExtensionToolService {
     }
 
     @discardableResult
-    public func package(providerURL: URL, outputURL: URL) throws -> ExtensionToolInspection {
+    public func package(
+        providerURL: URL,
+        outputURL: URL,
+        context: ExtensionPackageValidationContext = .localDeveloper
+    ) throws -> ExtensionToolInspection {
         guard providerURL.pathExtension == "app",
               fileManager.fileExists(atPath: providerURL.path)
         else { throw ExtensionToolError.io("Provider app does not exist: \(providerURL.path)") }
@@ -111,7 +121,7 @@ public struct ExtensionToolService {
         let manifestData: Data
         do { manifestData = try Data(contentsOf: embeddedManifestURL) }
         catch { throw ExtensionToolError.validation("Missing embedded manifest") }
-        do { _ = try StrictExtensionPackageManifestValidator().decodeAndValidate(data: manifestData) }
+        do { _ = try StrictExtensionPackageManifestValidator().decodeAndValidate(data: manifestData, context: context) }
         catch { throw ExtensionToolError.validation(String(describing: error)) }
 
         let workspace = fileManager.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
@@ -129,10 +139,10 @@ public struct ExtensionToolService {
             try fileManager.createDirectory(at: payload, withIntermediateDirectories: true)
             try fileManager.copyItem(at: providerURL, to: stagedProvider)
             try manifestData.write(to: staging.appendingPathComponent("manifest.json"), options: .atomic)
-            let package = try packageValidator.validate(packageRootURL: staging)
+            let package = try packageValidator.validate(packageRootURL: staging, context: context)
             _ = try validateSignatures(package)
             try writeArchive(from: staging, to: temporaryArchive)
-            let inspection = try inspect(archiveURL: temporaryArchive)
+            let inspection = try inspect(archiveURL: temporaryArchive, context: context)
             if fileManager.fileExists(atPath: outputURL.path) {
                 _ = try fileManager.replaceItemAt(outputURL, withItemAt: temporaryArchive)
             } else {

@@ -52,9 +52,27 @@
 		};
 /* End PBXCopyFilesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		B10000000000000000000006 /* Select Marketplace Manifest */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = ();
+			inputFileListPaths = ();
+			inputPaths = ("$(SRCROOT)/Resources/NotchKitExtension/manifest.marketplace.json",);
+			name = "Select Marketplace Manifest";
+			outputFileListPaths = ();
+			outputPaths = ();
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${NOTCHKIT_MARKETPLACE_BUILD:-NO}\" = \"YES\" ]; then\n  /bin/cp \"$SRCROOT/Resources/NotchKitExtension/manifest.marketplace.json\" \"$TARGET_BUILD_DIR/$UNLOCALIZED_RESOURCES_FOLDER_PATH/NotchKitExtension/manifest.json\"\nfi\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXFileReference section */
 		F10000000000000000000001 /* PomodoroProviderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroProviderApp.swift; sourceTree = "<group>"; };
 		F10000000000000000000002 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.json; sourceTree = "<group>"; };
+		F10000000000000000000003 /* manifest.marketplace.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = manifest.marketplace.json; sourceTree = "<group>"; };
 		F20000000000000000000001 /* PomodoroExtension.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroExtension.swift; sourceTree = "<group>"; };
 		F20000000000000000000002 /* PomodoroView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroView.swift; sourceTree = "<group>"; };
 		F20000000000000000000003 /* PomodoroExtensionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PomodoroExtensionService.swift; sourceTree = "<group>"; };
@@ -130,6 +148,7 @@
 			isa = PBXGroup;
 			children = (
 				F10000000000000000000002 /* manifest.json */,
+				F10000000000000000000003 /* manifest.marketplace.json */,
 			);
 			path = NotchKitExtension;
 			sourceTree = "<group>";
@@ -155,6 +174,7 @@
 				B10000000000000000000003 /* Resources */,
 				B10000000000000000000004 /* Embed ExtensionKit Extensions */,
 				B10000000000000000000005 /* Embed Extension Manifest */,
+				B10000000000000000000006 /* Select Marketplace Manifest */,
 			);
 			buildRules = ();
 			dependencies = (

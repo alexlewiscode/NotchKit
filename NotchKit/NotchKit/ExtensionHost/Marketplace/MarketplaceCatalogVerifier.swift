@@ -60,6 +60,8 @@ enum MarketplaceCatalogVerifier {
                       isSHA256(release.sha256),
                       isSHA256(release.manifestSHA256),
                       !release.teamIdentifier.isEmpty,
+                      release.trustBadges.contains(.reviewedSafe),
+                      !release.trustBadges.contains(.appleDeveloper) || release.signerType == .developerID,
                       !release.downloadPath.isEmpty,
                       release.compatibility.protocolVersions.minimum > 0,
                       release.compatibility.protocolVersions.maximum
